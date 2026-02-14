@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapEats - Order Food Online</title>
+    <link rel="stylesheet" href="snap_eats.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <h1>🍔 SnapEats</h1>
+            </div>
+            <nav class="nav-links">
+                <a href="#" class="nav-link">Corporate</a>
+                <a href="#" class="nav-link">Search</a>
+                <a href="#" class="nav-link">Offers</a>
+                <a href="#" class="nav-link">Help</a>
+                <a href="#" class="nav-link">Sign In</a>
+                <a href="#" class="nav-link cart-link">🛒 Cart</a>
+            </nav>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search for restaurants, cuisines, or dishes..." />
+                <button class="search-btn">🔍</button>
+            </div>
+        </div>
+    </header>
+
+    <section class="hero-banner">
+        <div class="container">
+            <h1 class="hero-title">Order food online from your favorite restaurants</h1>
+            <p class="hero-subtitle">Food delivery and takeout online</p>
+        </div>
+    </section>
+
+    <section class="categories-section">
+        <div class="container">
+            <h2 class="section-title">What's on your mind?</h2>
+            <div class="categories-wrapper">
+                <button class="scroll-btn scroll-left" onclick="scrollCarousel('categoriesContainer', -300)">&#8249;</button>
+                <div class="categories-container" id="categoriesContainer"></div>
+                <button class="scroll-btn scroll-right" onclick="scrollCarousel('categoriesContainer', 300)">&#8250;</button>
+            </div>
+        </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="restaurants-section">
+        <div class="container">
+            <h2 class="section-title" id="restaurantSectionTitle">Top restaurant chains in your city</h2>
+            <div class="restaurants-grid" id="restaurantsGrid"></div>
+        </div>
+    </section>
+
+    <div class="section-divider"></div>
+
+    <section class="app-section">
+        <div class="container">
+            <div class="app-content">
+                <div class="app-text">
+                    <h2>For better experience, download the SnapEats app now</h2>
+                    <div class="app-badges">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store">
+                    </div>
+                </div>
+                <div class="app-image">
+                    <img src="https://res.cloudinary.com/swiggy/image/upload/fl_lossy,f_auto,q_auto/portal/m/app_download_android_ios.png" alt="Mobile App">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-top">
+                <div class="footer-col">
+                    <h3 class="footer-logo">🍔 SnapEats</h3>
+                    <p class="footer-desc">© 2026 SnapEats Limited</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Team</a></li>
+                        <li><a href="#">SnapEats One</a></li> 
+                        <li><a href="#">SnapEats Genie</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact Us</h4>
+                    <ul>
+                        <li><a href="#">Help & Support</a></li>
+                        <li><a href="#">Partner with us</a></li>
+                        <li><a href="#">Ride with us</a></li>
+                    </ul>
+                    <h4 style="margin-top: 30px;">Legal</h4>
+                    <ul>
+                        <li><a href="#">Terms & Conditions</a></li>
+                        <li><a href="#">Cookie Policy</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>We Deliver To</h4>
+                    <ul>
+                        <li><a href="#">Bangalore</a></li>
+                        <li><a href="#">Gurgaon</a></li>
+                        <li><a href="#">Hyderabad</a></li>
+                        <li><a href="#">Delhi</a></li>
+                        <li><a href="#">Mumbai</a></li>
+                        <li><a href="#">Pune</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Follow Us</h4>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon">📘</a>
+                        <a href="#" class="social-icon">📷</a>
+                        <a href="#" class="social-icon">🐦</a>
+                        <a href="#" class="social-icon">💼</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-divider"></div>
+            <div class="footer-bottom">
+                <p>By continuing past this page, you agree to our Terms of Service, Cookie Policy, Privacy Policy and Content Policies. All trademarks are properties of their respective owners. 2026 © SnapEats Limited. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Menu Modal -->
+    <div id="menuModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeMenu()">&times;</span>
+            <div id="menuModalContent"></div>
+        </div>
+    </div>
+
+    <script src="snap_eats.js"></script>
+</body>
+</html>
