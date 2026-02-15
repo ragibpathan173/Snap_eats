@@ -10,15 +10,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "categories", indexes = {
     @Index(name = "idx_category_id", columnList = "categoryId"),
-    @Index(name = "idx_active", columnList = "active"),
-    @Index(name = "idx_filter", columnList = "filter")
+    @Index(name = "idx_active_category", columnList = "active"),
+    @Index(name = "idx_filter_category", columnList = "filter")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class Category {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 20)
+    private String id;   // ✅ Changed from Long to String
+                       // ✅ Removed @GeneratedValue
 
     @Column(unique = true, nullable = false, length = 50)
     private String categoryId;
@@ -48,12 +49,10 @@ public class Category {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Constructors
     public Category() {}
 
-    // Getters and Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
     public String getCategoryId() { return categoryId; }
     public void setCategoryId(String categoryId) { this.categoryId = categoryId; }

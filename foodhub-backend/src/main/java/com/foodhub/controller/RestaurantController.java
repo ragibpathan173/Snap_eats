@@ -25,17 +25,15 @@ public class RestaurantController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Load initial data from JSON file into database on startup
-     * This runs only once when the application starts
-     */
     @PostConstruct
     public void loadInitialData() {
-        // Only load if database is empty
         if (restaurantRepository.count() == 0) {
             try {
                 InputStream inputStream = new ClassPathResource("data/restaurants.json").getInputStream();
-                List<Restaurant> restaurants = objectMapper.readValue(inputStream, new TypeReference<List<Restaurant>>() {});
+                List<Restaurant> restaurants = objectMapper.readValue(
+                        inputStream,
+                        new TypeReference<List<Restaurant>>() {}
+                );
                 restaurantRepository.saveAll(restaurants);
                 System.out.println("✅ Loaded " + restaurants.size() + " restaurants from JSON into database");
             } catch (IOException e) {
@@ -47,14 +45,12 @@ public class RestaurantController {
 
     @GetMapping
     public ResponseEntity<List<Restaurant>> getAllRestaurants() {
-        List<Restaurant> restaurants = restaurantRepository.findAll();
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(restaurantRepository.findAll());
     }
 
     @GetMapping("/active")
     public ResponseEntity<List<Restaurant>> getActiveRestaurants() {
-        List<Restaurant> restaurants = restaurantRepository.findByActiveTrue();
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(restaurantRepository.findByActiveTrue());
     }
 
     @GetMapping("/{id}")
@@ -71,33 +67,40 @@ public class RestaurantController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // ✅ FIXED HERE
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Restaurant>> getRestaurantsByCategory(@PathVariable String category) {
-        List<Restaurant> restaurants = restaurantRepository.findByCategoryAndActiveTrue(category, true);
+        List<Restaurant> restaurants =
+                restaurantRepository.findByCategoryAndActiveTrue(category);
         return ResponseEntity.ok(restaurants);
     }
 
     @GetMapping("/verified")
     public ResponseEntity<List<Restaurant>> getVerifiedRestaurants() {
-        List<Restaurant> restaurants = restaurantRepository.findByVerifiedTrue();
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(restaurantRepository.findByVerifiedTrue());
     }
 
     @GetMapping("/rating/{minRating}")
     public ResponseEntity<List<Restaurant>> getRestaurantsByRating(@PathVariable Double minRating) {
-        List<Restaurant> restaurants = restaurantRepository.findByRatingGreaterThanEqual(minRating);
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(
+                restaurantRepository.findByRatingGreaterThanEqual(minRating)
+        );
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<Restaurant>> searchRestaurants(@RequestParam String query) {
-        List<Restaurant> restaurants = restaurantRepository.searchRestaurants(query);
-        return ResponseEntity.ok(restaurants);
+        return ResponseEntity.ok(
+                restaurantRepository.searchRestaurants(query)
+        );
     }
 
     @GetMapping("/top-rated")
     public ResponseEntity<List<Restaurant>> getTopRatedRestaurants() {
-        List<Restaurant> restaurants = restaurantRepository.findTopRatedRestaurants();
-        return ResponseEntity.ok(restaurants.stream().limit(10).collect(Collectors.toList()));
+        return ResponseEntity.ok(
+                restaurantRepository.findTopRatedRestaurants()
+                        .stream()
+                        .limit(10)
+                        .collect(Collectors.toList())
+        );
     }
 }

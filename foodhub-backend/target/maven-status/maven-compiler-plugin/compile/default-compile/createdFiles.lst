@@ -6,12 +6,15 @@ com\foodhub\repository\RestaurantRepository.class
 com\foodhub\model\Restaurant.class
 com\foodhub\model\Order$PaymentMethod.class
 com\foodhub\controller\RestaurantController$1.class
-com\foodhub\config\WebConfig.class
+com\foodhub\repository\OrderItemRepository.class
+com\foodhub\controller\UserController.class
 com\foodhub\model\MenuItem.class
 com\foodhub\model\Order.class
 com\foodhub\model\Order$OrderStatus.class
+com\foodhub\controller\OrderController.class
 com\foodhub\repository\MenuItemRepository.class
 com\foodhub\model\MenuCategory.class
+com\foodhub\config\SecurityConfig.class
 com\foodhub\repository\OrderRepository.class
 com\foodhub\repository\UserRepository.class
 com\foodhub\model\User$Role.class
@@ -22,4 +25,5 @@ com\foodhub\model\Order$PaymentStatus.class
 com\foodhub\controller\CategoryController$1.class
 com\foodhub\controller\MenuItemController.class
 com\foodhub\model\User.class
+com\foodhub\config\CorsConfig.class
 com\foodhub\config\JpaConfig.class

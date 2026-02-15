@@ -5,11 +5,12 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 /**
  * JPA Auditing Configuration
- * Location: src/main/java/com/foodhub/config/JpaConfig.java
  * 
  * This enables automatic population of @CreatedDate and @LastModifiedDate fields
+ * in entities that use @EntityListeners(AuditingEntityListener.class)
  */
 @Configuration
+@EnableJpaAuditing
 public class JpaConfig {
-    // This class enables JPA auditing for automatic timestamp management
+    // JPA auditing is now enabled for automatic timestamp management
 }
