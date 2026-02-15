@@ -1,0 +1,164 @@
+[
+  {
+    "id": "CAT001",
+    "categoryId": "CAT001",
+    "name": "Food",
+    "image": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
+    "filter": "all",
+    "count": "240+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT004",
+    "categoryId": "CAT004",
+    "name": "Pizza",
+    "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop",
+    "filter": "italian",
+    "count": "150+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT005",
+    "categoryId": "CAT005",
+    "name": "Burgers",
+    "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop",
+    "filter": "american",
+    "count": "120+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT006",
+    "categoryId": "CAT006",
+    "name": "Chinese",
+    "image": "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=400&h=400&fit=crop",
+    "filter": "chinese",
+    "count": "130+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT007",
+    "categoryId": "CAT007",
+    "name": "Indian",
+    "image": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=400&fit=crop",
+    "filter": "indian",
+    "count": "200+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT008",
+    "categoryId": "CAT008",
+    "name": "Desserts",
+    "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=400&fit=crop",
+    "filter": "desserts",
+    "count": "85+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT009",
+    "categoryId": "CAT009",
+    "name": "Mexican",
+    "image": "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=400&fit=crop",
+    "filter": "mexican",
+    "count": "75+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT010",
+    "categoryId": "CAT010",
+    "name": "Healthy",
+    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop",
+    "filter": "healthy",
+    "count": "110+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT011",
+    "categoryId": "CAT011",
+    "name": "Coffee",
+    "image": "https://images.unsplash.com/photo-1511920170033-f8396924c348?w=400&h=400&fit=crop",
+    "filter": "cafe",
+    "count": "140+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT012",
+    "categoryId": "CAT012",
+    "name": "Sushi",
+    "image": "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400&h=400&fit=crop",
+    "filter": "japanese",
+    "count": "65+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT013",
+    "categoryId": "CAT013",
+    "name": "Breakfast",
+    "image": "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&h=400&fit=crop",
+    "filter": "breakfast",
+    "count": "90+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT014",
+    "categoryId": "CAT014",
+    "name": "Bakery",
+    "image": "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=400&fit=crop",
+    "filter": "bakery",
+    "count": "100+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT015",
+    "categoryId": "CAT015",
+    "name": "Seafood",
+    "image": "https://images.unsplash.com/photo-1559737558-2f5a35f4523e?w=400&h=400&fit=crop",
+    "filter": "seafood",
+    "count": "55+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT016",
+    "categoryId": "CAT016",
+    "name": "BBQ",
+    "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=400&fit=crop",
+    "filter": "bbq",
+    "count": "70+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT017",
+    "categoryId": "CAT017",
+    "name": "Thai",
+    "image": "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400&h=400&fit=crop",
+    "filter": "thai",
+    "count": "60+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT018",
+    "categoryId": "CAT018",
+    "name": "Vegan",
+    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop",
+    "filter": "vegan",
+    "count": "80+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT019",
+    "categoryId": "CAT019",
+    "name": "Sandwiches",
+    "image": "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=400&h=400&fit=crop",
+    "filter": "sandwich",
+    "count": "95+ stores",
+    "active": true
+  },
+  {
+    "id": "CAT020",
+    "categoryId": "CAT020",
+    "name": "Beverages",
+    "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&h=400&fit=crop",
+    "filter": "beverages",
+    "count": "120+ stores",
+    "active": true
+  }
+]

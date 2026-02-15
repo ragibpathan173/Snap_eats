@@ -1,0 +1,34 @@
+foodhub-backend/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── foodhub/
+│   │   │           ├── controller/
+│   │   │           │   ├── CategoryController.java       ← Copy from controller/
+│   │   │           │   └── RestaurantController.java     ← Copy from controller/
+│   │   │           │
+│   │   │           ├── model/
+│   │   │           │   ├── Category.java                 ← Copy from controller/
+│   │   │           │   └── Restaurant.java               ← Copy from controller/
+│   │   │           │
+│   │   │           └── repository/
+│   │   │               ├── CategoryRepository.java       ← (already exists)
+│   │   │               └── RestaurantRepository.java     ← (already exists)
+│   │   │
+│   │   └── resources/
+│   │       ├── application.properties                    ← Copy from backend-data/
+│   │       └── data/
+│   │           ├── categories.json                       ← Copy from backend-data/
+│   │           └── restaurants.json                      ← Copy from backend-data/
+│   │
+│   └── test/
+│       └── java/
+│
+├── pom.xml
+└── README.md   
+
+Frontend/
+├── snap_eats.html                    ← (no changes needed)
+├── snap_eats.css                     ← (no changes needed)
+└── snap_eats.js                      ← REPLACE with snap_eats_updated.js
