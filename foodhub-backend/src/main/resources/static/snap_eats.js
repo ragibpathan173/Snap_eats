@@ -1,6 +1,8 @@
 const API_BASE_URL = "/api";
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
+const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
+const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 
 let categories = [];
 let restaurants = [];
@@ -10,7 +12,10 @@ let activeMenuItems = [];
 let savedAddresses = [];
 let editingAddressId = null;
 let orderHistory = [];
+let activeAccountSection = "orders";
 let currentUser = loadCurrentUser();
+let selectedLocation = loadSelectedLocation();
+let recentLocations = loadRecentLocations();
 let cart = loadCart();
 
 async function fetchJson(url, options = {}) {
@@ -48,6 +53,24 @@ function loadCart() {
     }
 }
 
+function loadSelectedLocation() {
+    try {
+        const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : { label: "Other", subtitle: "" };
+    } catch {
+        return { label: "Other", subtitle: "" };
+    }
+}
+
+function loadRecentLocations() {
+    try {
+        const raw = localStorage.getItem(RECENT_LOCATIONS_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
 function createEmptyCart() {
     return {
         restaurantCode: null,
@@ -72,6 +95,17 @@ function saveCurrentUser(user) {
     updateAuthNav();
 }
 
+function saveSelectedLocation(location) {
+    selectedLocation = location;
+    localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(location));
+    updateLocationChip();
+}
+
+function saveRecentLocations(locations) {
+    recentLocations = locations.slice(0, 5);
+    localStorage.setItem(RECENT_LOCATIONS_STORAGE_KEY, JSON.stringify(recentLocations));
+}
+
 function updateCartCount() {
     const count = cart.items.reduce((sum, item) => sum + item.quantity, 0);
     const cartCount = document.getElementById("cartCount");
@@ -81,11 +115,68 @@ function updateCartCount() {
 }
 
 function updateAuthNav() {
-    const authNavLink = document.getElementById("authNavLink");
-    if (!authNavLink) {
+    const authNavLabel = document.getElementById("authNavLabel");
+    if (!authNavLabel) {
         return;
     }
-    authNavLink.textContent = currentUser?.name ? currentUser.name.split(" ")[0] : "Sign In";
+    authNavLabel.textContent = currentUser?.name ? currentUser.name.split(" ")[0] : "Profile";
+}
+
+function updateLocationChip() {
+    const locationChipLabel = document.getElementById("locationChipLabel");
+    if (!locationChipLabel) {
+        return;
+    }
+    locationChipLabel.textContent = selectedLocation?.label || "Other";
+}
+
+function openSearchBar() {
+    const searchStrip = document.getElementById("headerSearchStrip");
+    const searchInput = document.getElementById("searchInput");
+    if (!searchStrip || !searchInput) {
+        return;
+    }
+
+    searchStrip.classList.add("open");
+    searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => searchInput.focus(), 160);
+}
+
+function closeSearchBar() {
+    const searchStrip = document.getElementById("headerSearchStrip");
+    if (!searchStrip) {
+        return;
+    }
+
+    searchStrip.classList.remove("open");
+}
+
+function toggleSearchBar(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const searchStrip = document.getElementById("headerSearchStrip");
+    const searchInput = document.getElementById("searchInput");
+    if (!searchStrip || !searchInput) {
+        return;
+    }
+
+    if (searchStrip.classList.contains("open")) {
+        closeSearchBar();
+        return;
+    }
+
+    openSearchBar();
+}
+
+function runSearch() {
+    const searchInput = document.getElementById("searchInput");
+    if (!searchInput) {
+        return;
+    }
+
+    searchRestaurants(searchInput.value);
 }
 
 function getDefaultAddress() {
@@ -94,6 +185,62 @@ function getDefaultAddress() {
 
 function getAddressById(addressId) {
     return savedAddresses.find((address) => address.id === addressId) || null;
+}
+
+function getCartItemQuantity(itemId) {
+    return cart.items.find((item) => item.itemId === itemId)?.quantity || 0;
+}
+
+function getLocationSuggestions(query = "") {
+    const normalizedQuery = query.trim().toLowerCase();
+    const savedAddressLocations = savedAddresses.map((address) => ({
+        label: address.label,
+        subtitle: formatAddressLine(address)
+    }));
+    const curatedLocations = [
+        { label: "Jamia Nagar", subtitle: "Okhla, New Delhi, Delhi, India" },
+        { label: "Koramangala", subtitle: "Bengaluru, Karnataka, India" },
+        { label: "Bandra West", subtitle: "Mumbai, Maharashtra, India" },
+        { label: "Salt Lake", subtitle: "Kolkata, West Bengal, India" }
+    ];
+
+    const deduped = [];
+    [...recentLocations, ...savedAddressLocations, ...curatedLocations].forEach((location) => {
+        const key = `${location.label}|${location.subtitle}`;
+        if (!deduped.some((entry) => `${entry.label}|${entry.subtitle}` === key)) {
+            deduped.push(location);
+        }
+    });
+
+    if (!normalizedQuery) {
+        return deduped;
+    }
+
+    return deduped.filter((location) =>
+        location.label.toLowerCase().includes(normalizedQuery)
+        || location.subtitle.toLowerCase().includes(normalizedQuery)
+    );
+}
+
+function pushRecentLocation(location) {
+    const nextLocations = [
+        location,
+        ...recentLocations.filter((entry) => `${entry.label}|${entry.subtitle}` !== `${location.label}|${location.subtitle}`)
+    ];
+    saveRecentLocations(nextLocations);
+}
+
+function applyLocationSelection(location) {
+    saveSelectedLocation(location);
+    pushRecentLocation(location);
+    closeLocationPicker();
+}
+
+function handleLocationChipKeydown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openLocationPicker();
+    }
 }
 
 function formatAddressLine(address) {
@@ -328,11 +475,27 @@ function renderMenuModal(filter = "all") {
                     </div>
                     <div class="menu-item-aside">
                         <img class="menu-item-image" src="${item.image || activeRestaurant.image}" alt="${escapeHtml(item.name)}">
-                        <button class="primary-button add-button" type="button" onclick="addToCart('${escapeAttribute(item.itemId)}')">Add to cart</button>
+                        ${renderMenuItemCartAction(item)}
                     </div>
                 </article>
             `).join("")}
         </section>
+    `;
+}
+
+function renderMenuItemCartAction(item) {
+    const quantity = getCartItemQuantity(item.itemId);
+    if (!quantity) {
+        return `<button class="primary-button add-button" type="button" onclick="addToCart('${escapeAttribute(item.itemId)}')">Add to cart</button>`;
+    }
+
+    return `
+        <div class="menu-cart-stepper" aria-label="Cart quantity controls">
+            <button class="menu-cart-stepper-btn" type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', -1)">-</button>
+            <span class="menu-cart-stepper-count">${quantity}</span>
+            <button class="menu-cart-stepper-btn" type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', 1)">+</button>
+        </div>
+        <p class="menu-cart-note">Customisable</p>
     `;
 }
 
@@ -454,6 +617,21 @@ function openAuthModal(event) {
     renderAuthModal();
 }
 
+function openLocationPicker(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("locationModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderLocationPicker();
+}
+
 function closeCart() {
     const modal = document.getElementById("cartModal");
     if (!modal) {
@@ -501,6 +679,144 @@ function closeAuthModal() {
     if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
+}
+
+function closeLocationPicker() {
+    const modal = document.getElementById("locationModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function renderLocationPicker(query = "") {
+    const content = document.getElementById("locationModalContent");
+    if (!content) {
+        return;
+    }
+
+    const suggestions = getLocationSuggestions(query);
+
+    content.innerHTML = `
+        <div class="location-picker-shell">
+            <button class="close-btn-inline" type="button" onclick="closeLocationPicker()">&times;</button>
+            <div class="location-search-box">
+                <input
+                    class="location-search-input"
+                    id="locationSearchInput"
+                    type="text"
+                    value="${escapeAttribute(query)}"
+                    placeholder="Search for area, street name..."
+                    oninput="renderLocationPicker(this.value)"
+                >
+            </div>
+
+            <section class="location-panel">
+                <div class="location-action-card" onclick="useCurrentLocation()">
+                    <span class="location-action-icon">◎</span>
+                    <div>
+                        <strong>Get current location</strong>
+                        <p>Using GPS</p>
+                    </div>
+                </div>
+                <div class="location-action-card" onclick="toggleManualLocationForm()">
+                    <span class="location-action-icon">+</span>
+                    <div>
+                        <strong>Add address manually</strong>
+                        <p>Enter an area, landmark, or street</p>
+                    </div>
+                </div>
+                <div id="manualLocationFormHost"></div>
+            </section>
+
+            <section class="location-panel">
+                <p class="location-panel-title">Recent searches</p>
+                ${suggestions.length ? suggestions.map((location) => `
+                    <div class="location-history-card" onclick="applyLocationSelection({ label: '${escapeAttribute(location.label)}', subtitle: '${escapeAttribute(location.subtitle)}' })">
+                        <span class="location-history-icon">◔</span>
+                        <div>
+                            <strong>${escapeHtml(location.label)}</strong>
+                            <p>${escapeHtml(location.subtitle)}</p>
+                            ${selectedLocation?.label === location.label && selectedLocation?.subtitle === location.subtitle ? '<span class="location-selected-badge">Selected</span>' : ''}
+                        </div>
+                    </div>
+                `).join("") : `
+                    <div class="location-history-card">
+                        <span class="location-history-icon">◔</span>
+                        <div>
+                            <strong>No matching places</strong>
+                            <p class="location-empty-note">Try a different area name or add it manually.</p>
+                        </div>
+                    </div>
+                `}
+            </section>
+        </div>
+    `;
+
+    const locationSearchInput = document.getElementById("locationSearchInput");
+    if (locationSearchInput) {
+        locationSearchInput.focus();
+        locationSearchInput.setSelectionRange(locationSearchInput.value.length, locationSearchInput.value.length);
+    }
+}
+
+function toggleManualLocationForm() {
+    const host = document.getElementById("manualLocationFormHost");
+    if (!host) {
+        return;
+    }
+
+    if (host.innerHTML.trim()) {
+        host.innerHTML = "";
+        return;
+    }
+
+    host.innerHTML = `
+        <form class="location-manual-form" onsubmit="saveManualLocation(event)">
+            <input id="manualLocationLabel" type="text" placeholder="Area or place name" required>
+            <input id="manualLocationSubtitle" type="text" placeholder="Street, city, state" required>
+            <div class="location-manual-actions">
+                <button class="primary-button" type="submit">Save location</button>
+                <button class="secondary-button" type="button" onclick="toggleManualLocationForm()">Cancel</button>
+            </div>
+        </form>
+    `;
+}
+
+function saveManualLocation(event) {
+    event.preventDefault();
+
+    const label = document.getElementById("manualLocationLabel")?.value.trim();
+    const subtitle = document.getElementById("manualLocationSubtitle")?.value.trim();
+    if (!label || !subtitle) {
+        return;
+    }
+
+    applyLocationSelection({ label, subtitle });
+}
+
+function useCurrentLocation() {
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported in this browser.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        applyLocationSelection({
+            label: "Current location",
+            subtitle: `Lat ${latitude.toFixed(3)}, Lng ${longitude.toFixed(3)}`
+        });
+    }, () => {
+        alert("Unable to fetch your current location.");
+    }, {
+        enableHighAccuracy: true,
+        timeout: 10000
+    });
 }
 
 function renderCart() {
@@ -711,37 +1027,24 @@ function renderAuthModal(mode = "login") {
 
     if (currentUser) {
         content.innerHTML = `
-            <div class="auth-shell">
-                <div class="auth-header">
-                    <div>
+            <div class="account-shell">
+                <section class="account-hero">
+                    <div class="account-hero-copy">
                         <p class="menu-eyebrow">My account</p>
                         <h2>${escapeHtml(currentUser.name || "SnapEats User")}</h2>
-                        <p class="auth-subtitle">${escapeHtml(currentUser.email || "")}</p>
+                        <p class="account-hero-meta">${escapeHtml(currentUser.phoneNumber || "-")} <span>&bull;</span> ${escapeHtml(currentUser.email || "-")}</p>
                     </div>
-                </div>
-                <div class="account-grid">
-                    <div class="account-card">
-                        <span>Email</span>
-                        <strong>${escapeHtml(currentUser.email || "-")}</strong>
+                    <button class="account-edit-button" type="button" onclick="setAccountSection('settings')">Edit profile</button>
+                </section>
+
+                <section class="account-layout">
+                    <aside class="account-sidebar">
+                        ${renderAccountSidebar()}
+                    </aside>
+                    <div class="account-main">
+                        ${renderAccountPanel()}
                     </div>
-                    <div class="account-card">
-                        <span>Phone</span>
-                        <strong>${escapeHtml(currentUser.phoneNumber || "-")}</strong>
-                    </div>
-                    <div class="account-card">
-                        <span>City</span>
-                        <strong>${escapeHtml(currentUser.city || "-")}</strong>
-                    </div>
-                    <div class="account-card">
-                        <span>Role</span>
-                        <strong>${formatStatus(currentUser.role || "USER")}</strong>
-                    </div>
-                </div>
-                <div class="auth-actions">
-                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openAddressBook()">Manage addresses</button>
-                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openOrders()">View orders</button>
-                    <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
-                </div>
+                </section>
             </div>`;
         return;
     }
@@ -784,6 +1087,193 @@ function renderAuthModal(mode = "login") {
                 <div id="authFeedback" class="checkout-feedback"></div>
             </form>
         </div>`;
+}
+
+function setAccountSection(section) {
+    activeAccountSection = section;
+    renderAuthModal();
+}
+
+function renderAccountSidebar() {
+    const items = [
+        { id: "orders", label: "Orders", icon: "◔" },
+        { id: "subscription", label: "SnapSubscription", icon: "✦" },
+        { id: "favorites", label: "Favorites", icon: "♥" },
+        { id: "payments", label: "Payments", icon: "▣" },
+        { id: "addresses", label: "Addresses", icon: "⌖" },
+        { id: "settings", label: "Settings", icon: "⚙" }
+    ];
+
+    return items.map((item) => `
+        <button
+            class="account-nav-item ${activeAccountSection === item.id ? "active" : ""}"
+            type="button"
+            onclick="setAccountSection('${item.id}')"
+        >
+            <span class="account-nav-icon" aria-hidden="true">${item.icon}</span>
+            <span>${item.label}</span>
+        </button>
+    `).join("");
+}
+
+function renderAccountPanel() {
+    if (activeAccountSection === "orders") {
+        return renderOrdersAccountPanel();
+    }
+    if (activeAccountSection === "subscription") {
+        return `
+            <div class="account-panel">
+                <p class="menu-eyebrow">SnapSubscription</p>
+                <h3>Save more on every meal</h3>
+                <p class="account-panel-copy">Unlock free deliveries, member-only deals, and faster support when your subscription goes live.</p>
+                <div class="account-placeholder-card">
+                    <strong>No active plan yet</strong>
+                    <p>We can add subscription plans here next if you want a full Swiggy One style screen.</p>
+                </div>
+            </div>
+        `;
+    }
+    if (activeAccountSection === "favorites") {
+        return `
+            <div class="account-panel">
+                <p class="menu-eyebrow">Favorites</p>
+                <h3>Your favorite picks</h3>
+                <p class="account-panel-copy">Save restaurants and dishes you love so they stay one tap away.</p>
+                <div class="account-placeholder-card">
+                    <strong>No favorites saved yet</strong>
+                    <p>Browse restaurants and we can add a heart/favorite feature next.</p>
+                </div>
+            </div>
+        `;
+    }
+    if (activeAccountSection === "payments") {
+        return `
+            <div class="account-panel">
+                <p class="menu-eyebrow">Payments</p>
+                <h3>Payment methods</h3>
+                <p class="account-panel-copy">Manage cards, wallets, and UPI methods for faster checkout.</p>
+                <div class="account-stat-grid">
+                    <div class="account-card">
+                        <span>Default method</span>
+                        <strong>Cash on delivery</strong>
+                    </div>
+                    <div class="account-card">
+                        <span>Saved cards</span>
+                        <strong>0 cards</strong>
+                    </div>
+                </div>
+                <div class="account-placeholder-card">
+                    <strong>No digital methods saved</strong>
+                    <p>We can connect this section to real payment storage later.</p>
+                </div>
+            </div>
+        `;
+    }
+    if (activeAccountSection === "addresses") {
+        return `
+            <div class="account-panel">
+                <div class="account-panel-head">
+                    <div>
+                        <p class="menu-eyebrow">Addresses</p>
+                        <h3>Manage saved addresses</h3>
+                    </div>
+                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openAddressBook()">Open address book</button>
+                </div>
+                <div class="account-address-list">
+                    ${savedAddresses.length ? savedAddresses.map((address) => `
+                        <article class="account-address-card ${address.defaultAddress ? "default" : ""}">
+                            <div class="address-card-head">
+                                <div>
+                                    <h3>${escapeHtml(address.label)}</h3>
+                                    <p>${escapeHtml(address.recipientName)} · ${escapeHtml(address.phoneNumber)}</p>
+                                </div>
+                                ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
+                            </div>
+                            <p class="address-line">${escapeHtml(formatAddressLine(address))}</p>
+                        </article>
+                    `).join("") : `
+                        <div class="account-placeholder-card">
+                            <strong>No addresses saved</strong>
+                            <p>Add an address so checkout can use it instantly.</p>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="account-panel">
+            <div class="account-panel-head">
+                <div>
+                    <p class="menu-eyebrow">Settings</p>
+                    <h3>Profile and app settings</h3>
+                </div>
+            </div>
+            <div class="account-stat-grid">
+                <div class="account-card">
+                    <span>Name</span>
+                    <strong>${escapeHtml(currentUser.name || "-")}</strong>
+                </div>
+                <div class="account-card">
+                    <span>Email</span>
+                    <strong>${escapeHtml(currentUser.email || "-")}</strong>
+                </div>
+                <div class="account-card">
+                    <span>Phone</span>
+                    <strong>${escapeHtml(currentUser.phoneNumber || "-")}</strong>
+                </div>
+                <div class="account-card">
+                    <span>City</span>
+                    <strong>${escapeHtml(currentUser.city || "-")}</strong>
+                </div>
+            </div>
+            <div class="auth-actions">
+                <button class="secondary-button" type="button" onclick="setAccountSection('addresses')">Manage addresses</button>
+                <button class="secondary-button" type="button" onclick="setAccountSection('orders')">View orders</button>
+                <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderOrdersAccountPanel() {
+    const latestOrders = orderHistory.slice(0, 3);
+
+    return `
+        <div class="account-panel">
+            <div class="account-panel-head">
+                <div>
+                    <p class="menu-eyebrow">Orders</p>
+                    <h3>Your recent orders</h3>
+                    <p class="account-panel-copy">Your SnapEats orders will be listed here.</p>
+                </div>
+                <button class="secondary-button" type="button" onclick="closeAuthModal(); openOrders()">Open full orders</button>
+            </div>
+            ${latestOrders.length ? `
+                <div class="account-order-list">
+                    ${latestOrders.map((order) => `
+                        <article class="account-order-card">
+                            <div>
+                                <strong>${escapeHtml(order.restaurantName)}</strong>
+                                <p>${escapeHtml(order.orderNumber)} · ${formatDateTime(order.createdAt)}</p>
+                            </div>
+                            <div class="account-order-meta">
+                                <span class="order-status-badge ${statusClassName(order.status)}">${formatStatus(order.status)}</span>
+                                <strong>${formatCurrency(order.finalAmount)}</strong>
+                            </div>
+                        </article>
+                    `).join("")}
+                </div>
+            ` : `
+                <div class="account-empty-state">
+                    <p class="account-empty-note">Go ahead and find some awesome restaurants near you.</p>
+                    <h3>No Orders</h3>
+                    <p>You haven't placed any order yet.</p>
+                </div>
+            `}
+        </div>
+    `;
 }
 
 async function loginUser(event) {
@@ -1221,7 +1711,7 @@ function closeMenu() {
 }
 
 function anyModalOpen() {
-    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal"].some((modalId) =>
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal"].some((modalId) =>
         document.getElementById(modalId)?.classList.contains("open")
     );
 }
@@ -1315,6 +1805,7 @@ function showErrorMessage(message) {
 async function initializeApp() {
     try {
         updateAuthNav();
+        updateLocationChip();
         if (currentUser?.id) {
             await refreshCurrentUser();
         }
@@ -1334,6 +1825,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initializeApp();
 
     const searchInput = document.getElementById("searchInput");
+    const searchActionButton = document.getElementById("searchActionButton");
     let searchTimeout;
     if (searchInput) {
         searchInput.addEventListener("input", (event) => {
@@ -1342,9 +1834,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 searchRestaurants(event.target.value);
             }, 250);
         });
+
+        searchInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                runSearch();
+            }
+        });
     }
 
-    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal"].forEach((modalId) => {
+    if (searchActionButton) {
+        searchActionButton.addEventListener("click", () => {
+            runSearch();
+        });
+    }
+
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
@@ -1357,6 +1862,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         closeAddressBook();
                     } else if (modalId === "ordersModal") {
                         closeOrders();
+                    } else if (modalId === "locationModal") {
+                        closeLocationPicker();
                     } else {
                         closeAuthModal();
                     }
@@ -1372,6 +1879,8 @@ document.addEventListener("DOMContentLoaded", () => {
             closeAddressBook();
             closeOrders();
             closeAuthModal();
+            closeLocationPicker();
+            closeSearchBar();
         }
     });
 });
