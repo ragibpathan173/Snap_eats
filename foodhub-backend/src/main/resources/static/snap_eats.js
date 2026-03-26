@@ -3,6 +3,7 @@ const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
+const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 
 let categories = [];
 let restaurants = [];
@@ -17,6 +18,7 @@ let currentUser = loadCurrentUser();
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
+const pincodeLookupCache = new Map();
 
 async function fetchJson(url, options = {}) {
     const headers = new Headers(options.headers || {});
@@ -255,6 +257,92 @@ function formatAddressLine(address) {
         address.state,
         address.pincode
     ].filter(Boolean).join(", ");
+}
+
+async function lookupPincodeDetails(pincode) {
+    const normalizedPincode = String(pincode || "").trim();
+    if (pincodeLookupCache.has(normalizedPincode)) {
+        return pincodeLookupCache.get(normalizedPincode);
+    }
+
+    const response = await fetch(`${PINCODE_LOOKUP_BASE_URL}${encodeURIComponent(normalizedPincode)}`);
+    const result = await response.json();
+    const payload = Array.isArray(result) ? result[0] : null;
+
+    if (!response.ok || !payload || payload.Status !== "Success" || !Array.isArray(payload.PostOffice) || !payload.PostOffice.length) {
+        throw new Error("We couldn't find address details for that pincode.");
+    }
+
+    const details = {
+        city: payload.PostOffice[0].District || "",
+        state: payload.PostOffice[0].State || "",
+        areas: payload.PostOffice
+            .map((office) => office.Name)
+            .filter(Boolean)
+            .filter((value, index, all) => all.indexOf(value) === index)
+    };
+
+    pincodeLookupCache.set(normalizedPincode, details);
+    return details;
+}
+
+function renderAreaOptions(areas, selectedArea = "") {
+    if (!Array.isArray(areas) || !areas.length) {
+        return selectedArea ? `<option value="${escapeAttribute(selectedArea)}"></option>` : "";
+    }
+
+    const normalizedSelected = String(selectedArea || "").trim();
+    const values = normalizedSelected && !areas.includes(normalizedSelected)
+        ? [normalizedSelected, ...areas]
+        : areas;
+
+    return values.map((area) => `<option value="${escapeAttribute(area)}"></option>`).join("");
+}
+
+function setAddressLookupFeedback(message, type = "") {
+    const feedback = document.getElementById("addressLookupFeedback");
+    if (!feedback) {
+        return;
+    }
+
+    feedback.textContent = message || "";
+    feedback.className = `address-lookup-feedback ${type}`.trim();
+}
+
+async function handlePincodeInput() {
+    const pincodeInput = document.getElementById("addressPincode");
+    const cityInput = document.getElementById("addressCity");
+    const stateInput = document.getElementById("addressState");
+    const areaInput = document.getElementById("addressLandmark");
+    const areaOptions = document.getElementById("addressAreaOptions");
+
+    if (!pincodeInput || !cityInput || !stateInput || !areaInput || !areaOptions) {
+        return;
+    }
+
+    const normalizedPincode = pincodeInput.value.replace(/\D/g, "").slice(0, 6);
+    pincodeInput.value = normalizedPincode;
+
+    if (normalizedPincode.length < 6) {
+        setAddressLookupFeedback("Enter a 6-digit pincode to auto-fill city, state, and area.");
+        return;
+    }
+
+    setAddressLookupFeedback("Fetching city, state, and area...", "loading");
+
+    try {
+        const details = await lookupPincodeDetails(normalizedPincode);
+        cityInput.value = details.city;
+        stateInput.value = details.state;
+        if (!areaInput.value.trim() && details.areas.length) {
+            areaInput.value = details.areas[0];
+        }
+        areaOptions.innerHTML = renderAreaOptions(details.areas, areaInput.value.trim());
+        setAddressLookupFeedback("City and state auto-filled. You can choose an area/locality suggestion too.", "success");
+    } catch (error) {
+        areaOptions.innerHTML = "";
+        setAddressLookupFeedback(error.message || "Unable to fetch pincode details right now.", "error");
+    }
 }
 
 async function fetchCategories() {
@@ -988,8 +1076,17 @@ function renderAddressBook() {
                             <textarea id="addressLine" rows="3" placeholder="House number, apartment, street" required>${editingAddress ? escapeHtml(editingAddress.addressLine) : ""}</textarea>
                         </label>
                         <label>
-                            Landmark
-                            <input type="text" id="addressLandmark" placeholder="Nearby landmark (optional)" value="${editingAddress ? escapeHtml(editingAddress.landmark || "") : ""}">
+                            Area / Locality
+                            <input
+                                type="text"
+                                id="addressLandmark"
+                                list="addressAreaOptions"
+                                placeholder="Area or locality"
+                                value="${editingAddress ? escapeHtml(editingAddress.landmark || "") : ""}"
+                            >
+                            <datalist id="addressAreaOptions">
+                                ${renderAreaOptions([], editingAddress?.landmark || "")}
+                            </datalist>
                         </label>
                         <div class="address-form-row">
                             <label>
@@ -1004,12 +1101,24 @@ function renderAddressBook() {
                         <div class="address-form-row">
                             <label>
                                 Pincode
-                                <input type="text" id="addressPincode" placeholder="Pincode" value="${editingAddress ? escapeHtml(editingAddress.pincode) : ""}" required>
+                                <input
+                                    type="text"
+                                    id="addressPincode"
+                                    inputmode="numeric"
+                                    maxlength="6"
+                                    placeholder="Pincode"
+                                    value="${editingAddress ? escapeHtml(editingAddress.pincode) : ""}"
+                                    oninput="handlePincodeInput()"
+                                    required
+                                >
                             </label>
                             <label class="address-default-toggle">
                                 <input type="checkbox" id="addressDefault" ${editingAddress?.defaultAddress ? "checked" : ""}>
                                 <span>Make this my default delivery address</span>
                             </label>
+                        </div>
+                        <div id="addressLookupFeedback" class="address-lookup-feedback">
+                            Enter a 6-digit pincode to auto-fill city, state, and area.
                         </div>
                         <button class="primary-button" type="submit">${editingAddress ? "Update address" : "Save address"}</button>
                         <div id="addressFeedback" class="checkout-feedback"></div>
@@ -1017,6 +1126,11 @@ function renderAddressBook() {
                 </section>
             </div>
         </div>`;
+
+    const existingPincode = document.getElementById("addressPincode")?.value.trim();
+    if (existingPincode && existingPincode.length === 6) {
+        handlePincodeInput();
+    }
 }
 
 function renderAuthModal(mode = "login") {
@@ -1210,31 +1324,93 @@ function renderAccountPanel() {
                     <h3>Profile and app settings</h3>
                 </div>
             </div>
-            <div class="account-stat-grid">
-                <div class="account-card">
-                    <span>Name</span>
-                    <strong>${escapeHtml(currentUser.name || "-")}</strong>
+            <form class="account-settings-form" onsubmit="saveProfileSettings(event)">
+                <div class="account-stat-grid">
+                    <label class="account-form-field">
+                        <span>Name</span>
+                        <input id="settingsName" type="text" value="${escapeAttribute(currentUser.name || "")}" required>
+                    </label>
+                    <label class="account-form-field">
+                        <span>Email</span>
+                        <input id="settingsEmail" type="email" value="${escapeAttribute(currentUser.email || "")}" required>
+                    </label>
+                    <label class="account-form-field">
+                        <span>Phone</span>
+                        <input id="settingsPhone" type="tel" value="${escapeAttribute(currentUser.phoneNumber || "")}">
+                    </label>
+                    <label class="account-form-field">
+                        <span>City</span>
+                        <input id="settingsCity" type="text" value="${escapeAttribute(currentUser.city || "")}">
+                    </label>
+                    <label class="account-form-field">
+                        <span>State</span>
+                        <input id="settingsState" type="text" value="${escapeAttribute(currentUser.state || "")}">
+                    </label>
+                    <label class="account-form-field">
+                        <span>Pincode</span>
+                        <input id="settingsPincode" type="text" value="${escapeAttribute(currentUser.pincode || "")}">
+                    </label>
                 </div>
-                <div class="account-card">
-                    <span>Email</span>
-                    <strong>${escapeHtml(currentUser.email || "-")}</strong>
+                <label class="account-form-field account-form-field-full">
+                    <span>Address</span>
+                    <textarea id="settingsAddress" rows="3" placeholder="House number, street, landmark">${escapeHtml(currentUser.address || "")}</textarea>
+                </label>
+                <div class="auth-actions">
+                    <button class="primary-button" type="submit">Save profile</button>
+                    <button class="secondary-button" type="button" onclick="setAccountSection('addresses')">Manage addresses</button>
+                    <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
                 </div>
-                <div class="account-card">
-                    <span>Phone</span>
-                    <strong>${escapeHtml(currentUser.phoneNumber || "-")}</strong>
-                </div>
-                <div class="account-card">
-                    <span>City</span>
-                    <strong>${escapeHtml(currentUser.city || "-")}</strong>
-                </div>
-            </div>
+                <div id="settingsFeedback" class="checkout-feedback"></div>
+            </form>
             <div class="auth-actions">
-                <button class="secondary-button" type="button" onclick="setAccountSection('addresses')">Manage addresses</button>
                 <button class="secondary-button" type="button" onclick="setAccountSection('orders')">View orders</button>
-                <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
             </div>
         </div>
     `;
+}
+
+async function saveProfileSettings(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("settingsFeedback");
+    const payload = {
+        name: document.getElementById("settingsName")?.value.trim(),
+        email: document.getElementById("settingsEmail")?.value.trim(),
+        phoneNumber: document.getElementById("settingsPhone")?.value.trim(),
+        city: document.getElementById("settingsCity")?.value.trim(),
+        state: document.getElementById("settingsState")?.value.trim(),
+        pincode: document.getElementById("settingsPincode")?.value.trim(),
+        address: document.getElementById("settingsAddress")?.value.trim()
+    };
+
+    if (feedback) {
+        feedback.textContent = "Saving profile...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const user = await fetchJson(`${API_BASE_URL}/users/me`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        saveCurrentUser(user);
+        renderAuthModal();
+
+        const updatedFeedback = document.getElementById("settingsFeedback");
+        if (updatedFeedback) {
+            updatedFeedback.textContent = "Profile updated successfully.";
+            updatedFeedback.className = "checkout-feedback success";
+        }
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to update profile.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
 }
 
 function renderOrdersAccountPanel() {

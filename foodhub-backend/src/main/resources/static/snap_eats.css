@@ -1349,6 +1349,23 @@ body.modal-open {
     background: #fff;
 }
 
+.address-lookup-feedback {
+    color: #686b78;
+    font-size: 14px;
+}
+
+.address-lookup-feedback.loading {
+    color: #a65d00;
+}
+
+.address-lookup-feedback.success {
+    color: #144c2a;
+}
+
+.address-lookup-feedback.error {
+    color: #b42318;
+}
+
 .address-form-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1747,6 +1764,45 @@ body.modal-open {
 .account-address-card.default {
     border-color: rgba(203, 32, 45, 0.25);
     box-shadow: 0 14px 30px rgba(203, 32, 45, 0.08);
+}
+
+.account-settings-form {
+    display: grid;
+    gap: 16px;
+}
+
+.account-form-field {
+    display: grid;
+    gap: 8px;
+    color: #27303f;
+    font-weight: 600;
+}
+
+.account-form-field span {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #686b78;
+}
+
+.account-form-field input,
+.account-form-field textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #d7dce2;
+    border-radius: 14px;
+    font: inherit;
+    background: #fff;
+}
+
+.account-form-field input:focus,
+.account-form-field textarea:focus {
+    outline: none;
+    border-color: #cb202d;
+}
+
+.account-form-field-full {
+    grid-column: 1 / -1;
 }
 
 .auth-subtitle {

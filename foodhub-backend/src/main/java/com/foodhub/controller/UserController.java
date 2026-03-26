@@ -195,6 +195,21 @@ public class UserController {
 
             User existingUser = optionalUser.get();
 
+            if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(existingUser.getEmail())) {
+                if (userRepository.existsByEmail(userDetails.getEmail())) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Email already registered"));
+                }
+                existingUser.setEmail(userDetails.getEmail());
+            }
+
+            if (userDetails.getPhoneNumber() != null && !userDetails.getPhoneNumber().equals(existingUser.getPhoneNumber())) {
+                if (userRepository.existsByPhoneNumber(userDetails.getPhoneNumber())) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Phone number already registered"));
+                }
+            }
+
             // Update fields
             if (userDetails.getName() != null) {
                 existingUser.setName(userDetails.getName());
@@ -226,6 +241,51 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to update user: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                               @RequestBody User userDetails) {
+        try {
+            User currentUser = resolveRequestUser(userId);
+
+            if (userDetails.getEmail() != null && !userDetails.getEmail().equalsIgnoreCase(currentUser.getEmail())) {
+                if (userRepository.existsByEmail(userDetails.getEmail())) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Email already registered"));
+                }
+                currentUser.setEmail(userDetails.getEmail());
+            }
+
+            if (userDetails.getPhoneNumber() != null && !userDetails.getPhoneNumber().equals(currentUser.getPhoneNumber())) {
+                if (userRepository.existsByPhoneNumber(userDetails.getPhoneNumber())) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Phone number already registered"));
+                }
+                currentUser.setPhoneNumber(userDetails.getPhoneNumber());
+            }
+
+            if (userDetails.getName() != null) {
+                currentUser.setName(userDetails.getName());
+            }
+            if (userDetails.getAddress() != null) {
+                currentUser.setAddress(userDetails.getAddress());
+            }
+            if (userDetails.getCity() != null) {
+                currentUser.setCity(userDetails.getCity());
+            }
+            if (userDetails.getState() != null) {
+                currentUser.setState(userDetails.getState());
+            }
+            if (userDetails.getPincode() != null) {
+                currentUser.setPincode(userDetails.getPincode());
+            }
+
+            return ResponseEntity.ok(sanitizeUser(userRepository.save(currentUser)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to update current user: " + e.getMessage()));
         }
     }
 
