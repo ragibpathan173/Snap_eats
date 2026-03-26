@@ -1,20 +1,42 @@
 const API_BASE_URL = "/api";
 const CART_STORAGE_KEY = "snap_eats_cart";
+const AUTH_STORAGE_KEY = "snap_eats_current_user";
 
 let categories = [];
 let restaurants = [];
 let activeCategory = "all";
 let activeRestaurant = null;
 let activeMenuItems = [];
+let savedAddresses = [];
+let editingAddressId = null;
+let orderHistory = [];
+let currentUser = loadCurrentUser();
 let cart = loadCart();
 
 async function fetchJson(url, options = {}) {
-    const response = await fetch(url, options);
+    const headers = new Headers(options.headers || {});
+    if (currentUser?.id) {
+        headers.set("X-User-Id", String(currentUser.id));
+    }
+
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
         throw new Error(data.error || `Request failed with status ${response.status}`);
     }
     return data;
+}
+
+function loadCurrentUser() {
+    try {
+        const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
 }
 
 function loadCart() {
@@ -40,12 +62,52 @@ function saveCart() {
     renderCart();
 }
 
+function saveCurrentUser(user) {
+    currentUser = user || null;
+    if (currentUser) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+    } else {
+        localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+    updateAuthNav();
+}
+
 function updateCartCount() {
     const count = cart.items.reduce((sum, item) => sum + item.quantity, 0);
     const cartCount = document.getElementById("cartCount");
     if (cartCount) {
         cartCount.textContent = String(count);
     }
+}
+
+function updateAuthNav() {
+    const authNavLink = document.getElementById("authNavLink");
+    if (!authNavLink) {
+        return;
+    }
+    authNavLink.textContent = currentUser?.name ? currentUser.name.split(" ")[0] : "Sign In";
+}
+
+function getDefaultAddress() {
+    return savedAddresses.find((address) => address.defaultAddress) || null;
+}
+
+function getAddressById(addressId) {
+    return savedAddresses.find((address) => address.id === addressId) || null;
+}
+
+function formatAddressLine(address) {
+    if (!address) {
+        return "";
+    }
+
+    return [
+        address.addressLine,
+        address.landmark,
+        address.city,
+        address.state,
+        address.pincode
+    ].filter(Boolean).join(", ");
 }
 
 async function fetchCategories() {
@@ -65,6 +127,36 @@ async function fetchRestaurants(category = activeCategory, searchQuery = "") {
 
     restaurants = await fetchJson(endpoint);
     renderRestaurants();
+}
+
+async function fetchAddresses() {
+    try {
+        const addresses = await fetchJson(`${API_BASE_URL}/addresses`);
+        savedAddresses = Array.isArray(addresses) ? addresses : [];
+    } catch {
+        savedAddresses = [];
+    }
+    renderCart();
+    renderAddressBook();
+}
+
+async function fetchOrders() {
+    try {
+        const orders = await fetchJson(`${API_BASE_URL}/orders/mine`);
+        orderHistory = Array.isArray(orders) ? orders : [];
+    } catch {
+        orderHistory = [];
+    }
+    renderOrders();
+}
+
+async function refreshCurrentUser() {
+    try {
+        const user = await fetchJson(`${API_BASE_URL}/users/me`);
+        saveCurrentUser(user);
+    } catch {
+        saveCurrentUser(null);
+    }
 }
 
 function renderCategories() {
@@ -316,6 +408,52 @@ function openCart(event) {
     renderCart();
 }
 
+function openAddressBook(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("addressModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderAddressBook();
+}
+
+function openOrders(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("ordersModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderOrders(true);
+    fetchOrders();
+}
+
+function openAuthModal(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("authModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderAuthModal();
+}
+
 function closeCart() {
     const modal = document.getElementById("cartModal");
     if (!modal) {
@@ -323,7 +461,44 @@ function closeCart() {
     }
 
     modal.classList.remove("open");
-    if (!document.getElementById("menuModal")?.classList.contains("open")) {
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeAddressBook() {
+    const modal = document.getElementById("addressModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    editingAddressId = null;
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeOrders() {
+    const modal = document.getElementById("ordersModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById("authModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
 }
@@ -348,6 +523,8 @@ function renderCart() {
     const subtotal = getCartSubtotal();
     const deliveryFee = getDeliveryFee();
     const finalAmount = subtotal + deliveryFee;
+    const defaultAddress = getDefaultAddress();
+    const canCheckout = Boolean(defaultAddress);
 
     content.innerHTML = `
         <div class="cart-shell">
@@ -385,19 +562,25 @@ function renderCart() {
                         <div class="checkout-total"><span>Total</span><strong>${formatCurrency(finalAmount)}</strong></div>
                     </div>
 
+                    <section class="address-summary-card">
+                        <div class="address-summary-head">
+                            <div>
+                                <p class="menu-eyebrow">Delivery address</p>
+                                <h3>${defaultAddress ? escapeHtml(defaultAddress.label) : "No default address set"}</h3>
+                            </div>
+                            <button class="secondary-button" type="button" onclick="openAddressBook()">
+                                ${defaultAddress ? "Manage addresses" : "Add address"}
+                            </button>
+                        </div>
+                        ${defaultAddress ? `
+                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} · ${escapeHtml(defaultAddress.phoneNumber)}</p>
+                            <p class="address-line">${escapeHtml(formatAddressLine(defaultAddress))}</p>
+                        ` : `
+                            <p class="address-empty-note">Save at least one address and mark it as default before placing an order.</p>
+                        `}
+                    </section>
+
                     <form class="checkout-form" onsubmit="submitOrder(event)">
-                        <label>
-                            Name
-                            <input type="text" id="checkoutName" placeholder="Your name" required>
-                        </label>
-                        <label>
-                            Phone number
-                            <input type="tel" id="checkoutPhone" placeholder="10-digit phone" required>
-                        </label>
-                        <label>
-                            Delivery address
-                            <textarea id="checkoutAddress" rows="3" placeholder="House number, area, city" required></textarea>
-                        </label>
                         <label>
                             Payment method
                             <select id="checkoutPayment">
@@ -411,12 +594,527 @@ function renderCart() {
                             Notes
                             <textarea id="checkoutNotes" rows="2" placeholder="Add delivery notes (optional)"></textarea>
                         </label>
-                        <button class="primary-button checkout-button" type="submit">Place order</button>
+                        <button class="primary-button checkout-button" type="submit" ${canCheckout ? "" : "disabled"}>
+                            ${canCheckout ? "Place order to default address" : "Add a default address first"}
+                        </button>
                     </form>
                     <div id="checkoutFeedback" class="checkout-feedback"></div>
                 </section>
             </div>
         </div>`;
+}
+
+function renderAddressBook() {
+    const content = document.getElementById("addressModalContent");
+    if (!content) {
+        return;
+    }
+
+    const editingAddress = editingAddressId ? getAddressById(editingAddressId) : null;
+    const heading = editingAddress ? "Edit saved address" : "Save a new address";
+
+    content.innerHTML = `
+        <div class="address-book-shell">
+            <div class="address-book-header">
+                <div>
+                    <p class="menu-eyebrow">Address book</p>
+                    <h2>Choose where SnapEats delivers</h2>
+                    <p class="address-book-subtitle">Save multiple addresses and mark one as your default for quick checkout.</p>
+                </div>
+            </div>
+
+            <div class="address-book-layout">
+                <section class="address-list-panel">
+                    ${savedAddresses.length ? savedAddresses.map((address) => `
+                        <article class="address-card ${address.defaultAddress ? "default" : ""}">
+                            <div class="address-card-head">
+                                <div>
+                                    <h3>${escapeHtml(address.label)}</h3>
+                                    <p>${escapeHtml(address.recipientName)} · ${escapeHtml(address.phoneNumber)}</p>
+                                </div>
+                                ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
+                            </div>
+                            <p class="address-line">${escapeHtml(formatAddressLine(address))}</p>
+                            <div class="address-card-actions">
+                                ${address.defaultAddress ? "" : `<button class="secondary-button" type="button" onclick="setDefaultAddress(${address.id})">Make default</button>`}
+                                <button class="text-button" type="button" onclick="startAddressEdit(${address.id})">Edit</button>
+                                <button class="text-button danger-button" type="button" onclick="deleteAddress(${address.id})">Delete</button>
+                            </div>
+                        </article>
+                    `).join("") : `
+                        <div class="address-empty-state">
+                            <h3>No saved addresses yet</h3>
+                            <p>Add your first address here. You can save multiple places and switch the default anytime.</p>
+                        </div>
+                    `}
+                </section>
+
+                <section class="address-form-panel">
+                    <div class="address-form-head">
+                        <h3>${heading}</h3>
+                        ${editingAddress ? '<button class="text-button" type="button" onclick="resetAddressForm()">Cancel editing</button>' : ""}
+                    </div>
+                    <form class="address-form" onsubmit="saveAddress(event)">
+                        <label>
+                            Address label
+                            <input type="text" id="addressLabel" placeholder="Home, Work, Hostel" value="${editingAddress ? escapeHtml(editingAddress.label) : ""}" required>
+                        </label>
+                        <label>
+                            Recipient name
+                            <input type="text" id="addressRecipientName" placeholder="Name for delivery" value="${editingAddress ? escapeHtml(editingAddress.recipientName) : ""}" required>
+                        </label>
+                        <label>
+                            Phone number
+                            <input type="tel" id="addressPhoneNumber" placeholder="10-digit phone" value="${editingAddress ? escapeHtml(editingAddress.phoneNumber) : ""}" required>
+                        </label>
+                        <label>
+                            Address line
+                            <textarea id="addressLine" rows="3" placeholder="House number, apartment, street" required>${editingAddress ? escapeHtml(editingAddress.addressLine) : ""}</textarea>
+                        </label>
+                        <label>
+                            Landmark
+                            <input type="text" id="addressLandmark" placeholder="Nearby landmark (optional)" value="${editingAddress ? escapeHtml(editingAddress.landmark || "") : ""}">
+                        </label>
+                        <div class="address-form-row">
+                            <label>
+                                City
+                                <input type="text" id="addressCity" placeholder="City" value="${editingAddress ? escapeHtml(editingAddress.city) : ""}" required>
+                            </label>
+                            <label>
+                                State
+                                <input type="text" id="addressState" placeholder="State" value="${editingAddress ? escapeHtml(editingAddress.state) : ""}" required>
+                            </label>
+                        </div>
+                        <div class="address-form-row">
+                            <label>
+                                Pincode
+                                <input type="text" id="addressPincode" placeholder="Pincode" value="${editingAddress ? escapeHtml(editingAddress.pincode) : ""}" required>
+                            </label>
+                            <label class="address-default-toggle">
+                                <input type="checkbox" id="addressDefault" ${editingAddress?.defaultAddress ? "checked" : ""}>
+                                <span>Make this my default delivery address</span>
+                            </label>
+                        </div>
+                        <button class="primary-button" type="submit">${editingAddress ? "Update address" : "Save address"}</button>
+                        <div id="addressFeedback" class="checkout-feedback"></div>
+                    </form>
+                </section>
+            </div>
+        </div>`;
+}
+
+function renderAuthModal(mode = "login") {
+    const content = document.getElementById("authModalContent");
+    if (!content) {
+        return;
+    }
+
+    if (currentUser) {
+        content.innerHTML = `
+            <div class="auth-shell">
+                <div class="auth-header">
+                    <div>
+                        <p class="menu-eyebrow">My account</p>
+                        <h2>${escapeHtml(currentUser.name || "SnapEats User")}</h2>
+                        <p class="auth-subtitle">${escapeHtml(currentUser.email || "")}</p>
+                    </div>
+                </div>
+                <div class="account-grid">
+                    <div class="account-card">
+                        <span>Email</span>
+                        <strong>${escapeHtml(currentUser.email || "-")}</strong>
+                    </div>
+                    <div class="account-card">
+                        <span>Phone</span>
+                        <strong>${escapeHtml(currentUser.phoneNumber || "-")}</strong>
+                    </div>
+                    <div class="account-card">
+                        <span>City</span>
+                        <strong>${escapeHtml(currentUser.city || "-")}</strong>
+                    </div>
+                    <div class="account-card">
+                        <span>Role</span>
+                        <strong>${formatStatus(currentUser.role || "USER")}</strong>
+                    </div>
+                </div>
+                <div class="auth-actions">
+                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openAddressBook()">Manage addresses</button>
+                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openOrders()">View orders</button>
+                    <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
+                </div>
+            </div>`;
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="auth-shell">
+            <div class="auth-header">
+                <div>
+                    <p class="menu-eyebrow">Account</p>
+                    <h2>${mode === "signup" ? "Create your SnapEats account" : "Welcome back"}</h2>
+                    <p class="auth-subtitle">${mode === "signup" ? "Sign up to save addresses and track orders." : "Log in to manage addresses and order history."}</p>
+                </div>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="menu-chip ${mode === "login" ? "active" : ""}" type="button" onclick="renderAuthModal('login')">Login</button>
+                <button class="menu-chip ${mode === "signup" ? "active" : ""}" type="button" onclick="renderAuthModal('signup')">Sign Up</button>
+            </div>
+
+            <form class="auth-form" onsubmit="${mode === "signup" ? "signupUser(event)" : "loginUser(event)"}">
+                ${mode === "signup" ? `
+                    <label>
+                        Full name
+                        <input type="text" id="authName" placeholder="Your full name" required>
+                    </label>
+                    <label>
+                        Phone number
+                        <input type="tel" id="authPhone" placeholder="10-digit phone" required>
+                    </label>
+                ` : ""}
+                <label>
+                    Email
+                    <input type="email" id="authEmail" placeholder="you@example.com" required>
+                </label>
+                <label>
+                    Password
+                    <input type="password" id="authPassword" placeholder="Enter password" required>
+                </label>
+                <button class="primary-button" type="submit">${mode === "signup" ? "Create account" : "Login"}</button>
+                <div id="authFeedback" class="checkout-feedback"></div>
+            </form>
+        </div>`;
+}
+
+async function loginUser(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("authFeedback");
+    const email = document.getElementById("authEmail")?.value.trim();
+    const password = document.getElementById("authPassword")?.value;
+
+    if (feedback) {
+        feedback.textContent = "Signing you in...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const user = await fetchJson(`${API_BASE_URL}/users/login`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, password })
+        });
+
+        saveCurrentUser(user);
+        await Promise.all([fetchAddresses(), fetchOrders()]);
+        renderAuthModal();
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Login failed.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function signupUser(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("authFeedback");
+    const payload = {
+        name: document.getElementById("authName")?.value.trim(),
+        phoneNumber: document.getElementById("authPhone")?.value.trim(),
+        email: document.getElementById("authEmail")?.value.trim(),
+        password: document.getElementById("authPassword")?.value,
+        role: "USER",
+        active: true
+    };
+
+    if (feedback) {
+        feedback.textContent = "Creating your account...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const user = await fetchJson(`${API_BASE_URL}/users/register`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        saveCurrentUser(user);
+        savedAddresses = [];
+        orderHistory = [];
+        renderCart();
+        renderOrders();
+        renderAuthModal();
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Signup failed.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+function logoutUser() {
+    saveCurrentUser(null);
+    savedAddresses = [];
+    orderHistory = [];
+    closeAuthModal();
+    renderAddressBook();
+    renderOrders();
+    renderCart();
+}
+
+function renderOrders(isLoading = false) {
+    const content = document.getElementById("ordersModalContent");
+    if (!content) {
+        return;
+    }
+
+    if (isLoading && !orderHistory.length) {
+        content.innerHTML = `<div class="modal-loading">Loading your orders...</div>`;
+        return;
+    }
+
+    if (!orderHistory.length) {
+        content.innerHTML = `
+            <div class="orders-shell">
+                <div class="orders-empty">
+                    <h2>No orders yet</h2>
+                    <p>Your recent orders will appear here with tracking and reorder options.</p>
+                </div>
+            </div>`;
+        return;
+    }
+
+    content.innerHTML = `
+        <div class="orders-shell">
+            <div class="orders-header">
+                <div>
+                    <p class="menu-eyebrow">My orders</p>
+                    <h2>Track every order in one place</h2>
+                </div>
+                <button class="secondary-button" type="button" onclick="fetchOrders()">Refresh</button>
+            </div>
+
+            <div class="orders-list">
+                ${orderHistory.map((order) => `
+                    <article class="order-card">
+                        <div class="order-card-top">
+                            <div class="order-restaurant">
+                                ${order.restaurantImage ? `<img src="${order.restaurantImage}" alt="${escapeHtml(order.restaurantName)}" class="order-restaurant-image">` : ""}
+                                <div>
+                                    <h3>${escapeHtml(order.restaurantName)}</h3>
+                                    <p>${escapeHtml(order.orderNumber)} · ${formatDateTime(order.createdAt)}</p>
+                                </div>
+                            </div>
+                            <span class="order-status-badge ${statusClassName(order.status)}">${formatStatus(order.status)}</span>
+                        </div>
+
+                        <div class="order-progress">
+                            ${buildOrderProgress(order.status)}
+                        </div>
+
+                        <div class="order-meta-grid">
+                            <div><span>Items</span><strong>${order.itemCount || 0}</strong></div>
+                            <div><span>Total</span><strong>${formatCurrency(order.finalAmount)}</strong></div>
+                            <div><span>Payment</span><strong>${formatStatus(order.paymentMethod)}</strong></div>
+                            <div><span>Delivery</span><strong>${order.estimatedDeliveryTime ? formatTime(order.estimatedDeliveryTime) : "TBD"}</strong></div>
+                        </div>
+
+                        <div class="order-items-preview">
+                            ${(order.items || []).map((item) => `
+                                <div class="order-line-item">
+                                    <span>${item.quantity}x ${escapeHtml(item.itemName)}</span>
+                                    <strong>${formatCurrency(item.totalPrice)}</strong>
+                                </div>
+                            `).join("")}
+                        </div>
+
+                        <div class="order-address-block">
+                            <p class="order-block-label">Delivering to</p>
+                            <p>${escapeHtml(order.deliveryAddress || "Address unavailable")}</p>
+                            ${order.contactNumber ? `<p>${escapeHtml(order.contactNumber)}</p>` : ""}
+                            ${order.specialInstructions ? `<p class="order-note">Note: ${escapeHtml(order.specialInstructions)}</p>` : ""}
+                        </div>
+
+                        <div class="order-card-actions">
+                            ${order.canReorder ? `<button class="primary-button" type="button" onclick="reorderItems(${order.id})">Reorder</button>` : ""}
+                            ${order.canCancel ? `<button class="secondary-button" type="button" onclick="cancelOrder(${order.id})">Cancel order</button>` : ""}
+                        </div>
+                    </article>
+                `).join("")}
+            </div>
+        </div>`;
+}
+
+function buildOrderProgress(status) {
+    const steps = ["CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED"];
+    if (status === "CANCELLED") {
+        return `<div class="order-cancelled-line">This order was cancelled.</div>`;
+    }
+
+    const activeIndex = steps.indexOf(status === "PENDING" ? "CONFIRMED" : status);
+    return steps.map((step, index) => `
+        <div class="order-progress-step ${index <= activeIndex ? "active" : ""}">
+            <span class="order-progress-dot"></span>
+            <span>${formatStatus(step)}</span>
+        </div>
+    `).join("");
+}
+
+async function cancelOrder(orderId) {
+    if (!window.confirm("Cancel this order?")) {
+        return;
+    }
+
+    try {
+        await fetchJson(`${API_BASE_URL}/orders/mine/${orderId}/cancel`, {
+            method: "PATCH"
+        });
+        await fetchOrders();
+    } catch (error) {
+        alert(error.message || "Failed to cancel order.");
+    }
+}
+
+async function reorderItems(orderId) {
+    const order = orderHistory.find((entry) => entry.id === orderId);
+    if (!order || !order.restaurantId || !Array.isArray(order.items) || !order.items.length) {
+        return;
+    }
+
+    if (cart.items.length && cart.restaurantCode && cart.restaurantCode !== order.restaurantId) {
+        const shouldReplace = window.confirm(`Your cart has items from ${cart.restaurantName}. Replace them with this previous order?`);
+        if (!shouldReplace) {
+            return;
+        }
+    }
+
+    try {
+        const menuResponse = await fetchJson(`${API_BASE_URL}/menu-items/restaurant-code/${encodeURIComponent(order.restaurantId)}?activeOnly=true&availableOnly=true&size=100&sortBy=popular`);
+        const menuItems = menuResponse.items || [];
+
+        cart = {
+            restaurantCode: order.restaurantId,
+            restaurantName: order.restaurantName,
+            items: order.items.map((item) => {
+                const menuItem = menuItems.find((entry) => entry.name === item.itemName);
+                return {
+                    itemId: menuItem?.itemId || `reorder_${item.id}`,
+                    name: item.itemName,
+                    price: item.price,
+                    basePrice: item.price,
+                    quantity: item.quantity,
+                    image: menuItem?.image || order.restaurantImage || "",
+                    notes: item.customizations || ""
+                };
+            })
+        };
+
+        saveCart();
+        closeOrders();
+        openCart();
+    } catch (error) {
+        alert(error.message || "Failed to reorder.");
+    }
+}
+
+function resetAddressForm() {
+    editingAddressId = null;
+    renderAddressBook();
+}
+
+function startAddressEdit(addressId) {
+    editingAddressId = addressId;
+    renderAddressBook();
+}
+
+async function saveAddress(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("addressFeedback");
+    const payload = {
+        label: document.getElementById("addressLabel")?.value.trim(),
+        recipientName: document.getElementById("addressRecipientName")?.value.trim(),
+        phoneNumber: document.getElementById("addressPhoneNumber")?.value.trim(),
+        addressLine: document.getElementById("addressLine")?.value.trim(),
+        landmark: document.getElementById("addressLandmark")?.value.trim(),
+        city: document.getElementById("addressCity")?.value.trim(),
+        state: document.getElementById("addressState")?.value.trim(),
+        pincode: document.getElementById("addressPincode")?.value.trim(),
+        defaultAddress: document.getElementById("addressDefault")?.checked || false
+    };
+
+    if (feedback) {
+        feedback.textContent = editingAddressId ? "Updating address..." : "Saving address...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const endpoint = editingAddressId
+            ? `${API_BASE_URL}/addresses/${editingAddressId}`
+            : `${API_BASE_URL}/addresses`;
+        const method = editingAddressId ? "PUT" : "POST";
+
+        await fetchJson(endpoint, {
+            method,
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        editingAddressId = null;
+        await fetchAddresses();
+        renderAddressBook();
+
+        const updatedFeedback = document.getElementById("addressFeedback");
+        if (updatedFeedback) {
+            updatedFeedback.textContent = method === "POST" ? "Address saved successfully." : "Address updated successfully.";
+            updatedFeedback.className = "checkout-feedback success";
+        }
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to save address.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function setDefaultAddress(addressId) {
+    try {
+        await fetchJson(`${API_BASE_URL}/addresses/${addressId}/default`, {
+            method: "PATCH"
+        });
+        await fetchAddresses();
+        renderAddressBook();
+    } catch (error) {
+        alert(error.message || "Failed to update default address.");
+    }
+}
+
+async function deleteAddress(addressId) {
+    if (!window.confirm("Delete this saved address?")) {
+        return;
+    }
+
+    try {
+        await fetchJson(`${API_BASE_URL}/addresses/${addressId}`, {
+            method: "DELETE"
+        });
+        if (editingAddressId === addressId) {
+            editingAddressId = null;
+        }
+        await fetchAddresses();
+        renderAddressBook();
+    } catch (error) {
+        alert(error.message || "Failed to delete address.");
+    }
 }
 
 function clearCart() {
@@ -434,11 +1132,17 @@ async function submitOrder(event) {
     }
 
     const feedback = document.getElementById("checkoutFeedback");
-    const name = document.getElementById("checkoutName")?.value.trim();
-    const phone = document.getElementById("checkoutPhone")?.value.trim();
-    const address = document.getElementById("checkoutAddress")?.value.trim();
     const paymentMethod = document.getElementById("checkoutPayment")?.value || "CASH";
     const notes = document.getElementById("checkoutNotes")?.value.trim();
+    const defaultAddress = getDefaultAddress();
+
+    if (!defaultAddress) {
+        if (feedback) {
+            feedback.textContent = "Please add a default delivery address first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
 
     if (feedback) {
         feedback.textContent = "Placing your order...";
@@ -446,7 +1150,6 @@ async function submitOrder(event) {
     }
 
     try {
-        const subtotal = getCartSubtotal();
         const deliveryFee = getDeliveryFee();
         const response = await fetchJson(`${API_BASE_URL}/orders/checkout`, {
             method: "POST",
@@ -455,9 +1158,8 @@ async function submitOrder(event) {
             },
             body: JSON.stringify({
                 restaurantCode: cart.restaurantCode,
-                customerName: name,
-                contactNumber: phone,
-                deliveryAddress: address,
+                addressId: defaultAddress.id,
+                customerName: defaultAddress.recipientName,
                 specialInstructions: notes,
                 paymentMethod,
                 deliveryFee,
@@ -473,12 +1175,13 @@ async function submitOrder(event) {
         });
 
         if (feedback) {
-            feedback.textContent = `Order placed successfully. Order number: ${response.order.orderNumber}`;
+            feedback.textContent = `Order placed successfully to ${defaultAddress.label}. Order number: ${response.order.orderNumber}`;
             feedback.className = "checkout-feedback success";
         }
 
         cart = createEmptyCart();
         saveCart();
+        await fetchOrders();
         if (activeRestaurant) {
             renderMenuModal();
         }
@@ -507,7 +1210,7 @@ function closeMenu() {
         return;
     }
     modal.classList.remove("open");
-    if (!document.getElementById("cartModal")?.classList.contains("open")) {
+    if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
     activeRestaurant = null;
@@ -515,6 +1218,12 @@ function closeMenu() {
     if (window.location.hash) {
         history.replaceState(null, "", window.location.pathname + window.location.search);
     }
+}
+
+function anyModalOpen() {
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal"].some((modalId) =>
+        document.getElementById(modalId)?.classList.contains("open")
+    );
 }
 
 function scrollCarousel(containerId, amount) {
@@ -560,6 +1269,41 @@ function formatCurrency(value) {
     }).format(value || 0);
 }
 
+function formatDateTime(value) {
+    if (!value) {
+        return "Just now";
+    }
+    return new Intl.DateTimeFormat("en-IN", {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit"
+    }).format(new Date(value));
+}
+
+function formatTime(value) {
+    if (!value) {
+        return "TBD";
+    }
+    return new Intl.DateTimeFormat("en-IN", {
+        hour: "numeric",
+        minute: "2-digit"
+    }).format(new Date(value));
+}
+
+function formatStatus(value) {
+    return String(value || "")
+        .toLowerCase()
+        .split("_")
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+}
+
+function statusClassName(status) {
+    return `status-${String(status || "").toLowerCase()}`;
+}
+
 function roundAmount(value) {
     return Math.round(value * 100) / 100;
 }
@@ -570,7 +1314,11 @@ function showErrorMessage(message) {
 
 async function initializeApp() {
     try {
-        await Promise.all([fetchCategories(), fetchRestaurants()]);
+        updateAuthNav();
+        if (currentUser?.id) {
+            await refreshCurrentUser();
+        }
+        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders()]);
         updateCartCount();
         renderCart();
         const deepLinkRestaurant = window.location.hash.replace("#", "");
@@ -596,15 +1344,21 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    ["menuModal", "cartModal"].forEach((modalId) => {
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
                 if (event.target === modal) {
                     if (modalId === "menuModal") {
                         closeMenu();
-                    } else {
+                    } else if (modalId === "cartModal") {
                         closeCart();
+                    } else if (modalId === "addressModal") {
+                        closeAddressBook();
+                    } else if (modalId === "ordersModal") {
+                        closeOrders();
+                    } else {
+                        closeAuthModal();
                     }
                 }
             });
@@ -615,6 +1369,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (event.key === "Escape") {
             closeMenu();
             closeCart();
+            closeAddressBook();
+            closeOrders();
+            closeAuthModal();
         }
     });
 });

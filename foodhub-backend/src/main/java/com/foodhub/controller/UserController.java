@@ -1,5 +1,6 @@
 package com.foodhub.controller;
 
+import com.foodhub.config.DemoUserDataLoader;
 import com.foodhub.model.User;
 import com.foodhub.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -47,15 +48,61 @@ public class UserController {
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
 
+            user.setRole(user.getRole() == null ? User.Role.USER : user.getRole());
+            user.setActive(user.getActive() == null ? true : user.getActive());
+
             User savedUser = userRepository.save(user);
-            
-            // Don't return password in response
-            savedUser.setPassword(null);
-            
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+            return ResponseEntity.status(HttpStatus.CREATED).body(sanitizeUser(savedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to register user: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@RequestBody LoginRequest request) {
+        try {
+            if (request == null || request.email == null || request.email.isBlank()
+                    || request.password == null || request.password.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email and password are required"));
+            }
+
+            Optional<User> optionalUser = userRepository.findByEmail(request.email.trim());
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid email or password"));
+            }
+
+            User user = optionalUser.get();
+            boolean matches = passwordEncoder != null
+                    ? passwordEncoder.matches(request.password, user.getPassword())
+                    : request.password.equals(user.getPassword());
+
+            if (!matches) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Invalid email or password"));
+            }
+
+            if (!Boolean.TRUE.equals(user.getActive())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Your account is inactive"));
+            }
+
+            return ResponseEntity.ok(sanitizeUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to log in: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(@RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        try {
+            User user = resolveRequestUser(userId);
+            return ResponseEntity.ok(sanitizeUser(user));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch current user: " + e.getMessage()));
         }
     }
 
@@ -65,9 +112,7 @@ public class UserController {
     public ResponseEntity<List<User>> getAllUsers() {
         try {
             List<User> users = userRepository.findAll();
-            // Remove passwords from response
-            users.forEach(user -> user.setPassword(null));
-            return ResponseEntity.ok(users);
+            return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -78,9 +123,7 @@ public class UserController {
         try {
             Optional<User> user = userRepository.findById(id);
             if (user.isPresent()) {
-                User foundUser = user.get();
-                foundUser.setPassword(null);
-                return ResponseEntity.ok(foundUser);
+                return ResponseEntity.ok(sanitizeUser(user.get()));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found with id: " + id));
@@ -96,9 +139,7 @@ public class UserController {
         try {
             Optional<User> user = userRepository.findByEmail(email);
             if (user.isPresent()) {
-                User foundUser = user.get();
-                foundUser.setPassword(null);
-                return ResponseEntity.ok(foundUser);
+                return ResponseEntity.ok(sanitizeUser(user.get()));
             } else {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found with email: " + email));
@@ -113,8 +154,7 @@ public class UserController {
     public ResponseEntity<List<User>> getActiveUsers() {
         try {
             List<User> users = userRepository.findByActiveTrue();
-            users.forEach(user -> user.setPassword(null));
-            return ResponseEntity.ok(users);
+            return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -125,8 +165,7 @@ public class UserController {
         try {
             User.Role userRole = User.Role.valueOf(role.toUpperCase());
             List<User> users = userRepository.findByRole(userRole);
-            users.forEach(user -> user.setPassword(null));
-            return ResponseEntity.ok(users);
+            return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -136,8 +175,7 @@ public class UserController {
     public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
         try {
             List<User> users = userRepository.searchUsers(query);
-            users.forEach(user -> user.setPassword(null));
-            return ResponseEntity.ok(users);
+            return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -184,9 +222,7 @@ public class UserController {
             }
 
             User updatedUser = userRepository.save(existingUser);
-            updatedUser.setPassword(null);
-            
-            return ResponseEntity.ok(updatedUser);
+            return ResponseEntity.ok(sanitizeUser(updatedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to update user: " + e.getMessage()));
@@ -265,5 +301,36 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to fetch statistics: " + e.getMessage()));
         }
+    }
+
+    private User resolveRequestUser(Long userId) {
+        if (userId != null) {
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalStateException("User not found"));
+        }
+        return userRepository.findByEmail(DemoUserDataLoader.DEMO_USER_EMAIL)
+                .orElseThrow(() -> new IllegalStateException("Guest user not available"));
+    }
+
+    private User sanitizeUser(User user) {
+        User responseUser = new User();
+        responseUser.setId(user.getId());
+        responseUser.setName(user.getName());
+        responseUser.setEmail(user.getEmail());
+        responseUser.setPhoneNumber(user.getPhoneNumber());
+        responseUser.setAddress(user.getAddress());
+        responseUser.setCity(user.getCity());
+        responseUser.setState(user.getState());
+        responseUser.setPincode(user.getPincode());
+        responseUser.setRole(user.getRole());
+        responseUser.setActive(user.getActive());
+        responseUser.setCreatedAt(user.getCreatedAt());
+        responseUser.setUpdatedAt(user.getUpdatedAt());
+        return responseUser;
+    }
+
+    public static class LoginRequest {
+        public String email;
+        public String password;
     }
 }

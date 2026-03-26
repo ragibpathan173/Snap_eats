@@ -815,6 +815,18 @@ body.modal-open {
     width: min(1120px, 100%);
 }
 
+.address-modal-content {
+    width: min(1160px, 100%);
+}
+
+.orders-modal-content {
+    width: min(1120px, 100%);
+}
+
+.auth-modal-content {
+    width: min(620px, 100%);
+}
+
 .cart-shell {
     padding: 28px;
 }
@@ -933,6 +945,412 @@ body.modal-open {
     gap: 14px;
 }
 
+.address-summary-card {
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid #edf0f3;
+}
+
+.address-summary-head,
+.address-card-head,
+.address-form-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.address-summary-card h3,
+.address-book-header h2,
+.address-form-head h3,
+.address-card h3 {
+    color: #02060c;
+}
+
+.address-recipient {
+    margin-top: 14px;
+    color: #27303f;
+    font-weight: 700;
+}
+
+.address-line,
+.address-book-subtitle,
+.address-empty-note,
+.address-card-head p,
+.address-empty-state p {
+    margin-top: 8px;
+    color: #686b78;
+}
+
+.address-book-shell {
+    padding: 28px;
+}
+
+.address-book-header {
+    margin-bottom: 24px;
+}
+
+.address-book-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 0.95fr;
+    gap: 24px;
+}
+
+.address-list-panel,
+.address-form-panel {
+    padding: 22px;
+    border-radius: 22px;
+    background: #f8f8fb;
+    border: 1px solid #edf0f3;
+}
+
+.address-list-panel {
+    display: grid;
+    gap: 16px;
+    align-content: start;
+}
+
+.address-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+}
+
+.address-card.default {
+    border-color: rgba(203, 32, 45, 0.25);
+    box-shadow: 0 14px 30px rgba(203, 32, 45, 0.08);
+}
+
+.address-default-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(203, 32, 45, 0.1);
+    color: #cb202d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.address-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.danger-button {
+    color: #b42318;
+}
+
+.address-empty-state {
+    padding: 28px;
+    border-radius: 18px;
+    border: 1px dashed #d7dce2;
+    background: #fff;
+    text-align: center;
+}
+
+.address-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.address-form label {
+    display: grid;
+    gap: 8px;
+    color: #27303f;
+    font-weight: 600;
+}
+
+.address-form input,
+.address-form textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d7dce2;
+    border-radius: 12px;
+    font: inherit;
+    background: #fff;
+}
+
+.address-form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.address-default-toggle {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    align-self: end;
+    min-height: 100%;
+}
+
+.address-default-toggle input {
+    width: 18px;
+    height: 18px;
+}
+
+.orders-shell {
+    padding: 28px;
+}
+
+.orders-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.orders-header h2,
+.orders-empty h2 {
+    color: #02060c;
+}
+
+.orders-list {
+    display: grid;
+    gap: 18px;
+}
+
+.order-card {
+    padding: 22px;
+    border-radius: 22px;
+    border: 1px solid #edf0f3;
+    background: #fff;
+}
+
+.order-card-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+}
+
+.order-restaurant {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+.order-restaurant-image {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.order-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-confirmed,
+.status-pending {
+    background: rgba(54, 21, 107, 0.1);
+    color: #36156b;
+}
+
+.status-preparing {
+    background: rgba(255, 208, 140, 0.28);
+    color: #a65d00;
+}
+
+.status-out_for_delivery {
+    background: rgba(28, 100, 242, 0.12);
+    color: #1c64f2;
+}
+
+.status-delivered {
+    background: rgba(20, 76, 42, 0.12);
+    color: #144c2a;
+}
+
+.status-cancelled {
+    background: rgba(180, 35, 24, 0.12);
+    color: #b42318;
+}
+
+.order-progress {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.order-progress-step {
+    display: grid;
+    gap: 8px;
+    color: #98a2b3;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.order-progress-step.active {
+    color: #cb202d;
+}
+
+.order-progress-dot {
+    display: block;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: #e5e7eb;
+}
+
+.order-progress-step.active .order-progress-dot {
+    background: linear-gradient(90deg, #cb202d, #ff7a59);
+}
+
+.order-cancelled-line {
+    margin-bottom: 18px;
+    color: #b42318;
+    font-weight: 700;
+}
+
+.order-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.order-meta-grid div,
+.order-address-block {
+    padding: 14px;
+    border-radius: 16px;
+    background: #f8f8fb;
+}
+
+.order-meta-grid span,
+.order-block-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #686b78;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.order-items-preview {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.order-line-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #fcfcfd;
+    border: 1px solid #edf0f3;
+}
+
+.order-address-block {
+    margin-bottom: 18px;
+}
+
+.order-note {
+    margin-top: 8px;
+    color: #5f6775;
+}
+
+.order-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.orders-empty {
+    padding: 90px 24px;
+    text-align: center;
+}
+
+.auth-shell {
+    padding: 28px;
+}
+
+.auth-header {
+    margin-bottom: 20px;
+}
+
+.auth-header h2 {
+    color: #02060c;
+}
+
+.auth-subtitle {
+    margin-top: 8px;
+    color: #686b78;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.auth-form {
+    display: grid;
+    gap: 14px;
+}
+
+.auth-form label {
+    display: grid;
+    gap: 8px;
+    color: #27303f;
+    font-weight: 600;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d7dce2;
+    border-radius: 12px;
+    font: inherit;
+    background: #fff;
+}
+
+.account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.account-card {
+    padding: 16px;
+    border-radius: 18px;
+    background: #f8f8fb;
+    border: 1px solid #edf0f3;
+}
+
+.account-card span {
+    display: block;
+    margin-bottom: 6px;
+    color: #686b78;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.auth-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
 .checkout-form label {
     display: grid;
     gap: 8px;
@@ -1033,9 +1451,18 @@ body.modal-open {
         height: 220px;
     }
     .menu-toolbar-meta,
-    .cart-layout {
+    .cart-layout,
+    .address-book-layout,
+    .order-meta-grid,
+    .account-grid {
         grid-template-columns: 1fr;
         display: grid;
+    }
+    .order-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .address-form-row {
+        grid-template-columns: 1fr;
     }
     .cart-item-card {
         grid-template-columns: 72px 1fr;

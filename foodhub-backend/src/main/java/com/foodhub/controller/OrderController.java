@@ -5,9 +5,11 @@ import com.foodhub.model.Order;
 import com.foodhub.model.OrderItem;
 import com.foodhub.model.Restaurant;
 import com.foodhub.model.User;
+import com.foodhub.model.UserAddress;
 import com.foodhub.repository.OrderItemRepository;
 import com.foodhub.repository.OrderRepository;
 import com.foodhub.repository.RestaurantRepository;
+import com.foodhub.repository.UserAddressRepository;
 import com.foodhub.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +37,9 @@ public class OrderController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserAddressRepository userAddressRepository;
 
     @Autowired
     private RestaurantRepository restaurantRepository;
@@ -68,7 +73,8 @@ public class OrderController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<?> checkout(@RequestBody CheckoutRequest request) {
+    public ResponseEntity<?> checkout(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                      @RequestBody CheckoutRequest request) {
         try {
             if (request == null || request.items == null || request.items.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Cart items are required"));
@@ -79,18 +85,21 @@ public class OrderController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Valid restaurant reference is required"));
             }
 
-            User checkoutUser = userRepository.findByEmail(DemoUserDataLoader.DEMO_USER_EMAIL)
-                    .orElseThrow(() -> new IllegalStateException("Guest checkout user not available"));
+            User checkoutUser = resolveRequestUser(userId);
 
             if (request.customerName != null && !request.customerName.isBlank()) {
                 checkoutUser.setName(request.customerName.trim());
             }
-            if (request.contactNumber != null && !request.contactNumber.isBlank()) {
-                checkoutUser.setPhoneNumber(request.contactNumber.trim());
+            UserAddress deliveryAddress = resolveDeliveryAddress(request, checkoutUser);
+            if (deliveryAddress == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Please save a delivery address and choose a default one"));
             }
-            if (request.deliveryAddress != null && !request.deliveryAddress.isBlank()) {
-                checkoutUser.setAddress(request.deliveryAddress.trim());
-            }
+
+            checkoutUser.setPhoneNumber(deliveryAddress.getPhoneNumber());
+            checkoutUser.setAddress(formatAddress(deliveryAddress));
+            checkoutUser.setCity(deliveryAddress.getCity());
+            checkoutUser.setState(deliveryAddress.getState());
+            checkoutUser.setPincode(deliveryAddress.getPincode());
             userRepository.save(checkoutUser);
 
             double subtotal = request.items.stream()
@@ -112,8 +121,8 @@ public class OrderController {
                     ? Order.PaymentStatus.PENDING
                     : Order.PaymentStatus.COMPLETED);
             order.setStatus(Order.OrderStatus.CONFIRMED);
-            order.setDeliveryAddress(request.deliveryAddress);
-            order.setContactNumber(request.contactNumber);
+            order.setDeliveryAddress(formatAddress(deliveryAddress));
+            order.setContactNumber(deliveryAddress.getPhoneNumber());
             order.setSpecialInstructions(request.specialInstructions);
             order.setEstimatedDeliveryTime(LocalDateTime.now().plusMinutes(35));
 
@@ -349,6 +358,73 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/mine")
+    public ResponseEntity<?> getMyOrders(@RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        try {
+            User user = resolveRequestUser(userId);
+
+            List<OrderSummaryResponse> responses = orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                    .stream()
+                    .map(this::buildOrderSummary)
+                    .toList();
+
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch your orders: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/mine/{id}")
+    public ResponseEntity<?> getMyOrderById(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                            @PathVariable Long id) {
+        try {
+            User user = resolveRequestUser(userId);
+
+            Optional<Order> order = orderRepository.findById(id);
+            if (order.isEmpty() || !order.get().getUserId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Order not found"));
+            }
+
+            return ResponseEntity.ok(buildOrderSummary(order.get()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch your order: " + e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/mine/{id}/cancel")
+    public ResponseEntity<?> cancelMyOrder(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                           @PathVariable Long id) {
+        try {
+            User user = resolveRequestUser(userId);
+
+            Optional<Order> optionalOrder = orderRepository.findById(id);
+            if (optionalOrder.isEmpty() || !optionalOrder.get().getUserId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Order not found"));
+            }
+
+            Order order = optionalOrder.get();
+            if (!(order.getStatus() == Order.OrderStatus.PENDING
+                    || order.getStatus() == Order.OrderStatus.CONFIRMED)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Only newly placed orders can be cancelled"));
+            }
+
+            order.setStatus(Order.OrderStatus.CANCELLED);
+            if (order.getPaymentStatus() == Order.PaymentStatus.COMPLETED) {
+                order.setPaymentStatus(Order.PaymentStatus.REFUNDED);
+            }
+
+            return ResponseEntity.ok(buildOrderSummary(orderRepository.save(order)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to cancel your order: " + e.getMessage()));
+        }
+    }
+
     private Order.PaymentMethod parsePaymentMethod(String paymentMethod) {
         if (paymentMethod == null || paymentMethod.isBlank()) {
             return Order.PaymentMethod.CASH;
@@ -370,12 +446,69 @@ public class OrderController {
         return null;
     }
 
+    private User resolveRequestUser(Long userId) {
+        if (userId != null) {
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalStateException("User not available"));
+        }
+        return userRepository.findByEmail(DemoUserDataLoader.DEMO_USER_EMAIL)
+                .orElseThrow(() -> new IllegalStateException("Guest checkout user not available"));
+    }
+
+    private UserAddress resolveDeliveryAddress(CheckoutRequest request, User user) {
+        if (request.addressId != null) {
+            return userAddressRepository.findByIdAndUserIdAndActiveTrue(request.addressId, user.getId()).orElse(null);
+        }
+        return userAddressRepository.findByUserIdAndDefaultAddressTrueAndActiveTrue(user.getId()).orElse(null);
+    }
+
+    private String formatAddress(UserAddress address) {
+        StringBuilder builder = new StringBuilder(address.getAddressLine());
+        if (address.getLandmark() != null && !address.getLandmark().isBlank()) {
+            builder.append(", ").append(address.getLandmark());
+        }
+        builder.append(", ").append(address.getCity());
+        builder.append(", ").append(address.getState());
+        builder.append(" ").append(address.getPincode());
+        return builder.toString();
+    }
+
+    private OrderSummaryResponse buildOrderSummary(Order order) {
+        Restaurant restaurant = restaurantRepository.findById(order.getRestaurantId()).orElse(null);
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+
+        OrderSummaryResponse response = new OrderSummaryResponse();
+        response.id = order.getId();
+        response.orderNumber = order.getOrderNumber();
+        response.restaurantId = restaurant != null ? restaurant.getRestaurantId() : null;
+        response.restaurantName = restaurant != null ? restaurant.getName() : "Restaurant";
+        response.restaurantImage = restaurant != null ? restaurant.getImage() : null;
+        response.status = order.getStatus();
+        response.paymentMethod = order.getPaymentMethod();
+        response.paymentStatus = order.getPaymentStatus();
+        response.deliveryAddress = order.getDeliveryAddress();
+        response.contactNumber = order.getContactNumber();
+        response.specialInstructions = order.getSpecialInstructions();
+        response.totalAmount = order.getTotalAmount();
+        response.deliveryFee = order.getDeliveryFee();
+        response.discount = order.getDiscount();
+        response.finalAmount = order.getFinalAmount();
+        response.estimatedDeliveryTime = order.getEstimatedDeliveryTime();
+        response.actualDeliveryTime = order.getActualDeliveryTime();
+        response.createdAt = order.getCreatedAt();
+        response.updatedAt = order.getUpdatedAt();
+        response.items = items;
+        response.itemCount = items.stream().mapToInt(OrderItem::getQuantity).sum();
+        response.canCancel = order.getStatus() == Order.OrderStatus.PENDING || order.getStatus() == Order.OrderStatus.CONFIRMED;
+        response.canReorder = !items.isEmpty() && restaurant != null;
+        return response;
+    }
+
     public static class CheckoutRequest {
         public Long restaurantId;
         public String restaurantCode;
+        public Long addressId;
         public String customerName;
-        public String contactNumber;
-        public String deliveryAddress;
         public String specialInstructions;
         public String paymentMethod;
         public Double deliveryFee;
@@ -389,5 +522,31 @@ public class OrderController {
         public Integer quantity;
         public Double price;
         public String notes;
+    }
+
+    public static class OrderSummaryResponse {
+        public Long id;
+        public String orderNumber;
+        public String restaurantId;
+        public String restaurantName;
+        public String restaurantImage;
+        public Order.OrderStatus status;
+        public Order.PaymentMethod paymentMethod;
+        public Order.PaymentStatus paymentStatus;
+        public String deliveryAddress;
+        public String contactNumber;
+        public String specialInstructions;
+        public Double totalAmount;
+        public Double deliveryFee;
+        public Double discount;
+        public Double finalAmount;
+        public LocalDateTime estimatedDeliveryTime;
+        public LocalDateTime actualDeliveryTime;
+        public LocalDateTime createdAt;
+        public LocalDateTime updatedAt;
+        public Integer itemCount;
+        public Boolean canCancel;
+        public Boolean canReorder;
+        public List<OrderItem> items;
     }
 }

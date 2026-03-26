@@ -17,7 +17,9 @@
                 <a href="#" class="nav-link">Search</a>
                 <a href="#" class="nav-link">Offers</a>
                 <a href="#" class="nav-link">Help</a>
-                <a href="#" class="nav-link">Sign In</a>
+                <a href="#" class="nav-link" onclick="openAddressBook(event)">Addresses</a>
+                <a href="#" class="nav-link" onclick="openOrders(event)">My Orders</a>
+                <a href="#" class="nav-link" id="authNavLink" onclick="openAuthModal(event)">Sign In</a>
                 <a href="#" class="nav-link cart-link" onclick="openCart(event)">Cart <span id="cartCount" class="cart-count">0</span></a>
             </nav>
             <div class="search-bar">
@@ -143,6 +145,27 @@
         <div class="modal-content cart-modal-content">
             <span class="close-btn" onclick="closeCart()">&times;</span>
             <div id="cartModalContent"></div>
+        </div>
+    </div>
+
+    <div id="addressModal" class="modal">
+        <div class="modal-content address-modal-content">
+            <span class="close-btn" onclick="closeAddressBook()">&times;</span>
+            <div id="addressModalContent"></div>
+        </div>
+    </div>
+
+    <div id="ordersModal" class="modal">
+        <div class="modal-content orders-modal-content">
+            <span class="close-btn" onclick="closeOrders()">&times;</span>
+            <div id="ordersModalContent"></div>
+        </div>
+    </div>
+
+    <div id="authModal" class="modal">
+        <div class="modal-content auth-modal-content">
+            <span class="close-btn" onclick="closeAuthModal()">&times;</span>
+            <div id="authModalContent"></div>
         </div>
     </div>
 
