@@ -24,47 +24,44 @@ public class CategoryController {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /**
-     * Load initial data from JSON file into database on startup
-     * This runs only once when the application starts
-     */
     @PostConstruct
     public void loadInitialData() {
-        // Only load if database is empty
         if (categoryRepository.count() == 0) {
             try {
-                InputStream inputStream = new ClassPathResource("data/categories.json").getInputStream();
-                List<Category> categories = objectMapper.readValue(inputStream, new TypeReference<List<Category>>() {});
+                InputStream inputStream =
+                        new ClassPathResource("data/categories.json").getInputStream();
+                List<Category> categories =
+                        objectMapper.readValue(inputStream,
+                                new TypeReference<List<Category>>() {});
                 categoryRepository.saveAll(categories);
-                System.out.println("✅ Loaded " + categories.size() + " categories from JSON into database");
+                System.out.println("✅ Loaded " + categories.size() + " categories");
             } catch (IOException e) {
-                System.err.println("❌ Error loading categories from JSON: " + e.getMessage());
-                e.printStackTrace();
+                System.err.println("❌ Error loading categories: " + e.getMessage());
             }
         }
     }
 
     @GetMapping
     public ResponseEntity<List<Category>> getAllCategories() {
-        List<Category> categories = categoryRepository.findAll();
-        return ResponseEntity.ok(categories);
+        return ResponseEntity.ok(categoryRepository.findAll());
     }
 
     @GetMapping("/active")
     public ResponseEntity<List<Category>> getActiveCategories() {
-        List<Category> categories = categoryRepository.findByActiveTrue();
-        return ResponseEntity.ok(categories);
+        return ResponseEntity.ok(categoryRepository.findByActiveTrue());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
+    // ⭐ FIXED HERE
+    @GetMapping("/id/{id}")
+    public ResponseEntity<Category> getCategoryById(@PathVariable String id) {
         return categoryRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/categoryId/{categoryId}")
-    public ResponseEntity<Category> getCategoryByCategoryId(@PathVariable String categoryId) {
+    public ResponseEntity<Category> getCategoryByCategoryId(
+            @PathVariable String categoryId) {
         return categoryRepository.findByCategoryId(categoryId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());

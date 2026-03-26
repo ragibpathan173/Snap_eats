@@ -29,10 +29,12 @@ Backend (foodhub-backend/):
         ├── categories.json                  # 18 categories
         └── restaurants.json                 # 56 restaurants
 
-Frontend:
-├── snap_eats.html                          # HTML (no changes needed)
-├── snap_eats.css                           # CSS (no changes needed)
-└── snap_eats.js                            # Updated to fetch from API
+Frontend (served by Spring Boot static resources):
+└── foodhub-backend/src/main/resources/static/
+    ├── index.html
+    ├── snap_eats.html
+    ├── snap_eats.css
+    └── snap_eats.js
 ```
 
 ## 🚀 Setup Instructions
@@ -85,16 +87,12 @@ Frontend:
 
 ### Step 2: Frontend Setup
 
-1. **Replace the old `snap_eats.js`** with the new version that fetches from API
+The frontend is now served directly by Spring Boot from `src/main/resources/static`.
 
-2. **Update the API_BASE_URL** in `snap_eats.js` if your backend runs on a different port:
-   ```javascript
-   const API_BASE_URL = 'http://localhost:8080/api';
-   ```
-
-3. **Open the frontend** in a browser:
-   - If using Live Server: Right-click `snap_eats.html` → "Open with Live Server"
-   - If using a simple server: `python -m http.server 5500`
+Open the app in a browser after starting the backend:
+```text
+http://localhost:8081/
+```
 
 ## 🔌 API Endpoints
 
@@ -187,9 +185,9 @@ In `application.properties`:
 server.port=9090
 ```
 
-Then update frontend `snap_eats.js`:
-```javascript
-const API_BASE_URL = 'http://localhost:9090/api';
+Then open the app from:
+```text
+http://localhost:9090/
 ```
 
 ### Enable CORS for Specific Origins

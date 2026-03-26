@@ -1,6 +1,7 @@
 package com.foodhub.controller;
 
 import com.foodhub.model.MenuItem;
+import com.foodhub.model.Restaurant;
 import com.foodhub.repository.MenuItemRepository;
 import com.foodhub.repository.RestaurantRepository;
 import jakarta.validation.Valid;
@@ -154,16 +155,39 @@ public class MenuItemController {
                 menuItems = menuItemRepository.findByRestaurantId(restaurantId, pageable);
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("items", menuItems.getContent());
-            response.put("currentPage", menuItems.getNumber());
-            response.put("totalItems", menuItems.getTotalElements());
-            response.put("totalPages", menuItems.getTotalPages());
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(buildPagedResponse(menuItems));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to fetch menu items: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/restaurant-code/{restaurantCode}")
+    public ResponseEntity<?> getMenuItemsByRestaurantCode(
+            @PathVariable String restaurantCode,
+            @RequestParam(required = false, defaultValue = "false") Boolean activeOnly,
+            @RequestParam(required = false, defaultValue = "false") Boolean availableOnly,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "50") int size,
+            @RequestParam(required = false) String sortBy) {
+        try {
+            Optional<Restaurant> restaurant = restaurantRepository.findByRestaurantId(restaurantCode);
+            if (restaurant.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("error", "Restaurant not found with restaurantId: " + restaurantCode));
+            }
+
+            return getMenuItemsByRestaurant(
+                    restaurant.get().getId(),
+                    activeOnly,
+                    availableOnly,
+                    page,
+                    size,
+                    sortBy
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch menu items: " + e.getMessage()));
         }
     }
 
@@ -312,13 +336,7 @@ public class MenuItemController {
                 menuItems = menuItemRepository.searchMenuItems(query, pageable);
             }
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("items", menuItems.getContent());
-            response.put("currentPage", menuItems.getNumber());
-            response.put("totalItems", menuItems.getTotalElements());
-            response.put("totalPages", menuItems.getTotalPages());
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(buildPagedResponse(menuItems));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to search menu items: " + e.getMessage()));
@@ -346,13 +364,7 @@ public class MenuItemController {
                 minPrice, maxPrice, minRating, pageable
             );
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("items", menuItems.getContent());
-            response.put("currentPage", menuItems.getNumber());
-            response.put("totalItems", menuItems.getTotalElements());
-            response.put("totalPages", menuItems.getTotalPages());
-
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(buildPagedResponse(menuItems));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to filter menu items: " + e.getMessage()));
@@ -573,5 +585,14 @@ public class MenuItemController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to deactivate items: " + e.getMessage()));
         }
+    }
+
+    private Map<String, Object> buildPagedResponse(Page<MenuItem> menuItems) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("items", menuItems.getContent());
+        response.put("currentPage", menuItems.getNumber());
+        response.put("totalItems", menuItems.getTotalElements());
+        response.put("totalPages", menuItems.getTotalPages());
+        return response;
     }
 }
