@@ -398,6 +398,25 @@ body {
     overflow: hidden;
 }
 
+.favorite-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #27303f;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(2, 6, 12, 0.18);
+}
+
+.favorite-toggle.active {
+    color: #cb202d;
+}
+
 .restaurant-image img {
     width: 100%;
     height: 100%;
@@ -1766,6 +1785,52 @@ body.modal-open {
     box-shadow: 0 14px 30px rgba(203, 32, 45, 0.08);
 }
 
+.favorite-restaurant-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.favorite-restaurant-card {
+    display: grid;
+    grid-template-columns: 120px 1fr auto;
+    gap: 18px;
+    align-items: center;
+    padding: 18px;
+    border: 1px solid #edf0f3;
+    border-radius: 18px;
+    background: #fff;
+}
+
+.favorite-restaurant-image {
+    width: 120px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 16px;
+}
+
+.favorite-restaurant-copy h4 {
+    font-size: 22px;
+    color: #02060c;
+}
+
+.favorite-restaurant-copy p {
+    margin-top: 6px;
+    color: #686b78;
+}
+
+.favorite-restaurant-meta {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    color: #27303f;
+    font-weight: 700;
+}
+
+.favorite-restaurant-actions {
+    display: grid;
+    gap: 10px;
+}
+
 .account-settings-form {
     display: grid;
     gap: 16px;
@@ -2056,6 +2121,19 @@ body.modal-open {
 
     .account-order-meta {
         justify-items: start;
+    }
+
+    .favorite-restaurant-card {
+        grid-template-columns: 1fr;
+    }
+
+    .favorite-restaurant-image {
+        width: 100%;
+        height: 180px;
+    }
+
+    .favorite-restaurant-actions {
+        grid-template-columns: 1fr;
     }
 
     .order-progress {

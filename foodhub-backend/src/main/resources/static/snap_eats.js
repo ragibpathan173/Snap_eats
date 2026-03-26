@@ -11,6 +11,7 @@ let activeCategory = "all";
 let activeRestaurant = null;
 let activeMenuItems = [];
 let savedAddresses = [];
+let favoriteRestaurants = [];
 let editingAddressId = null;
 let orderHistory = [];
 let activeAccountSection = "orders";
@@ -375,6 +376,19 @@ async function fetchAddresses() {
     renderAddressBook();
 }
 
+async function fetchFavoriteRestaurants() {
+    try {
+        const favorites = await fetchJson(`${API_BASE_URL}/favorites/restaurants`);
+        favoriteRestaurants = Array.isArray(favorites) ? favorites : [];
+    } catch {
+        favoriteRestaurants = [];
+    }
+    renderRestaurants();
+    if (currentUser) {
+        renderAuthModal();
+    }
+}
+
 async function fetchOrders() {
     try {
         const orders = await fetchJson(`${API_BASE_URL}/orders/mine`);
@@ -436,6 +450,14 @@ function renderRestaurants() {
             <div class="restaurant-image">
                 <img src="${restaurant.image}" alt="${escapeHtml(restaurant.name)}">
                 ${restaurant.discount ? `<div class="discount-badge">${escapeHtml(restaurant.discount)}</div>` : ""}
+                <button
+                    class="favorite-toggle ${isRestaurantFavorite(restaurant.restaurantId) ? "active" : ""}"
+                    type="button"
+                    onclick="toggleRestaurantFavorite(event, '${escapeAttribute(restaurant.restaurantId)}')"
+                    aria-label="${isRestaurantFavorite(restaurant.restaurantId) ? "Remove from favorites" : "Add to favorites"}"
+                >
+                    ${isRestaurantFavorite(restaurant.restaurantId) ? "♥" : "♡"}
+                </button>
             </div>
             <div class="restaurant-info">
                 <div class="restaurant-name">
@@ -450,6 +472,32 @@ function renderRestaurants() {
             </div>
         </article>
     `).join("");
+}
+
+function isRestaurantFavorite(restaurantId) {
+    return favoriteRestaurants.some((favorite) => favorite.restaurantId === restaurantId);
+}
+
+async function toggleRestaurantFavorite(event, restaurantId) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    try {
+        if (isRestaurantFavorite(restaurantId)) {
+            await fetchJson(`${API_BASE_URL}/favorites/restaurants/${encodeURIComponent(restaurantId)}`, {
+                method: "DELETE"
+            });
+        } else {
+            await fetchJson(`${API_BASE_URL}/favorites/restaurants/${encodeURIComponent(restaurantId)}`, {
+                method: "POST"
+            });
+        }
+        await fetchFavoriteRestaurants();
+    } catch (error) {
+        alert(error.message || "Failed to update favorites.");
+    }
 }
 
 async function filterByCategory(category) {
@@ -1253,10 +1301,32 @@ function renderAccountPanel() {
                 <p class="menu-eyebrow">Favorites</p>
                 <h3>Your favorite picks</h3>
                 <p class="account-panel-copy">Save restaurants and dishes you love so they stay one tap away.</p>
-                <div class="account-placeholder-card">
-                    <strong>No favorites saved yet</strong>
-                    <p>Browse restaurants and we can add a heart/favorite feature next.</p>
-                </div>
+                ${favoriteRestaurants.length ? `
+                    <div class="favorite-restaurant-grid">
+                        ${favoriteRestaurants.map((restaurant) => `
+                            <article class="favorite-restaurant-card">
+                                <img src="${restaurant.image}" alt="${escapeHtml(restaurant.name)}" class="favorite-restaurant-image">
+                                <div class="favorite-restaurant-copy">
+                                    <h4>${escapeHtml(restaurant.name)}</h4>
+                                    <p>${escapeHtml(restaurant.cuisine || "")}</p>
+                                    <div class="favorite-restaurant-meta">
+                                        <span>★ ${formatNumber(restaurant.rating)}</span>
+                                        <span>${escapeHtml(restaurant.time || "")}</span>
+                                    </div>
+                                </div>
+                                <div class="favorite-restaurant-actions">
+                                    <button class="secondary-button" type="button" onclick="closeAuthModal(); openRestaurantMenu('${escapeAttribute(restaurant.restaurantId)}')">Open menu</button>
+                                    <button class="text-button danger-button" type="button" onclick="removeFavoriteFromAccount('${escapeAttribute(restaurant.restaurantId)}')">Remove</button>
+                                </div>
+                            </article>
+                        `).join("")}
+                    </div>
+                ` : `
+                    <div class="account-placeholder-card">
+                        <strong>No favorites saved yet</strong>
+                        <p>Tap the heart on any restaurant card to save it here.</p>
+                    </div>
+                `}
             </div>
         `;
     }
@@ -1474,7 +1544,7 @@ async function loginUser(event) {
         });
 
         saveCurrentUser(user);
-        await Promise.all([fetchAddresses(), fetchOrders()]);
+        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants()]);
         renderAuthModal();
     } catch (error) {
         if (feedback) {
@@ -1514,8 +1584,10 @@ async function signupUser(event) {
         saveCurrentUser(user);
         savedAddresses = [];
         orderHistory = [];
+        favoriteRestaurants = [];
         renderCart();
         renderOrders();
+        renderRestaurants();
         renderAuthModal();
     } catch (error) {
         if (feedback) {
@@ -1529,10 +1601,23 @@ function logoutUser() {
     saveCurrentUser(null);
     savedAddresses = [];
     orderHistory = [];
+    favoriteRestaurants = [];
     closeAuthModal();
     renderAddressBook();
     renderOrders();
+    renderRestaurants();
     renderCart();
+}
+
+async function removeFavoriteFromAccount(restaurantId) {
+    try {
+        await fetchJson(`${API_BASE_URL}/favorites/restaurants/${encodeURIComponent(restaurantId)}`, {
+            method: "DELETE"
+        });
+        await fetchFavoriteRestaurants();
+    } catch (error) {
+        alert(error.message || "Failed to remove favorite.");
+    }
 }
 
 function renderOrders(isLoading = false) {
@@ -1985,7 +2070,7 @@ async function initializeApp() {
         if (currentUser?.id) {
             await refreshCurrentUser();
         }
-        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders()]);
+        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants()]);
         updateCartCount();
         renderCart();
         const deepLinkRestaurant = window.location.hash.replace("#", "");
