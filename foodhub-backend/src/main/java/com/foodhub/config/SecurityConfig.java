@@ -44,7 +44,13 @@ public class SecurityConfig {
                                 "/actuator/health/**",
                                 "/actuator/info"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/users/login", "/api/users/register").permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/users/login",
+                                "/api/users/register",
+                                "/api/users/forgot-password/request-otp",
+                                "/api/users/forgot-password/reset"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/restaurants/**", "/api/categories/**", "/api/menu-items/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/menu-items/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/menu-items/**").hasRole("ADMIN")
@@ -63,4 +69,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-

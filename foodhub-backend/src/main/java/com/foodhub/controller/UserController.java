@@ -1,34 +1,50 @@
 package com.foodhub.controller;
 
 import com.foodhub.config.DemoUserDataLoader;
+import com.foodhub.model.PasswordResetOtp;
 import com.foodhub.model.User;
+import com.foodhub.repository.PasswordResetOtpRepository;
 import com.foodhub.repository.UserRepository;
 import com.foodhub.security.JwtService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "*")
 public class UserController {
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+    private static final int OTP_EXPIRY_MINUTES = 10;
+    private static final int MAX_OTP_ATTEMPTS = 5;
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordResetOtpRepository passwordResetOtpRepository;
 
     @Autowired(required = false)
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtService jwtService;
+
+    @Value("${security.otp.dev-return:true}")
+    private boolean otpDevReturn;
 
     // ===== CREATE =====
     
@@ -96,6 +112,112 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to log in: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password/request-otp")
+    public ResponseEntity<?> requestPasswordResetOtp(@RequestBody ForgotPasswordRequest request) {
+        try {
+            if (request == null || request.email == null || request.email.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+            }
+
+            String normalizedEmail = request.email.trim().toLowerCase();
+            Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
+            if (optionalUser.isEmpty() || !Boolean.TRUE.equals(optionalUser.get().getActive())) {
+                return ResponseEntity.ok(Map.of("message", "If this email is registered, an OTP has been sent."));
+            }
+
+            String otp = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
+            List<PasswordResetOtp> activeOtps = passwordResetOtpRepository.findByEmailAndConsumedFalse(normalizedEmail);
+            for (PasswordResetOtp oldOtp : activeOtps) {
+                oldOtp.setConsumed(true);
+            }
+            if (!activeOtps.isEmpty()) {
+                passwordResetOtpRepository.saveAll(activeOtps);
+            }
+
+            PasswordResetOtp passwordResetOtp = new PasswordResetOtp();
+            passwordResetOtp.setEmail(normalizedEmail);
+            passwordResetOtp.setOtpHash(passwordEncoder.encode(otp));
+            passwordResetOtp.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES));
+            passwordResetOtp.setConsumed(false);
+            passwordResetOtp.setAttemptCount(0);
+            passwordResetOtpRepository.save(passwordResetOtp);
+
+            log.info("Password reset OTP generated for {}", normalizedEmail);
+            if (otpDevReturn) {
+                return ResponseEntity.ok(Map.of(
+                        "message", "OTP generated for password reset.",
+                        "devOtp", otp,
+                        "expiresInMinutes", OTP_EXPIRY_MINUTES
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of("message", "If this email is registered, an OTP has been sent."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate OTP: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password/reset")
+    public ResponseEntity<?> resetPasswordWithOtp(@RequestBody ResetPasswordRequest request) {
+        try {
+            if (request == null
+                    || request.email == null || request.email.isBlank()
+                    || request.otp == null || request.otp.isBlank()
+                    || request.newPassword == null || request.newPassword.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email, OTP, and new password are required"));
+            }
+
+            String normalizedEmail = request.email.trim().toLowerCase();
+            Optional<User> optionalUser = userRepository.findByEmail(normalizedEmail);
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid email or OTP"));
+            }
+
+            Optional<PasswordResetOtp> otpOptional = passwordResetOtpRepository
+                    .findTopByEmailAndConsumedFalseOrderByCreatedAtDesc(normalizedEmail);
+            if (otpOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "OTP not found or already used"));
+            }
+
+            PasswordResetOtp otpRecord = otpOptional.get();
+            if (LocalDateTime.now().isAfter(otpRecord.getExpiresAt())) {
+                otpRecord.setConsumed(true);
+                passwordResetOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "OTP expired. Please request a new OTP."));
+            }
+
+            if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                otpRecord.setConsumed(true);
+                passwordResetOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "Too many attempts. Request a new OTP."));
+            }
+
+            boolean otpMatches = passwordEncoder.matches(request.otp.trim(), otpRecord.getOtpHash());
+            if (!otpMatches) {
+                otpRecord.setAttemptCount(otpRecord.getAttemptCount() + 1);
+                if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                    otpRecord.setConsumed(true);
+                }
+                passwordResetOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid OTP"));
+            }
+
+            User user = optionalUser.get();
+            user.setPassword(passwordEncoder.encode(request.newPassword));
+            userRepository.save(user);
+
+            otpRecord.setConsumed(true);
+            passwordResetOtpRepository.save(otpRecord);
+
+            return ResponseEntity.ok(Map.of("message", "Password reset successful. Please login."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to reset password: " + e.getMessage()));
         }
     }
 
@@ -403,5 +525,15 @@ public class UserController {
     public static class LoginRequest {
         public String email;
         public String password;
+    }
+
+    public static class ForgotPasswordRequest {
+        public String email;
+    }
+
+    public static class ResetPasswordRequest {
+        public String email;
+        public String otp;
+        public String newPassword;
     }
 }

@@ -47,6 +47,10 @@ let discoveryFilters = {
 };
 const pincodeLookupCache = new Map();
 
+function isAuthenticatedSession() {
+    return Boolean(currentUser?.id && authToken);
+}
+
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -1368,6 +1372,11 @@ function openAddressBook(event) {
     if (!modal) {
         return;
     }
+    if (!isAuthenticatedSession()) {
+        showErrorMessage("Please log in again to manage saved addresses.");
+        openAuthModal();
+        return;
+    }
 
     modal.classList.add("open");
     document.body.classList.add("modal-open");
@@ -2042,23 +2051,35 @@ function renderAuthModal(mode = "login") {
         return;
     }
 
-    content.innerHTML = `
-        <div class="auth-shell">
-            <div class="auth-header">
-                <div>
-                    <p class="menu-eyebrow">Account</p>
-                    <h2>${mode === "signup" ? "Create your SnapEats account" : "Welcome back"}</h2>
-                    <p class="auth-subtitle">${mode === "signup" ? "Sign up to save addresses and track orders." : "Log in to manage addresses and order history."}</p>
-                </div>
-            </div>
-
-            <div class="auth-tabs">
-                <button class="menu-chip ${mode === "login" ? "active" : ""}" type="button" onclick="renderAuthModal('login')">Login</button>
-                <button class="menu-chip ${mode === "signup" ? "active" : ""}" type="button" onclick="renderAuthModal('signup')">Sign Up</button>
-            </div>
-
-            <form class="auth-form" onsubmit="${mode === "signup" ? "signupUser(event)" : "loginUser(event)"}">
-                ${mode === "signup" ? `
+    const isSignup = mode === "signup";
+    const isForgot = mode === "forgot";
+    const title = isSignup
+        ? "Create your SnapEats account"
+        : (isForgot ? "Reset your password" : "Welcome back");
+    const subtitle = isSignup
+        ? "Sign up to save addresses and track orders."
+        : (isForgot ? "Request OTP and set a new password." : "Log in to manage addresses and order history.");
+    const formMarkup = isForgot ? `
+            <form class="auth-form" onsubmit="resetPasswordWithOtp(event)">
+                <label>
+                    Email
+                    <input type="email" id="authForgotEmail" placeholder="you@example.com" required>
+                </label>
+                <button class="secondary-button" type="button" onclick="requestPasswordOtp()">Send OTP</button>
+                <label>
+                    OTP
+                    <input type="text" id="authForgotOtp" placeholder="6-digit OTP" maxlength="6" required>
+                </label>
+                <label>
+                    New password
+                    <input type="password" id="authForgotNewPassword" placeholder="Enter new password" required>
+                </label>
+                <button class="primary-button" type="submit">Reset password</button>
+                <div id="authFeedback" class="checkout-feedback"></div>
+            </form>
+    ` : `
+            <form class="auth-form" onsubmit="${isSignup ? "signupUser(event)" : "loginUser(event)"}">
+                ${isSignup ? `
                     <label>
                         Full name
                         <input type="text" id="authName" placeholder="Your full name" required>
@@ -2076,9 +2097,29 @@ function renderAuthModal(mode = "login") {
                     Password
                     <input type="password" id="authPassword" placeholder="Enter password" required>
                 </label>
-                <button class="primary-button" type="submit">${mode === "signup" ? "Create account" : "Login"}</button>
+                <button class="primary-button" type="submit">${isSignup ? "Create account" : "Login"}</button>
+                ${!isSignup ? `<button class="text-button" type="button" onclick="renderAuthModal('forgot')">Forgot password?</button>` : ""}
                 <div id="authFeedback" class="checkout-feedback"></div>
             </form>
+    `;
+
+    content.innerHTML = `
+        <div class="auth-shell">
+            <div class="auth-header">
+                <div>
+                    <p class="menu-eyebrow">Account</p>
+                    <h2>${title}</h2>
+                    <p class="auth-subtitle">${subtitle}</p>
+                </div>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="menu-chip ${mode === "login" ? "active" : ""}" type="button" onclick="renderAuthModal('login')">Login</button>
+                <button class="menu-chip ${mode === "signup" ? "active" : ""}" type="button" onclick="renderAuthModal('signup')">Sign Up</button>
+                <button class="menu-chip ${mode === "forgot" ? "active" : ""}" type="button" onclick="renderAuthModal('forgot')">Forgot</button>
+            </div>
+
+            ${formMarkup}
         </div>`;
 }
 
@@ -2812,6 +2853,80 @@ async function signupUser(event) {
     }
 }
 
+async function requestPasswordOtp() {
+    const feedback = document.getElementById("authFeedback");
+    const email = document.getElementById("authForgotEmail")?.value.trim();
+
+    if (!email) {
+        if (feedback) {
+            feedback.textContent = "Please enter your email first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    if (feedback) {
+        feedback.textContent = "Requesting OTP...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/users/forgot-password/request-otp`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email })
+        });
+
+        if (feedback) {
+            const devOtpText = response?.devOtp ? ` (Demo OTP: ${response.devOtp})` : "";
+            feedback.textContent = `${response?.message || "OTP sent."}${devOtpText}`;
+            feedback.className = "checkout-feedback success";
+        }
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to request OTP.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function resetPasswordWithOtp(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("authFeedback");
+    const email = document.getElementById("authForgotEmail")?.value.trim();
+    const otp = document.getElementById("authForgotOtp")?.value.trim();
+    const newPassword = document.getElementById("authForgotNewPassword")?.value;
+
+    if (feedback) {
+        feedback.textContent = "Resetting password...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/users/forgot-password/reset`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, otp, newPassword })
+        });
+
+        if (feedback) {
+            feedback.textContent = response?.message || "Password reset successful.";
+            feedback.className = "checkout-feedback success";
+        }
+        window.setTimeout(() => renderAuthModal("login"), 900);
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to reset password.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
 function logoutUser() {
     saveCurrentUser(null);
     saveAuthToken("");
@@ -3107,6 +3222,15 @@ async function saveAddress(event) {
     event.preventDefault();
 
     const feedback = document.getElementById("addressFeedback");
+    if (!isAuthenticatedSession()) {
+        if (feedback) {
+            feedback.textContent = "Please log in again to save your address.";
+            feedback.className = "checkout-feedback error";
+        }
+        openAuthModal();
+        return;
+    }
+
     const payload = {
         label: document.getElementById("addressLabel")?.value.trim(),
         recipientName: document.getElementById("addressRecipientName")?.value.trim(),
@@ -3472,6 +3596,9 @@ function clearErrorMessage() {
 async function initializeApp() {
     try {
         clearErrorMessage();
+        if (currentUser?.id && !authToken) {
+            saveCurrentUser(null);
+        }
         updateAuthNav();
         updateLocationChip();
         renderDiscoveryFilters();
