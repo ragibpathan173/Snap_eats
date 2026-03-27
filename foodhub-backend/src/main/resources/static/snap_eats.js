@@ -5,9 +5,14 @@ const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+const RESTAURANT_PAGE_SIZE = 12;
+const RETRY_DELAY_MS = 350;
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 let categories = [];
 let restaurants = [];
+let visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
+let restaurantsLoading = false;
 let activeCategory = "all";
 let activeRestaurant = null;
 let activeMenuItems = [];
@@ -40,21 +45,92 @@ let discoveryFilters = {
 };
 const pincodeLookupCache = new Map();
 
+function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildCorrelationId() {
+    const randomPart = Math.random().toString(36).slice(2, 8);
+    return `snap-${Date.now().toString(36)}-${randomPart}`;
+}
+
+function shouldRetryRequest(error, method, attemptIndex, maxRetries) {
+    if (attemptIndex >= maxRetries) {
+        return false;
+    }
+    if (method !== "GET") {
+        return false;
+    }
+    if (error?.networkError) {
+        return true;
+    }
+    return RETRYABLE_STATUS_CODES.has(Number(error?.status));
+}
+
+async function fetchWithRetry(url, options = {}, maxRetries = 2) {
+    const method = String(options.method || "GET").toUpperCase();
+    let attempt = 0;
+    while (true) {
+        try {
+            return await fetch(url, options);
+        } catch (error) {
+            const wrappedError = {
+                networkError: true,
+                message: error?.message || "Network request failed"
+            };
+            if (!shouldRetryRequest(wrappedError, method, attempt, maxRetries)) {
+                throw error;
+            }
+            attempt += 1;
+            await wait(RETRY_DELAY_MS * attempt);
+        }
+    }
+}
+
 async function fetchJson(url, options = {}) {
     const headers = new Headers(options.headers || {});
     if (currentUser?.id) {
         headers.set("X-User-Id", String(currentUser.id));
     }
+    if (!headers.has("X-Correlation-Id")) {
+        headers.set("X-Correlation-Id", buildCorrelationId());
+    }
 
-    const response = await fetch(url, {
+    const requestOptions = {
         ...options,
         headers
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
+    };
+    const maxRetries = Number.isFinite(options.maxRetries) ? Number(options.maxRetries) : 2;
+    const method = String(options.method || "GET").toUpperCase();
+    let attempt = 0;
+
+    while (true) {
+        const response = await fetchWithRetry(url, requestOptions, maxRetries);
+        const responseText = await response.text();
+        let data = {};
+        if (responseText) {
+            try {
+                data = JSON.parse(responseText);
+            } catch {
+                data = { message: responseText };
+            }
+        }
+
+        if (response.ok) {
+            return data;
+        }
+
+        const error = new Error(data.error || data.message || `Request failed with status ${response.status}`);
+        error.status = response.status;
+        error.correlationId = response.headers.get("X-Correlation-Id") || "";
+
+        if (!shouldRetryRequest(error, method, attempt, maxRetries)) {
+            throw error;
+        }
+
+        attempt += 1;
+        await wait(RETRY_DELAY_MS * attempt);
     }
-    return data;
 }
 
 function loadCurrentUser() {
@@ -453,6 +529,7 @@ function updateDiscoveryFilters() {
     const vegOnly = Boolean(document.getElementById("filterVegOnly")?.checked);
 
     discoveryFilters = { minRating, maxEta, maxPriceForTwo, vegOnly };
+    visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
     renderRestaurants();
 }
 
@@ -463,6 +540,7 @@ function clearDiscoveryFilters() {
         maxPriceForTwo: 0,
         vegOnly: false
     };
+    visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
     renderRestaurants();
 }
 
@@ -593,6 +671,8 @@ async function fetchCategories() {
 }
 
 async function fetchRestaurants(category = activeCategory, searchQuery = "") {
+    restaurantsLoading = true;
+    renderRestaurants();
     const params = new URLSearchParams();
     const location = getSelectedLocationFilters();
     if (location.city) {
@@ -608,8 +688,17 @@ async function fetchRestaurants(category = activeCategory, searchQuery = "") {
         params.set("query", searchQuery.trim());
     }
     const endpoint = `${API_BASE_URL}/restaurants/active${params.toString() ? `?${params.toString()}` : ""}`;
-    restaurants = await fetchJson(endpoint);
-    renderRestaurants();
+    try {
+        restaurants = await fetchJson(endpoint);
+        visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
+        clearErrorMessage();
+    } catch (error) {
+        restaurants = [];
+        showErrorMessage(error.message || "Unable to load restaurants right now.");
+    } finally {
+        restaurantsLoading = false;
+        renderRestaurants();
+    }
 }
 
 async function fetchAddresses() {
@@ -706,14 +795,26 @@ function renderCategories() {
 
 function renderRestaurants() {
     const grid = document.getElementById("restaurantsGrid");
+    const footer = document.getElementById("restaurantsFooter");
     if (!grid) {
         return;
     }
     renderDiscoveryFilters();
 
+    if (restaurantsLoading) {
+        grid.innerHTML = `<p class="empty-state">Loading restaurants...</p>`;
+        if (footer) {
+            footer.innerHTML = "";
+        }
+        return;
+    }
+
     if (!restaurants.length) {
         const hasLocation = Boolean(selectedLocation?.label && selectedLocation.label.toLowerCase() !== "other");
         grid.innerHTML = `<p class="empty-state">${hasLocation ? "Not serviceable in this area." : "No restaurants found for this selection."}</p>`;
+        if (footer) {
+            footer.innerHTML = "";
+        }
         return;
     }
 
@@ -735,11 +836,15 @@ function renderRestaurants() {
 
     if (!filteredRestaurants.length) {
         grid.innerHTML = `<p class="empty-state">No restaurants match your selected filters.</p>`;
+        if (footer) {
+            footer.innerHTML = "";
+        }
         return;
     }
 
+    const visibleRestaurants = filteredRestaurants.slice(0, visibleRestaurantCount);
     grid.innerHTML = `
-        ${filteredRestaurants.map((restaurant) => `
+        ${visibleRestaurants.map((restaurant) => `
         <article
             class="restaurant-card"
             role="button"
@@ -778,6 +883,19 @@ function renderRestaurants() {
         </article>
     `).join("")}
     `;
+
+    if (footer) {
+        const hasMore = visibleRestaurantCount < filteredRestaurants.length;
+        footer.innerHTML = `
+            <p class="restaurants-count">Showing ${Math.min(visibleRestaurantCount, filteredRestaurants.length)} of ${filteredRestaurants.length} restaurants</p>
+            ${hasMore ? `<button class="secondary-button restaurants-load-more" type="button" onclick="loadMoreRestaurants()">Load more</button>` : ""}
+        `;
+    }
+}
+
+function loadMoreRestaurants() {
+    visibleRestaurantCount += RESTAURANT_PAGE_SIZE;
+    renderRestaurants();
 }
 
 function isRestaurantFavorite(restaurantId) {
@@ -3304,11 +3422,25 @@ function roundAmount(value) {
 }
 
 function showErrorMessage(message) {
+    const notice = document.getElementById("globalApiNotice");
+    if (notice) {
+        notice.textContent = message || "Something went wrong. Please try again.";
+        notice.classList.add("visible");
+    }
     console.error(message);
+}
+
+function clearErrorMessage() {
+    const notice = document.getElementById("globalApiNotice");
+    if (notice) {
+        notice.textContent = "";
+        notice.classList.remove("visible");
+    }
 }
 
 async function initializeApp() {
     try {
+        clearErrorMessage();
         updateAuthNav();
         updateLocationChip();
         renderDiscoveryFilters();
