@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/users/login",
                                 "/api/users/register",
+                                "/api/users/auth/otp/request",
+                                "/api/users/auth/otp/verify",
                                 "/api/users/forgot-password/request-otp",
                                 "/api/users/forgot-password/reset"
                         ).permitAll()

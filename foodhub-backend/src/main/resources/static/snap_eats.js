@@ -35,6 +35,10 @@ let checkoutPaymentChoice = "CASH";
 let latestOrderSuccess = null;
 let currentUser = loadCurrentUser();
 let authToken = loadAuthToken();
+let otpAuthDraftIdentifier = "";
+let otpAuthDraftName = "";
+let otpAuthCooldownUntil = 0;
+let otpAuthCooldownTimer = null;
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
@@ -49,6 +53,47 @@ const pincodeLookupCache = new Map();
 
 function isAuthenticatedSession() {
     return Boolean(currentUser?.id && authToken);
+}
+
+function getOtpAuthCooldownSeconds() {
+    const remainingMs = otpAuthCooldownUntil - Date.now();
+    if (remainingMs <= 0) {
+        return 0;
+    }
+    return Math.ceil(remainingMs / 1000);
+}
+
+function syncOtpAuthButtonState() {
+    const button = document.getElementById("authOtpSendButton");
+    if (!button) {
+        return;
+    }
+    const remainingSeconds = getOtpAuthCooldownSeconds();
+    button.disabled = remainingSeconds > 0;
+    button.textContent = remainingSeconds > 0 ? `Resend in ${remainingSeconds}s` : "Send OTP";
+}
+
+function startOtpAuthCooldown(seconds = 30) {
+    otpAuthCooldownUntil = Date.now() + (seconds * 1000);
+    if (otpAuthCooldownTimer) {
+        window.clearInterval(otpAuthCooldownTimer);
+    }
+    syncOtpAuthButtonState();
+    otpAuthCooldownTimer = window.setInterval(() => {
+        syncOtpAuthButtonState();
+        if (getOtpAuthCooldownSeconds() <= 0) {
+            window.clearInterval(otpAuthCooldownTimer);
+            otpAuthCooldownTimer = null;
+        }
+    }, 1000);
+}
+
+function updateOtpAuthIdentifier(value) {
+    otpAuthDraftIdentifier = String(value || "").trim();
+}
+
+function updateOtpAuthName(value) {
+    otpAuthDraftName = String(value || "");
 }
 
 function wait(ms) {
@@ -2018,7 +2063,7 @@ function renderAddressBook() {
     }
 }
 
-function renderAuthModal(mode = "login") {
+function renderAuthModal(mode = "otp") {
     const content = document.getElementById("authModalContent");
     if (!content) {
         return;
@@ -2051,14 +2096,20 @@ function renderAuthModal(mode = "login") {
         return;
     }
 
-    const isSignup = mode === "signup";
+    if (mode === "login" || mode === "signup") {
+        mode = "otp";
+    }
+
+    const isOtp = mode === "otp";
     const isForgot = mode === "forgot";
-    const title = isSignup
-        ? "Create your SnapEats account"
-        : (isForgot ? "Reset your password" : "Welcome back");
-    const subtitle = isSignup
-        ? "Sign up to save addresses and track orders."
-        : (isForgot ? "Request OTP and set a new password." : "Log in to manage addresses and order history.");
+    const isPassword = mode === "password";
+    const title = isForgot
+        ? "Reset your password"
+        : (isPassword ? "Password login" : "Login or sign up with OTP");
+    const subtitle = isForgot
+        ? "Request OTP and set a new password."
+        : (isPassword ? "Use password if you already have one." : "Enter your email or phone, verify OTP, and continue.");
+
     const formMarkup = isForgot ? `
             <form class="auth-form" onsubmit="resetPasswordWithOtp(event)">
                 <label>
@@ -2077,18 +2128,8 @@ function renderAuthModal(mode = "login") {
                 <button class="primary-button" type="submit">Reset password</button>
                 <div id="authFeedback" class="checkout-feedback"></div>
             </form>
-    ` : `
-            <form class="auth-form" onsubmit="${isSignup ? "signupUser(event)" : "loginUser(event)"}">
-                ${isSignup ? `
-                    <label>
-                        Full name
-                        <input type="text" id="authName" placeholder="Your full name" required>
-                    </label>
-                    <label>
-                        Phone number
-                        <input type="tel" id="authPhone" placeholder="10-digit phone" required>
-                    </label>
-                ` : ""}
+    ` : isPassword ? `
+            <form class="auth-form" onsubmit="loginUser(event)">
                 <label>
                     Email
                     <input type="email" id="authEmail" placeholder="you@example.com" required>
@@ -2097,8 +2138,39 @@ function renderAuthModal(mode = "login") {
                     Password
                     <input type="password" id="authPassword" placeholder="Enter password" required>
                 </label>
-                <button class="primary-button" type="submit">${isSignup ? "Create account" : "Login"}</button>
-                ${!isSignup ? `<button class="text-button" type="button" onclick="renderAuthModal('forgot')">Forgot password?</button>` : ""}
+                <button class="primary-button" type="submit">Login</button>
+                <button class="text-button" type="button" onclick="renderAuthModal('forgot')">Forgot password?</button>
+                <div id="authFeedback" class="checkout-feedback"></div>
+            </form>
+    ` : `
+            <form class="auth-form" onsubmit="verifyLoginSignupOtp(event)">
+                <label>
+                    Email or phone
+                    <input
+                        type="text"
+                        id="authOtpIdentifier"
+                        placeholder="you@example.com or 9876543210"
+                        value="${escapeAttribute(otpAuthDraftIdentifier)}"
+                        oninput="updateOtpAuthIdentifier(this.value)"
+                        required
+                    >
+                </label>
+                <label>
+                    Full name (for new account)
+                    <input
+                        type="text"
+                        id="authOtpName"
+                        placeholder="Optional for existing users"
+                        value="${escapeAttribute(otpAuthDraftName)}"
+                        oninput="updateOtpAuthName(this.value)"
+                    >
+                </label>
+                <button class="secondary-button" id="authOtpSendButton" type="button" onclick="requestLoginSignupOtp()">Send OTP</button>
+                <label>
+                    OTP
+                    <input type="text" id="authOtpCode" placeholder="6-digit OTP" maxlength="6" required>
+                </label>
+                <button class="primary-button" type="submit">Continue</button>
                 <div id="authFeedback" class="checkout-feedback"></div>
             </form>
     `;
@@ -2114,13 +2186,17 @@ function renderAuthModal(mode = "login") {
             </div>
 
             <div class="auth-tabs">
-                <button class="menu-chip ${mode === "login" ? "active" : ""}" type="button" onclick="renderAuthModal('login')">Login</button>
-                <button class="menu-chip ${mode === "signup" ? "active" : ""}" type="button" onclick="renderAuthModal('signup')">Sign Up</button>
-                <button class="menu-chip ${mode === "forgot" ? "active" : ""}" type="button" onclick="renderAuthModal('forgot')">Forgot</button>
+                <button class="menu-chip ${isOtp ? "active" : ""}" type="button" onclick="renderAuthModal('otp')">OTP</button>
+                <button class="menu-chip ${isForgot ? "active" : ""}" type="button" onclick="renderAuthModal('forgot')">Forgot</button>
+                <button class="menu-chip ${isPassword ? "active" : ""}" type="button" onclick="renderAuthModal('password')">Password</button>
             </div>
 
             ${formMarkup}
         </div>`;
+
+    if (isOtp) {
+        syncOtpAuthButtonState();
+    }
 }
 
 function setAccountSection(section) {
@@ -2773,6 +2849,97 @@ function renderOrdersAccountPanel() {
     `;
 }
 
+async function requestLoginSignupOtp() {
+    const feedback = document.getElementById("authFeedback");
+    const identifierInput = document.getElementById("authOtpIdentifier");
+    const identifier = identifierInput?.value.trim() || otpAuthDraftIdentifier;
+
+    otpAuthDraftIdentifier = identifier;
+    otpAuthDraftName = document.getElementById("authOtpName")?.value || otpAuthDraftName;
+
+    if (!identifier) {
+        if (feedback) {
+            feedback.textContent = "Please enter email or phone number first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    if (getOtpAuthCooldownSeconds() > 0) {
+        return;
+    }
+
+    if (feedback) {
+        feedback.textContent = "Sending OTP...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/users/auth/otp/request`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ identifier })
+        });
+
+        startOtpAuthCooldown(30);
+        const otpInput = document.getElementById("authOtpCode");
+        if (otpInput && response?.devOtp) {
+            otpInput.value = response.devOtp;
+        }
+        if (feedback) {
+            const devOtpText = response?.devOtp ? ` (Demo OTP: ${response.devOtp})` : "";
+            feedback.textContent = `${response?.message || "OTP sent."}${devOtpText}`;
+            feedback.className = "checkout-feedback success";
+        }
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to send OTP.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function verifyLoginSignupOtp(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("authFeedback");
+    const identifier = document.getElementById("authOtpIdentifier")?.value.trim();
+    const otp = document.getElementById("authOtpCode")?.value.trim();
+    const name = document.getElementById("authOtpName")?.value.trim();
+
+    otpAuthDraftIdentifier = identifier || "";
+    otpAuthDraftName = name || "";
+
+    if (feedback) {
+        feedback.textContent = "Verifying OTP...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const authResponse = await fetchJson(`${API_BASE_URL}/users/auth/otp/verify`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ identifier, otp, name })
+        });
+
+        saveAuthToken(authResponse?.token || "");
+        saveCurrentUser(authResponse?.user || authResponse);
+        otpAuthDraftIdentifier = "";
+        otpAuthDraftName = "";
+        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
+        renderAuthModal();
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Invalid OTP.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
 async function loginUser(event) {
     event.preventDefault();
 
@@ -2918,7 +3085,7 @@ async function resetPasswordWithOtp(event) {
             feedback.textContent = response?.message || "Password reset successful.";
             feedback.className = "checkout-feedback success";
         }
-        window.setTimeout(() => renderAuthModal("login"), 900);
+        window.setTimeout(() => renderAuthModal("otp"), 900);
     } catch (error) {
         if (feedback) {
             feedback.textContent = error.message || "Failed to reset password.";

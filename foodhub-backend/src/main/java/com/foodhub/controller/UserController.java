@@ -1,8 +1,10 @@
 package com.foodhub.controller;
 
 import com.foodhub.config.DemoUserDataLoader;
+import com.foodhub.model.AuthOtp;
 import com.foodhub.model.PasswordResetOtp;
 import com.foodhub.model.User;
+import com.foodhub.repository.AuthOtpRepository;
 import com.foodhub.repository.PasswordResetOtpRepository;
 import com.foodhub.repository.UserRepository;
 import com.foodhub.security.JwtService;
@@ -21,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
@@ -33,6 +36,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AuthOtpRepository authOtpRepository;
 
     @Autowired
     private PasswordResetOtpRepository passwordResetOtpRepository;
@@ -158,6 +164,97 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to generate OTP: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/auth/otp/request")
+    public ResponseEntity<?> requestAuthOtp(@RequestBody AuthOtpRequest request) {
+        try {
+            ParsedIdentifier parsedIdentifier = parseIdentifier(request == null ? null : request.identifier);
+            if (parsedIdentifier == null) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Enter a valid email or phone number"));
+            }
+
+            String otp = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
+            List<AuthOtp> activeOtps = authOtpRepository.findByIdentifierKeyAndConsumedFalse(parsedIdentifier.key());
+            for (AuthOtp oldOtp : activeOtps) {
+                oldOtp.setConsumed(true);
+            }
+            if (!activeOtps.isEmpty()) {
+                authOtpRepository.saveAll(activeOtps);
+            }
+
+            AuthOtp authOtp = new AuthOtp();
+            authOtp.setIdentifierKey(parsedIdentifier.key());
+            authOtp.setOtpHash(passwordEncoder.encode(otp));
+            authOtp.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES));
+            authOtp.setConsumed(false);
+            authOtp.setAttemptCount(0);
+            authOtpRepository.save(authOtp);
+
+            if (otpDevReturn) {
+                return ResponseEntity.ok(Map.of(
+                        "message", "OTP generated for sign in.",
+                        "devOtp", otp,
+                        "expiresInMinutes", OTP_EXPIRY_MINUTES
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of("message", "OTP sent successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate OTP: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/auth/otp/verify")
+    public ResponseEntity<?> verifyAuthOtp(@RequestBody AuthOtpVerifyRequest request) {
+        try {
+            ParsedIdentifier parsedIdentifier = parseIdentifier(request == null ? null : request.identifier);
+            if (parsedIdentifier == null || request.otp == null || request.otp.isBlank()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Identifier and OTP are required"));
+            }
+
+            Optional<AuthOtp> otpOptional = authOtpRepository
+                    .findTopByIdentifierKeyAndConsumedFalseOrderByCreatedAtDesc(parsedIdentifier.key());
+            if (otpOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "OTP not found or already used"));
+            }
+
+            AuthOtp otpRecord = otpOptional.get();
+            if (LocalDateTime.now().isAfter(otpRecord.getExpiresAt())) {
+                otpRecord.setConsumed(true);
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "OTP expired. Please request a new OTP."));
+            }
+
+            if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                otpRecord.setConsumed(true);
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "Too many attempts. Request a new OTP."));
+            }
+
+            boolean otpMatches = passwordEncoder.matches(request.otp.trim(), otpRecord.getOtpHash());
+            if (!otpMatches) {
+                otpRecord.setAttemptCount(otpRecord.getAttemptCount() + 1);
+                if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                    otpRecord.setConsumed(true);
+                }
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid OTP"));
+            }
+
+            User user = findUserByIdentifier(parsedIdentifier).orElseGet(() -> createOtpUser(parsedIdentifier, request.name));
+
+            otpRecord.setConsumed(true);
+            authOtpRepository.save(otpRecord);
+
+            return ResponseEntity.ok(buildAuthResponse(user));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to verify OTP: " + e.getMessage()));
         }
     }
 
@@ -522,6 +619,72 @@ public class UserController {
         );
     }
 
+    private Optional<User> findUserByIdentifier(ParsedIdentifier parsedIdentifier) {
+        if (parsedIdentifier.email()) {
+            return userRepository.findByEmail(parsedIdentifier.value());
+        }
+
+        Optional<User> userByNormalized = userRepository.findByPhoneNumber(parsedIdentifier.value());
+        if (userByNormalized.isPresent()) {
+            return userByNormalized;
+        }
+        return userRepository.findByPhoneNumber(parsedIdentifier.raw());
+    }
+
+    private User createOtpUser(ParsedIdentifier parsedIdentifier, String requestedName) {
+        User user = new User();
+        String name = requestedName == null || requestedName.isBlank() ? "SnapEats User" : requestedName.trim();
+        user.setName(name);
+        user.setRole(User.Role.USER);
+        user.setActive(true);
+
+        String generatedPassword = UUID.randomUUID().toString();
+        user.setPassword(passwordEncoder.encode(generatedPassword));
+
+        if (parsedIdentifier.email()) {
+            user.setEmail(parsedIdentifier.value());
+            user.setPhoneNumber(null);
+        } else {
+            user.setPhoneNumber(parsedIdentifier.value());
+            String emailBase = parsedIdentifier.value() + "@otp.snap-eats.local";
+            String email = emailBase;
+            int suffix = 1;
+            while (userRepository.existsByEmail(email)) {
+                email = parsedIdentifier.value() + "+" + suffix + "@otp.snap-eats.local";
+                suffix += 1;
+            }
+            user.setEmail(email);
+        }
+        return userRepository.save(user);
+    }
+
+    private ParsedIdentifier parseIdentifier(String identifierInput) {
+        if (identifierInput == null) {
+            return null;
+        }
+
+        String raw = identifierInput.trim();
+        if (raw.isBlank()) {
+            return null;
+        }
+
+        if (raw.contains("@")) {
+            String normalizedEmail = raw.toLowerCase();
+            return new ParsedIdentifier("email:" + normalizedEmail, normalizedEmail, raw, true);
+        }
+
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.length() < 10) {
+            return null;
+        }
+        if (digits.length() == 12 && digits.startsWith("91")) {
+            digits = digits.substring(2);
+        }
+        return new ParsedIdentifier("phone:" + digits, digits, raw, false);
+    }
+
+    private record ParsedIdentifier(String key, String value, String raw, boolean email) {}
+
     public static class LoginRequest {
         public String email;
         public String password;
@@ -529,6 +692,16 @@ public class UserController {
 
     public static class ForgotPasswordRequest {
         public String email;
+    }
+
+    public static class AuthOtpRequest {
+        public String identifier;
+    }
+
+    public static class AuthOtpVerifyRequest {
+        public String identifier;
+        public String otp;
+        public String name;
     }
 
     public static class ResetPasswordRequest {
