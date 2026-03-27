@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 public class DemoUserDataLoader {
 
     public static final String DEMO_USER_EMAIL = "guest@snap-eats.local";
+    public static final String DEMO_ADMIN_EMAIL = "admin@snap-eats.local";
 
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
@@ -41,6 +42,21 @@ public class DemoUserDataLoader {
             createdUser.setRole(User.Role.USER);
             createdUser.setActive(true);
             return userRepository.save(createdUser);
+        });
+
+        userRepository.findByEmail(DEMO_ADMIN_EMAIL).orElseGet(() -> {
+            User admin = new User();
+            admin.setName("SnapEats Admin");
+            admin.setEmail(DEMO_ADMIN_EMAIL);
+            admin.setPassword(passwordEncoder.encode("admin-pass"));
+            admin.setPhoneNumber("9000000000");
+            admin.setAddress("Admin Control Center, Bengaluru");
+            admin.setCity("Bengaluru");
+            admin.setState("Karnataka");
+            admin.setPincode("560001");
+            admin.setRole(User.Role.ADMIN);
+            admin.setActive(true);
+            return userRepository.save(admin);
         });
 
         if (userAddressRepository.findByUserIdAndActiveTrueOrderByDefaultAddressDescUpdatedAtDesc(user.getId()).isEmpty()) {

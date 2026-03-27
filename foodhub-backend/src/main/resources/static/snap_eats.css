@@ -1993,6 +1993,49 @@ body.modal-open {
     gap: 16px;
 }
 
+.admin-menu-layout {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 18px;
+}
+
+.admin-menu-list-panel,
+.admin-menu-form-panel {
+    border: 1px solid #edf0f3;
+    border-radius: 18px;
+    padding: 16px;
+    background: #fff;
+}
+
+.admin-menu-item-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.admin-menu-item-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.admin-menu-item-card p {
+    margin-top: 6px;
+    color: #686b78;
+    font-size: 13px;
+}
+
+.admin-menu-actions {
+    display: flex;
+    gap: 8px;
+}
+
 .account-placeholder-card.compact {
     min-height: 220px;
 }
@@ -2557,6 +2600,7 @@ body.modal-open {
     .menu-toolbar-meta,
     .cart-layout,
     .address-book-layout,
+    .admin-menu-layout,
     .order-meta-grid,
     .order-success-grid,
     .order-milestone-row,

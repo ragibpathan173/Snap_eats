@@ -2,8 +2,10 @@ package com.foodhub.controller;
 
 import com.foodhub.model.MenuItem;
 import com.foodhub.model.Restaurant;
+import com.foodhub.model.User;
 import com.foodhub.repository.MenuItemRepository;
 import com.foodhub.repository.RestaurantRepository;
+import com.foodhub.repository.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -30,11 +32,20 @@ public class MenuItemController {
     @Autowired
     private RestaurantRepository restaurantRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     // ===== CREATE =====
     
     @PostMapping
-    public ResponseEntity<?> createMenuItem(@Valid @RequestBody MenuItem menuItem) {
+    public ResponseEntity<?> createMenuItem(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                            @Valid @RequestBody MenuItem menuItem) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             // Verify restaurant exists
             if (!restaurantRepository.existsById(menuItem.getRestaurantId())) {
                 return ResponseEntity.badRequest()
@@ -376,8 +387,14 @@ public class MenuItemController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateMenuItem(
             @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @Valid @RequestBody MenuItem menuItemDetails) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             Optional<MenuItem> optionalMenuItem = menuItemRepository.findById(id);
             
             if (optionalMenuItem.isEmpty()) {
@@ -474,8 +491,14 @@ public class MenuItemController {
     @PatchMapping("/{id}/availability")
     public ResponseEntity<?> updateAvailability(
             @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @RequestParam Boolean available) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             if (!menuItemRepository.existsById(id)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Menu item not found with id: " + id));
@@ -496,8 +519,14 @@ public class MenuItemController {
     @PatchMapping("/{id}/stock")
     public ResponseEntity<?> updateStock(
             @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
             @RequestParam Integer quantity) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             if (!menuItemRepository.existsById(id)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Menu item not found with id: " + id));
@@ -516,8 +545,14 @@ public class MenuItemController {
     // ===== DELETE =====
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMenuItem(@PathVariable Long id) {
+    public ResponseEntity<?> deleteMenuItem(@PathVariable Long id,
+                                            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             if (!menuItemRepository.existsById(id)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "Menu item not found with id: " + id));
@@ -534,8 +569,14 @@ public class MenuItemController {
     // ===== DELETE - By Restaurant =====
     
     @DeleteMapping("/restaurant/{restaurantId}")
-    public ResponseEntity<?> deleteMenuItemsByRestaurant(@PathVariable Long restaurantId) {
+    public ResponseEntity<?> deleteMenuItemsByRestaurant(@PathVariable Long restaurantId,
+                                                         @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             menuItemRepository.deleteByRestaurantId(restaurantId);
             return ResponseEntity.ok(Map.of("message", "All menu items deleted for restaurant: " + restaurantId));
         } catch (Exception e) {
@@ -566,8 +607,14 @@ public class MenuItemController {
     // ===== BULK OPERATIONS =====
     
     @PatchMapping("/restaurant/{restaurantId}/activate")
-    public ResponseEntity<?> activateAllItems(@PathVariable Long restaurantId) {
+    public ResponseEntity<?> activateAllItems(@PathVariable Long restaurantId,
+                                              @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             menuItemRepository.activateAllByRestaurantId(restaurantId);
             return ResponseEntity.ok(Map.of("message", "All menu items activated for restaurant: " + restaurantId));
         } catch (Exception e) {
@@ -577,8 +624,14 @@ public class MenuItemController {
     }
 
     @PatchMapping("/restaurant/{restaurantId}/deactivate")
-    public ResponseEntity<?> deactivateAllItems(@PathVariable Long restaurantId) {
+    public ResponseEntity<?> deactivateAllItems(@PathVariable Long restaurantId,
+                                                @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         try {
+            ResponseEntity<?> adminError = validateAdminAccess(userId);
+            if (adminError != null) {
+                return adminError;
+            }
+
             menuItemRepository.deactivateAllByRestaurantId(restaurantId);
             return ResponseEntity.ok(Map.of("message", "All menu items deactivated for restaurant: " + restaurantId));
         } catch (Exception e) {
@@ -594,5 +647,22 @@ public class MenuItemController {
         response.put("totalItems", menuItems.getTotalElements());
         response.put("totalPages", menuItems.getTotalPages());
         return response;
+    }
+
+    private ResponseEntity<?> validateAdminAccess(Long userId) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Admin login required"));
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || !Boolean.TRUE.equals(user.getActive())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "User not found or inactive"));
+        }
+
+        if (user.getRole() != User.Role.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Admin access required"));
+        }
+
+        return null;
     }
 }

@@ -12,6 +12,12 @@ let activeCategory = "all";
 let activeRestaurant = null;
 let activeMenuItems = [];
 let savedAddresses = [];
+let adminRestaurants = [];
+let adminSelectedRestaurantId = null;
+let adminMenuItems = [];
+let adminMenuLoading = false;
+let adminMenuError = "";
+let adminEditingMenuItemId = null;
 let favoriteRestaurants = [];
 let favoriteMenuItems = [];
 let savedPaymentMethods = [];
@@ -46,7 +52,7 @@ async function fetchJson(url, options = {}) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-        throw new Error(data.error || `Request failed with status ${response.status}`);
+        throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
     }
     return data;
 }
@@ -602,7 +608,6 @@ async function fetchRestaurants(category = activeCategory, searchQuery = "") {
         params.set("query", searchQuery.trim());
     }
     const endpoint = `${API_BASE_URL}/restaurants/active${params.toString() ? `?${params.toString()}` : ""}`;
-
     restaurants = await fetchJson(endpoint);
     renderRestaurants();
 }
@@ -1865,6 +1870,9 @@ function renderAuthModal(mode = "login") {
     }
 
     if (currentUser) {
+        if (activeAccountSection === "admin" && !isAdminUser()) {
+            activeAccountSection = "orders";
+        }
         content.innerHTML = `
             <div class="account-shell">
                 <section class="account-hero">
@@ -1931,6 +1939,9 @@ function renderAuthModal(mode = "login") {
 function setAccountSection(section) {
     activeAccountSection = section;
     renderAuthModal();
+    if (section === "admin" && isAdminUser() && !adminRestaurants.length) {
+        loadAdminRestaurants();
+    }
 }
 
 function renderAccountSidebar() {
@@ -1942,6 +1953,9 @@ function renderAccountSidebar() {
         { id: "addresses", label: "Addresses", icon: "⌖" },
         { id: "settings", label: "Settings", icon: "⚙" }
     ];
+    if (isAdminUser()) {
+        items.splice(1, 0, { id: "admin", label: "Admin", icon: "⛨" });
+    }
 
     return items.map((item) => `
         <button
@@ -1955,9 +1969,121 @@ function renderAccountSidebar() {
     `).join("");
 }
 
+function renderAdminPanel() {
+    if (!isAdminUser()) {
+        return `
+            <div class="account-panel">
+                <h3>Admin access required</h3>
+                <p class="account-panel-copy">Only admin users can manage menus.</p>
+            </div>
+        `;
+    }
+
+    const selectedRestaurant = adminRestaurants.find((restaurant) => restaurant.id === adminSelectedRestaurantId) || null;
+    const editingItem = adminEditingMenuItemId
+        ? adminMenuItems.find((item) => item.id === adminEditingMenuItemId) || null
+        : null;
+
+    return `
+        <div class="account-panel">
+            <div class="account-panel-head">
+                <div>
+                    <p class="menu-eyebrow">Admin</p>
+                    <h3>Menu operations</h3>
+                    <p class="account-panel-copy">Add, edit, and delete menu items by restaurant.</p>
+                </div>
+                <button class="secondary-button" type="button" onclick="loadAdminRestaurants()">Refresh</button>
+            </div>
+
+            ${adminMenuError ? `<div class="checkout-feedback error">${escapeHtml(adminMenuError)}</div>` : ""}
+
+            <div class="admin-menu-layout">
+                <section class="admin-menu-list-panel">
+                    <label class="account-form-field account-form-field-full">
+                        <span>Restaurant</span>
+                        <select id="adminRestaurantSelect" onchange="setAdminRestaurant(this.value)">
+                            ${adminRestaurants.map((restaurant) => `
+                                <option value="${restaurant.id}" ${restaurant.id === adminSelectedRestaurantId ? "selected" : ""}>
+                                    ${escapeHtml(restaurant.name)} (${escapeHtml(restaurant.locality || restaurant.city || "N/A")})
+                                </option>
+                            `).join("")}
+                        </select>
+                    </label>
+
+                    ${adminMenuLoading ? `<div class="account-placeholder-card compact"><p>Loading menu items...</p></div>` : `
+                        <div class="admin-menu-item-list">
+                            ${adminMenuItems.length ? adminMenuItems.map((item) => `
+                                <article class="admin-menu-item-card">
+                                    <div>
+                                        <strong>${escapeHtml(item.name)}</strong>
+                                        <p>${escapeHtml(item.category || "General")} · ${formatCurrency(item.price)}</p>
+                                    </div>
+                                    <div class="admin-menu-actions">
+                                        <button class="secondary-button" type="button" onclick="startAdminMenuEdit(${item.id})">Edit</button>
+                                        <button class="text-button danger-button" type="button" onclick="deleteAdminMenuItem(${item.id})">Delete</button>
+                                    </div>
+                                </article>
+                            `).join("") : `<div class="account-placeholder-card compact"><p>No menu items found for this restaurant.</p></div>`}
+                        </div>
+                    `}
+                </section>
+
+                <section class="admin-menu-form-panel">
+                    <div class="payment-form-header">
+                        <strong>${editingItem ? "Edit menu item" : "Add menu item"}</strong>
+                        <p>${selectedRestaurant ? `Managing ${escapeHtml(selectedRestaurant.name)}` : "Select a restaurant to start."}</p>
+                    </div>
+                    <form class="account-settings-form" onsubmit="saveAdminMenuItem(event)">
+                        <label class="account-form-field account-form-field-full">
+                            <span>Name</span>
+                            <input id="adminMenuName" type="text" value="${escapeAttribute(editingItem?.name || "")}" required>
+                        </label>
+                        <div class="account-stat-grid">
+                            <label class="account-form-field">
+                                <span>Category</span>
+                                <input id="adminMenuCategory" type="text" value="${escapeAttribute(editingItem?.category || "")}" placeholder="main course" required>
+                            </label>
+                            <label class="account-form-field">
+                                <span>Price</span>
+                                <input id="adminMenuPrice" type="number" min="1" step="0.01" value="${escapeAttribute(editingItem?.price || "")}" required>
+                            </label>
+                        </div>
+                        <label class="account-form-field account-form-field-full">
+                            <span>Description</span>
+                            <textarea id="adminMenuDescription" rows="3" placeholder="Menu item description">${escapeHtml(editingItem?.description || "")}</textarea>
+                        </label>
+                        <label class="account-form-field account-form-field-full">
+                            <span>Image URL</span>
+                            <input id="adminMenuImage" type="url" value="${escapeAttribute(editingItem?.image || "")}" placeholder="https://...">
+                        </label>
+                        <div class="account-stat-grid">
+                            <label class="address-default-toggle">
+                                <input id="adminMenuVeg" type="checkbox" ${editingItem?.vegetarian ? "checked" : ""}>
+                                <span>Vegetarian</span>
+                            </label>
+                            <label class="address-default-toggle">
+                                <input id="adminMenuAvailable" type="checkbox" ${editingItem ? (editingItem.available ? "checked" : "") : "checked"}>
+                                <span>Available</span>
+                            </label>
+                        </div>
+                        <div class="auth-actions">
+                            <button class="primary-button" type="submit">${editingItem ? "Update item" : "Create item"}</button>
+                            ${editingItem ? `<button class="secondary-button" type="button" onclick="resetAdminMenuForm()">Cancel edit</button>` : ""}
+                        </div>
+                        <div id="adminMenuFeedback" class="checkout-feedback"></div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    `;
+}
+
 function renderAccountPanel() {
     if (activeAccountSection === "orders") {
         return renderOrdersAccountPanel();
+    }
+    if (activeAccountSection === "admin") {
+        return renderAdminPanel();
     }
     if (activeAccountSection === "subscription") {
         return `
@@ -2220,6 +2346,161 @@ function renderAccountPanel() {
             </div>
         </div>
     `;
+}
+
+function isAdminUser() {
+    return currentUser?.role === "ADMIN";
+}
+
+async function loadAdminRestaurants() {
+    if (!isAdminUser()) {
+        return;
+    }
+
+    adminMenuLoading = true;
+    adminMenuError = "";
+    renderAuthModal();
+    try {
+        const payload = await fetchJson(`${API_BASE_URL}/restaurants/active`);
+        adminRestaurants = Array.isArray(payload) ? payload : [];
+        if (!adminSelectedRestaurantId && adminRestaurants.length) {
+            adminSelectedRestaurantId = adminRestaurants[0].id;
+        }
+        await loadAdminMenuItems(adminSelectedRestaurantId);
+    } catch (error) {
+        adminMenuError = error.message || "Failed to load admin restaurant data.";
+    } finally {
+        adminMenuLoading = false;
+        renderAuthModal();
+    }
+}
+
+async function loadAdminMenuItems(restaurantId = adminSelectedRestaurantId) {
+    if (!isAdminUser() || !restaurantId) {
+        adminMenuItems = [];
+        return;
+    }
+
+    adminMenuLoading = true;
+    adminMenuError = "";
+    renderAuthModal();
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/menu-items/restaurant/${restaurantId}?activeOnly=false&availableOnly=false&page=0&size=300`);
+        adminMenuItems = Array.isArray(response?.items) ? response.items : [];
+    } catch (error) {
+        adminMenuError = error.message || "Failed to load menu items.";
+        adminMenuItems = [];
+    } finally {
+        adminMenuLoading = false;
+        renderAuthModal();
+    }
+}
+
+function setAdminRestaurant(restaurantId) {
+    adminSelectedRestaurantId = Number(restaurantId) || null;
+    adminEditingMenuItemId = null;
+    loadAdminMenuItems(adminSelectedRestaurantId);
+}
+
+function startAdminMenuEdit(menuItemId) {
+    adminEditingMenuItemId = menuItemId;
+    renderAuthModal();
+}
+
+function resetAdminMenuForm() {
+    adminEditingMenuItemId = null;
+    renderAuthModal();
+}
+
+async function saveAdminMenuItem(event) {
+    event.preventDefault();
+    if (!isAdminUser()) {
+        return;
+    }
+
+    const feedback = document.getElementById("adminMenuFeedback");
+    const restaurantId = Number(document.getElementById("adminRestaurantSelect")?.value || adminSelectedRestaurantId);
+    const name = document.getElementById("adminMenuName")?.value.trim();
+    const category = document.getElementById("adminMenuCategory")?.value.trim();
+    const price = Number(document.getElementById("adminMenuPrice")?.value || 0);
+    const description = document.getElementById("adminMenuDescription")?.value.trim();
+    const image = document.getElementById("adminMenuImage")?.value.trim();
+    const vegetarian = Boolean(document.getElementById("adminMenuVeg")?.checked);
+    const available = Boolean(document.getElementById("adminMenuAvailable")?.checked);
+
+    if (!restaurantId || !name || !price) {
+        if (feedback) {
+            feedback.textContent = "Restaurant, item name, and price are required.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    if (feedback) {
+        feedback.textContent = adminEditingMenuItemId ? "Updating menu item..." : "Creating menu item...";
+        feedback.className = "checkout-feedback";
+    }
+
+    const payload = {
+        restaurantId,
+        name,
+        category: category || "main course",
+        price,
+        description: description || "",
+        image: image || "",
+        vegetarian,
+        available,
+        active: true
+    };
+
+    try {
+        if (adminEditingMenuItemId) {
+            await fetchJson(`${API_BASE_URL}/menu-items/${adminEditingMenuItemId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            await fetchJson(`${API_BASE_URL}/menu-items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        adminEditingMenuItemId = null;
+        if (feedback) {
+            feedback.textContent = "Menu item saved successfully.";
+            feedback.className = "checkout-feedback success";
+        }
+        await loadAdminMenuItems(restaurantId);
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to save menu item.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function deleteAdminMenuItem(menuItemId) {
+    if (!isAdminUser()) {
+        return;
+    }
+    const shouldDelete = window.confirm("Delete this menu item?");
+    if (!shouldDelete) {
+        return;
+    }
+
+    try {
+        await fetchJson(`${API_BASE_URL}/menu-items/${menuItemId}`, { method: "DELETE" });
+        adminMenuItems = adminMenuItems.filter((item) => item.id !== menuItemId);
+        if (adminEditingMenuItemId === menuItemId) {
+            adminEditingMenuItemId = null;
+        }
+        renderAuthModal();
+    } catch (error) {
+        alert(error.message || "Failed to delete menu item.");
+    }
 }
 
 async function saveProfileSettings(event) {
