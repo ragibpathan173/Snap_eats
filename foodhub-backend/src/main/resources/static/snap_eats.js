@@ -12,9 +12,14 @@ let activeRestaurant = null;
 let activeMenuItems = [];
 let savedAddresses = [];
 let favoriteRestaurants = [];
+let favoriteMenuItems = [];
+let savedPaymentMethods = [];
 let editingAddressId = null;
 let orderHistory = [];
 let activeAccountSection = "orders";
+let paymentFormType = "CARD";
+let checkoutPaymentChoice = "CASH";
+let latestOrderSuccess = null;
 let currentUser = loadCurrentUser();
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
@@ -186,12 +191,66 @@ function getDefaultAddress() {
     return savedAddresses.find((address) => address.defaultAddress) || null;
 }
 
+function getDefaultSavedPaymentMethod() {
+    return savedPaymentMethods.find((method) => method.defaultMethod) || savedPaymentMethods[0] || null;
+}
+
 function getAddressById(addressId) {
     return savedAddresses.find((address) => address.id === addressId) || null;
 }
 
 function getCartItemQuantity(itemId) {
     return cart.items.find((item) => item.itemId === itemId)?.quantity || 0;
+}
+
+function ensureCheckoutPaymentChoice() {
+    if (!savedPaymentMethods.length) {
+        checkoutPaymentChoice = "CASH";
+        return;
+    }
+
+    const hasSelectedSavedMethod = savedPaymentMethods.some((method) => `saved:${method.id}` === checkoutPaymentChoice);
+    if (checkoutPaymentChoice === "CASH" || hasSelectedSavedMethod) {
+        return;
+    }
+
+    const defaultMethod = getDefaultSavedPaymentMethod();
+    checkoutPaymentChoice = defaultMethod ? `saved:${defaultMethod.id}` : "CASH";
+}
+
+function setCheckoutPaymentChoice(choice) {
+    checkoutPaymentChoice = choice;
+    renderCart();
+}
+
+function getCheckoutPaymentSelection() {
+    ensureCheckoutPaymentChoice();
+
+    if (checkoutPaymentChoice === "CASH") {
+        return {
+            type: "CASH",
+            label: "Cash on delivery"
+        };
+    }
+
+    const selectedMethod = savedPaymentMethods.find((method) => `saved:${method.id}` === checkoutPaymentChoice);
+    if (!selectedMethod) {
+        return {
+            type: "CASH",
+            label: "Cash on delivery"
+        };
+    }
+
+    return {
+        type: selectedMethod.methodType,
+        label: formatPaymentMethodLabel(selectedMethod),
+        methodId: selectedMethod.id
+    };
+}
+
+function setPaymentFormType(type) {
+    paymentFormType = type;
+    renderAuthModal();
 }
 
 function getLocationSuggestions(query = "") {
@@ -384,6 +443,35 @@ async function fetchFavoriteRestaurants() {
         favoriteRestaurants = [];
     }
     renderRestaurants();
+    if (currentUser) {
+        renderAuthModal();
+    }
+}
+
+async function fetchFavoriteMenuItems() {
+    try {
+        const favorites = await fetchJson(`${API_BASE_URL}/favorites/menu-items`);
+        favoriteMenuItems = Array.isArray(favorites) ? favorites : [];
+    } catch {
+        favoriteMenuItems = [];
+    }
+    if (activeRestaurant) {
+        renderMenuModal();
+    }
+    if (currentUser) {
+        renderAuthModal();
+    }
+}
+
+async function fetchPaymentMethods() {
+    try {
+        const methods = await fetchJson(`${API_BASE_URL}/payments/methods`);
+        savedPaymentMethods = Array.isArray(methods) ? methods : [];
+    } catch {
+        savedPaymentMethods = [];
+    }
+    ensureCheckoutPaymentChoice();
+    renderCart();
     if (currentUser) {
         renderAuthModal();
     }
@@ -599,6 +687,14 @@ function renderMenuModal(filter = "all") {
                         <div class="menu-item-topline">
                             <span class="menu-item-category">${escapeHtml(item.category || "Special")}</span>
                             ${item.bestSeller ? '<span class="menu-badge">Popular</span>' : ""}
+                            <button
+                                class="menu-favorite-toggle ${isMenuItemFavorite(item.itemId) ? "active" : ""}"
+                                type="button"
+                                onclick="toggleMenuItemFavorite(event, '${escapeAttribute(item.itemId)}')"
+                                aria-label="${isMenuItemFavorite(item.itemId) ? "Remove from favorites" : "Add to favorites"}"
+                            >
+                                ${isMenuItemFavorite(item.itemId) ? "♥" : "♡"}
+                            </button>
                         </div>
                         <h3>${escapeHtml(item.name)}</h3>
                         <p>${escapeHtml(item.description || "Freshly prepared and ready to order.")}</p>
@@ -617,6 +713,32 @@ function renderMenuModal(filter = "all") {
             `).join("")}
         </section>
     `;
+}
+
+function isMenuItemFavorite(itemId) {
+    return favoriteMenuItems.some((item) => item.itemId === itemId);
+}
+
+async function toggleMenuItemFavorite(event, itemId) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    try {
+        if (isMenuItemFavorite(itemId)) {
+            await fetchJson(`${API_BASE_URL}/favorites/menu-items/${encodeURIComponent(itemId)}`, {
+                method: "DELETE"
+            });
+        } else {
+            await fetchJson(`${API_BASE_URL}/favorites/menu-items/${encodeURIComponent(itemId)}`, {
+                method: "POST"
+            });
+        }
+        await fetchFavoriteMenuItems();
+    } catch (error) {
+        alert(error.message || "Failed to update favorite dish.");
+    }
 }
 
 function renderMenuItemCartAction(item) {
@@ -704,6 +826,11 @@ function openCart(event) {
 
     modal.classList.add("open");
     document.body.classList.add("modal-open");
+    renderCart();
+}
+
+function dismissOrderSuccess() {
+    latestOrderSuccess = null;
     renderCart();
 }
 
@@ -961,6 +1088,57 @@ function renderCart() {
         return;
     }
 
+    ensureCheckoutPaymentChoice();
+
+    if (latestOrderSuccess && !cart.items.length) {
+        const successTimeline = buildSuccessTimeline(latestOrderSuccess.order);
+        content.innerHTML = `
+            <div class="cart-shell order-success-shell">
+                <div class="order-success-card">
+                    <div class="order-success-badge">Order placed</div>
+                    <h2>${escapeHtml(latestOrderSuccess.order.restaurantName || "Your order is confirmed")}</h2>
+                    <p class="order-success-copy">
+                        Order <strong>${escapeHtml(latestOrderSuccess.order.orderNumber || "")}</strong> is confirmed and headed to
+                        <strong>${escapeHtml(latestOrderSuccess.addressLabel || "your address")}</strong>.
+                    </p>
+                    <div class="order-success-grid">
+                        <div class="account-card">
+                            <span>ETA</span>
+                            <strong>${escapeHtml(getEtaLabel(latestOrderSuccess.order))}</strong>
+                        </div>
+                        <div class="account-card">
+                            <span>Payment</span>
+                            <strong>${escapeHtml(latestOrderSuccess.paymentLabel || "Cash on delivery")}</strong>
+                        </div>
+                        <div class="account-card">
+                            <span>Total paid</span>
+                            <strong>${formatCurrency(latestOrderSuccess.order.finalAmount)}</strong>
+                        </div>
+                        <div class="account-card">
+                            <span>Items</span>
+                            <strong>${latestOrderSuccess.itemCount} item${latestOrderSuccess.itemCount === 1 ? "" : "s"}</strong>
+                        </div>
+                    </div>
+                    <div class="order-success-timeline">
+                        ${successTimeline.map((step) => `
+                            <div class="order-success-step ${step.active ? "active" : ""}">
+                                <span class="order-success-step-dot"></span>
+                                <div>
+                                    <strong>${escapeHtml(step.title)}</strong>
+                                    <p>${escapeHtml(step.copy)}</p>
+                                </div>
+                            </div>
+                        `).join("")}
+                    </div>
+                    <div class="order-success-actions">
+                        <button class="primary-button" type="button" onclick="dismissOrderSuccess(); openOrders()">Track this order</button>
+                        <button class="secondary-button" type="button" onclick="dismissOrderSuccess()">Continue browsing</button>
+                    </div>
+                </div>
+            </div>`;
+        return;
+    }
+
     if (!cart.items.length) {
         content.innerHTML = `
             <div class="cart-shell">
@@ -1033,15 +1211,47 @@ function renderCart() {
                     </section>
 
                     <form class="checkout-form" onsubmit="submitOrder(event)">
-                        <label>
-                            Payment method
-                            <select id="checkoutPayment">
-                                <option value="CASH">Cash on delivery</option>
-                                <option value="UPI">UPI</option>
-                                <option value="CARD">Card</option>
-                                <option value="WALLET">Wallet</option>
-                            </select>
-                        </label>
+                        <div class="checkout-payment-section">
+                            <div class="checkout-payment-head">
+                                <div>
+                                    <p class="menu-eyebrow">Payment</p>
+                                    <h3>Choose how you want to pay</h3>
+                                </div>
+                                <button class="secondary-button" type="button" onclick="openAuthModal(); setAccountSection('payments')">Manage payments</button>
+                            </div>
+                            <div class="checkout-payment-list">
+                                ${savedPaymentMethods.map((method) => `
+                                    <label class="checkout-payment-card ${checkoutPaymentChoice === `saved:${method.id}` ? "selected" : ""}">
+                                        <input
+                                            type="radio"
+                                            name="checkoutPaymentChoice"
+                                            value="saved:${method.id}"
+                                            ${checkoutPaymentChoice === `saved:${method.id}` ? "checked" : ""}
+                                            onchange="setCheckoutPaymentChoice(this.value)"
+                                        >
+                                        <div>
+                                            <strong>${escapeHtml(formatPaymentMethodLabel(method))}</strong>
+                                            <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
+                                        </div>
+                                        <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
+                                    </label>
+                                `).join("")}
+                                <label class="checkout-payment-card ${checkoutPaymentChoice === "CASH" ? "selected" : ""}">
+                                    <input
+                                        type="radio"
+                                        name="checkoutPaymentChoice"
+                                        value="CASH"
+                                        ${checkoutPaymentChoice === "CASH" ? "checked" : ""}
+                                        onchange="setCheckoutPaymentChoice(this.value)"
+                                    >
+                                    <div>
+                                        <strong>Cash on delivery</strong>
+                                        <p>Pay in cash when your order arrives.</p>
+                                    </div>
+                                    <span class="payment-type-pill">Cash</span>
+                                </label>
+                            </div>
+                        </div>
                         <label>
                             Notes
                             <textarea id="checkoutNotes" rows="2" placeholder="Add delivery notes (optional)"></textarea>
@@ -1301,7 +1511,7 @@ function renderAccountPanel() {
                 <p class="menu-eyebrow">Favorites</p>
                 <h3>Your favorite picks</h3>
                 <p class="account-panel-copy">Save restaurants and dishes you love so they stay one tap away.</p>
-                ${favoriteRestaurants.length ? `
+                ${favoriteRestaurants.length || favoriteMenuItems.length ? `
                     <div class="favorite-restaurant-grid">
                         ${favoriteRestaurants.map((restaurant) => `
                             <article class="favorite-restaurant-card">
@@ -1321,34 +1531,140 @@ function renderAccountPanel() {
                             </article>
                         `).join("")}
                     </div>
+                    ${favoriteMenuItems.length ? `
+                        <div class="favorite-section-divider"></div>
+                        <div class="favorite-dish-grid">
+                            ${favoriteMenuItems.map((item) => `
+                                <article class="favorite-dish-card">
+                                    <img src="${item.image || item.restaurantImage || ""}" alt="${escapeHtml(item.name)}" class="favorite-dish-image">
+                                    <div class="favorite-dish-copy">
+                                        <p class="favorite-dish-restaurant">${escapeHtml(item.restaurantName)}</p>
+                                        <h4>${escapeHtml(item.name)}</h4>
+                                        <p>${escapeHtml(item.description || "Saved favorite dish")}</p>
+                                        <div class="favorite-dish-meta">
+                                            <span>${formatCurrency(item.price)}</span>
+                                            ${item.vegetarian ? '<span class="diet-pill">Veg</span>' : ""}
+                                            ${item.vegan ? '<span class="diet-pill">Vegan</span>' : ""}
+                                        </div>
+                                    </div>
+                                    <div class="favorite-dish-actions">
+                                        <button class="secondary-button" type="button" onclick="closeAuthModal(); openRestaurantMenu('${escapeAttribute(item.restaurantId)}')">Open restaurant</button>
+                                        <button class="text-button danger-button" type="button" onclick="removeFavoriteMenuItemFromAccount('${escapeAttribute(item.itemId)}')">Remove</button>
+                                    </div>
+                                </article>
+                            `).join("")}
+                        </div>
+                    ` : ""}
                 ` : `
                     <div class="account-placeholder-card">
                         <strong>No favorites saved yet</strong>
-                        <p>Tap the heart on any restaurant card to save it here.</p>
+                        <p>Tap the heart on any restaurant or dish to save it here.</p>
                     </div>
                 `}
             </div>
         `;
     }
     if (activeAccountSection === "payments") {
+        const defaultMethod = getDefaultSavedPaymentMethod();
+        const savedCardsCount = savedPaymentMethods.filter((method) => method.methodType === "CARD").length;
         return `
             <div class="account-panel">
-                <p class="menu-eyebrow">Payments</p>
-                <h3>Payment methods</h3>
-                <p class="account-panel-copy">Manage cards, wallets, and UPI methods for faster checkout.</p>
+                <div class="account-panel-head">
+                    <div>
+                        <p class="menu-eyebrow">Payments</p>
+                        <h3>Payment methods</h3>
+                        <p class="account-panel-copy">Save cards, wallets, and UPI handles so checkout is faster.</p>
+                    </div>
+                </div>
                 <div class="account-stat-grid">
                     <div class="account-card">
                         <span>Default method</span>
-                        <strong>Cash on delivery</strong>
+                        <strong>${defaultMethod ? escapeHtml(formatPaymentMethodLabel(defaultMethod)) : "Cash on delivery"}</strong>
                     </div>
                     <div class="account-card">
-                        <span>Saved cards</span>
-                        <strong>0 cards</strong>
+                        <span>Saved methods</span>
+                        <strong>${savedPaymentMethods.length} total · ${savedCardsCount} cards</strong>
                     </div>
                 </div>
-                <div class="account-placeholder-card">
-                    <strong>No digital methods saved</strong>
-                    <p>We can connect this section to real payment storage later.</p>
+                <div class="payment-management-grid">
+                    <section class="payment-method-list">
+                        ${savedPaymentMethods.length ? savedPaymentMethods.map((method) => `
+                            <article class="payment-method-card ${method.defaultMethod ? "default" : ""}">
+                                <div class="payment-method-top">
+                                    <div>
+                                        <div class="payment-method-label-row">
+                                            <h4>${escapeHtml(formatPaymentMethodLabel(method))}</h4>
+                                            <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
+                                        </div>
+                                        <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
+                                    </div>
+                                    ${method.defaultMethod ? '<span class="address-default-pill">Default</span>' : ""}
+                                </div>
+                                <div class="payment-method-actions">
+                                    ${method.defaultMethod ? "" : `<button class="secondary-button" type="button" onclick="markPaymentMethodDefault(${method.id})">Set default</button>`}
+                                    <button class="text-button danger-button" type="button" onclick="deletePaymentMethod(${method.id})">Remove</button>
+                                </div>
+                            </article>
+                        `).join("") : `
+                            <div class="account-placeholder-card compact">
+                                <strong>No digital methods saved</strong>
+                                <p>Add a card, UPI ID, or wallet here and it will show up during checkout too.</p>
+                            </div>
+                        `}
+                    </section>
+
+                    <section class="payment-form-panel">
+                        <div class="payment-form-header">
+                            <strong>Add a payment method</strong>
+                            <p>Only masked card details are stored. Full card numbers are never saved.</p>
+                        </div>
+                        <form class="account-settings-form payment-settings-form" onsubmit="savePaymentMethod(event)">
+                            <label class="account-form-field account-form-field-full">
+                                <span>Method type</span>
+                                <select id="paymentType" onchange="setPaymentFormType(this.value)">
+                                    <option value="CARD" ${paymentFormType === "CARD" ? "selected" : ""}>Card</option>
+                                    <option value="UPI" ${paymentFormType === "UPI" ? "selected" : ""}>UPI</option>
+                                    <option value="WALLET" ${paymentFormType === "WALLET" ? "selected" : ""}>Wallet</option>
+                                </select>
+                            </label>
+                            ${paymentFormType === "CARD" ? `
+                                <label class="account-form-field">
+                                    <span>Card holder</span>
+                                    <input id="paymentCardHolder" type="text" placeholder="Name on card" required>
+                                </label>
+                                <label class="account-form-field">
+                                    <span>Card number</span>
+                                    <input id="paymentCardNumber" type="text" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" required>
+                                </label>
+                                <label class="account-form-field">
+                                    <span>Expiry month</span>
+                                    <input id="paymentExpiryMonth" type="text" inputmode="numeric" maxlength="2" placeholder="MM" required>
+                                </label>
+                                <label class="account-form-field">
+                                    <span>Expiry year</span>
+                                    <input id="paymentExpiryYear" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" required>
+                                </label>
+                            ` : ""}
+                            ${paymentFormType === "UPI" ? `
+                                <label class="account-form-field account-form-field-full">
+                                    <span>UPI ID</span>
+                                    <input id="paymentUpiId" type="text" placeholder="name@upi" required>
+                                </label>
+                            ` : ""}
+                            ${paymentFormType === "WALLET" ? `
+                                <label class="account-form-field account-form-field-full">
+                                    <span>Wallet provider</span>
+                                    <input id="paymentWalletProvider" type="text" placeholder="Paytm, PhonePe, Amazon Pay..." required>
+                                </label>
+                            ` : ""}
+                            <label class="address-default-toggle payment-default-toggle account-form-field-full">
+                                <input id="paymentDefault" type="checkbox" ${!savedPaymentMethods.length ? "checked" : ""}>
+                                <span>Make this my default digital method</span>
+                            </label>
+                            <button class="primary-button" type="submit">Save payment method</button>
+                            <div id="paymentFeedback" class="checkout-feedback"></div>
+                        </form>
+                    </section>
                 </div>
             </div>
         `;
@@ -1544,7 +1860,7 @@ async function loginUser(event) {
         });
 
         saveCurrentUser(user);
-        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants()]);
+        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
         renderAuthModal();
     } catch (error) {
         if (feedback) {
@@ -1585,6 +1901,9 @@ async function signupUser(event) {
         savedAddresses = [];
         orderHistory = [];
         favoriteRestaurants = [];
+        favoriteMenuItems = [];
+        savedPaymentMethods = [];
+        checkoutPaymentChoice = "CASH";
         renderCart();
         renderOrders();
         renderRestaurants();
@@ -1602,6 +1921,9 @@ function logoutUser() {
     savedAddresses = [];
     orderHistory = [];
     favoriteRestaurants = [];
+    favoriteMenuItems = [];
+    savedPaymentMethods = [];
+    checkoutPaymentChoice = "CASH";
     closeAuthModal();
     renderAddressBook();
     renderOrders();
@@ -1617,6 +1939,84 @@ async function removeFavoriteFromAccount(restaurantId) {
         await fetchFavoriteRestaurants();
     } catch (error) {
         alert(error.message || "Failed to remove favorite.");
+    }
+}
+
+async function removeFavoriteMenuItemFromAccount(itemId) {
+    try {
+        await fetchJson(`${API_BASE_URL}/favorites/menu-items/${encodeURIComponent(itemId)}`, {
+            method: "DELETE"
+        });
+        await fetchFavoriteMenuItems();
+    } catch (error) {
+        alert(error.message || "Failed to remove favorite dish.");
+    }
+}
+
+async function savePaymentMethod(event) {
+    event.preventDefault();
+
+    const feedback = document.getElementById("paymentFeedback");
+    const payload = {
+        methodType: paymentFormType,
+        defaultMethod: document.getElementById("paymentDefault")?.checked || false
+    };
+
+    if (paymentFormType === "CARD") {
+        const cardNumber = document.getElementById("paymentCardNumber")?.value.trim() || "";
+        payload.cardHolderName = document.getElementById("paymentCardHolder")?.value.trim();
+        payload.cardNumber = cardNumber;
+        payload.cardBrand = detectCardBrand(cardNumber);
+        payload.expiryMonth = document.getElementById("paymentExpiryMonth")?.value.trim();
+        payload.expiryYear = document.getElementById("paymentExpiryYear")?.value.trim();
+    } else if (paymentFormType === "UPI") {
+        payload.upiId = document.getElementById("paymentUpiId")?.value.trim();
+    } else {
+        payload.walletProvider = document.getElementById("paymentWalletProvider")?.value.trim();
+    }
+
+    if (feedback) {
+        feedback.textContent = "Saving your payment method...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        await fetchJson(`${API_BASE_URL}/payments/methods`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+        paymentFormType = "CARD";
+        await fetchPaymentMethods();
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to save payment method.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function markPaymentMethodDefault(paymentMethodId) {
+    try {
+        await fetchJson(`${API_BASE_URL}/payments/methods/${paymentMethodId}/default`, {
+            method: "PATCH"
+        });
+        await fetchPaymentMethods();
+    } catch (error) {
+        alert(error.message || "Failed to update default payment method.");
+    }
+}
+
+async function deletePaymentMethod(paymentMethodId) {
+    try {
+        await fetchJson(`${API_BASE_URL}/payments/methods/${paymentMethodId}`, {
+            method: "DELETE"
+        });
+        await fetchPaymentMethods();
+    } catch (error) {
+        alert(error.message || "Failed to remove payment method.");
     }
 }
 
@@ -1663,11 +2063,23 @@ function renderOrders(isLoading = false) {
                                     <p>${escapeHtml(order.orderNumber)} · ${formatDateTime(order.createdAt)}</p>
                                 </div>
                             </div>
-                            <span class="order-status-badge ${statusClassName(order.status)}">${formatStatus(order.status)}</span>
+                            <span class="order-status-badge ${statusClassName(getTrackedOrderStage(order))}">${formatStatus(getTrackedOrderStage(order))}</span>
+                        </div>
+
+                        <div class="order-tracking-hero ${statusClassName(getTrackedOrderStage(order))}">
+                            <div>
+                                <p class="order-tracking-kicker">Live tracking</p>
+                                <h4>${escapeHtml(getTrackingHeadline(order))}</h4>
+                                <p>${escapeHtml(getTrackingCopy(order))}</p>
+                            </div>
+                            <div class="order-tracking-side">
+                                <span class="order-tracking-eta">${escapeHtml(getEtaLabel(order))}</span>
+                                <small>${escapeHtml(getTrackingSubcopy(order))}</small>
+                            </div>
                         </div>
 
                         <div class="order-progress">
-                            ${buildOrderProgress(order.status)}
+                            ${buildOrderProgress(getTrackedOrderStage(order))}
                         </div>
 
                         <div class="order-meta-grid">
@@ -1675,6 +2087,15 @@ function renderOrders(isLoading = false) {
                             <div><span>Total</span><strong>${formatCurrency(order.finalAmount)}</strong></div>
                             <div><span>Payment</span><strong>${formatStatus(order.paymentMethod)}</strong></div>
                             <div><span>Delivery</span><strong>${order.estimatedDeliveryTime ? formatTime(order.estimatedDeliveryTime) : "TBD"}</strong></div>
+                        </div>
+
+                        <div class="order-milestone-row">
+                            ${buildOrderMilestones(order).map((milestone) => `
+                                <div class="order-milestone ${milestone.active ? "active" : ""}">
+                                    <span>${escapeHtml(milestone.label)}</span>
+                                    <strong>${escapeHtml(milestone.time)}</strong>
+                                </div>
+                            `).join("")}
                         </div>
 
                         <div class="order-items-preview">
@@ -1883,7 +2304,8 @@ async function submitOrder(event) {
     }
 
     const feedback = document.getElementById("checkoutFeedback");
-    const paymentMethod = document.getElementById("checkoutPayment")?.value || "CASH";
+    const selectedPayment = getCheckoutPaymentSelection();
+    const paymentMethod = selectedPayment.type || "CASH";
     const notes = document.getElementById("checkoutNotes")?.value.trim();
     const defaultAddress = getDefaultAddress();
 
@@ -1926,7 +2348,7 @@ async function submitOrder(event) {
         });
 
         if (feedback) {
-            feedback.textContent = `Order placed successfully to ${defaultAddress.label}. Order number: ${response.order.orderNumber}`;
+            feedback.textContent = `Order placed successfully to ${defaultAddress.label} using ${selectedPayment.label}. Order number: ${response.order.orderNumber}`;
             feedback.className = "checkout-feedback success";
         }
 
@@ -2012,6 +2434,68 @@ function formatNumber(value) {
     return Number(value || 0).toFixed(1);
 }
 
+function formatPaymentMethodLabel(method) {
+    if (!method) {
+        return "Cash on delivery";
+    }
+    if (method.label) {
+        return method.label;
+    }
+    if (method.methodType === "CARD") {
+        return `${method.cardBrand || "Card"} ending ${method.cardLast4 || "0000"}`;
+    }
+    if (method.methodType === "UPI") {
+        return `UPI · ${method.upiId || ""}`;
+    }
+    return `Wallet · ${method.walletProvider || ""}`;
+}
+
+function formatPaymentMethodSubtitle(method) {
+    if (!method) {
+        return "";
+    }
+    if (method.methodType === "CARD") {
+        const expiry = method.expiryMonth && method.expiryYear
+            ? `Expires ${method.expiryMonth}/${String(method.expiryYear).slice(-2)}`
+            : "Card saved securely";
+        return [method.cardHolderName, expiry].filter(Boolean).join(" · ");
+    }
+    if (method.methodType === "UPI") {
+        return "Fast UPI checkout";
+    }
+    return "Wallet ready for checkout";
+}
+
+function formatPaymentMethodType(type) {
+    if (type === "UPI") {
+        return "UPI";
+    }
+    if (type === "CARD") {
+        return "Card";
+    }
+    if (type === "WALLET") {
+        return "Wallet";
+    }
+    return "Cash";
+}
+
+function detectCardBrand(cardNumber) {
+    const digits = String(cardNumber || "").replace(/\D/g, "");
+    if (digits.startsWith("4")) {
+        return "Visa";
+    }
+    if (/^5[1-5]/.test(digits)) {
+        return "Mastercard";
+    }
+    if (/^3[47]/.test(digits)) {
+        return "Amex";
+    }
+    if (/^(506|508|60|65|81|82|353|356)/.test(digits)) {
+        return "RuPay";
+    }
+    return "Card";
+}
+
 function formatCurrency(value) {
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
@@ -2070,7 +2554,7 @@ async function initializeApp() {
         if (currentUser?.id) {
             await refreshCurrentUser();
         }
-        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants()]);
+        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
         updateCartCount();
         renderCart();
         const deepLinkRestaurant = window.location.hash.replace("#", "");
