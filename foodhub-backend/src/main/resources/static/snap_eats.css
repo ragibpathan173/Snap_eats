@@ -368,6 +368,56 @@ body {
     gap: 20px;
 }
 
+.discovery-filters {
+    margin: 14px 0 18px;
+}
+
+.discovery-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: end;
+}
+
+.discovery-filter-control {
+    display: grid;
+    gap: 6px;
+}
+
+.discovery-filter-control span {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 700;
+}
+
+.discovery-filter-control select {
+    min-width: 140px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d7dce2;
+    background: #fff;
+    font: inherit;
+    font-size: 13px;
+}
+
+.discovery-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid #d7dce2;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.discovery-reset-btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .restaurant-card {
     background: white;
     border-radius: 16px;
@@ -2473,6 +2523,21 @@ body.modal-open {
     .restaurants-grid {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
+    .discovery-filter-row {
+        align-items: stretch;
+    }
+    .discovery-filter-control {
+        width: calc(50% - 6px);
+    }
+    .discovery-filter-control select {
+        min-width: 0;
+        width: 100%;
+    }
+    .discovery-toggle,
+    .discovery-reset-btn {
+        width: 100%;
+        justify-content: center;
+    }
     .footer-top {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -2617,6 +2682,9 @@ body.modal-open {
     }
     .restaurants-grid {
         grid-template-columns: 1fr;
+    }
+    .discovery-filter-control {
+        width: 100%;
     }
     .footer-top {
         grid-template-columns: 1fr;

@@ -26,6 +26,12 @@ let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
 let locationGpsStatus = { type: "idle", message: "" };
+let discoveryFilters = {
+    minRating: 0,
+    maxEta: 0,
+    maxPriceForTwo: 0,
+    vegOnly: false
+};
 const pincodeLookupCache = new Map();
 
 async function fetchJson(url, options = {}) {
@@ -330,6 +336,130 @@ function normalizeTextForMatching(value) {
         .trim();
 }
 
+function estimateRestaurantPriceForTwo(restaurant) {
+    const category = normalizeTextForMatching(restaurant?.category || "");
+    const cuisine = normalizeTextForMatching(restaurant?.cuisine || "");
+    const baseByCategory = {
+        italian: 700,
+        healthy: 500,
+        north: 550,
+        chinese: 450,
+        biryani: 600,
+        dessert: 350,
+        burger: 400,
+        pizza: 550
+    };
+
+    if (restaurant?.priceForTwo && Number(restaurant.priceForTwo) > 0) {
+        return Number(restaurant.priceForTwo);
+    }
+    if (baseByCategory[category]) {
+        return baseByCategory[category];
+    }
+    if (cuisine.includes("healthy") || cuisine.includes("salad")) {
+        return 450;
+    }
+    if (cuisine.includes("pizza") || cuisine.includes("italian")) {
+        return 600;
+    }
+    if (cuisine.includes("biryani")) {
+        return 650;
+    }
+    return 500;
+}
+
+function parseDeliveryEtaMinutes(timeLabel) {
+    const matches = String(timeLabel || "").match(/\d+/g);
+    if (!matches || !matches.length) {
+        return Number.POSITIVE_INFINITY;
+    }
+    return Math.max(...matches.map((value) => Number(value)));
+}
+
+function isVegFriendlyRestaurant(restaurant) {
+    if (restaurant?.vegFriendly === true || restaurant?.vegetarianOnly === true) {
+        return true;
+    }
+    const searchable = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""} ${restaurant?.category || ""}`);
+    return ["veg", "vegetarian", "vegan", "salad", "healthy", "jain"].some((token) => searchable.includes(token));
+}
+
+function countActiveDiscoveryFilters() {
+    return [
+        discoveryFilters.minRating > 0,
+        discoveryFilters.maxEta > 0,
+        discoveryFilters.maxPriceForTwo > 0,
+        discoveryFilters.vegOnly
+    ].filter(Boolean).length;
+}
+
+function renderDiscoveryFilters() {
+    const host = document.getElementById("discoveryFilters");
+    if (!host) {
+        return;
+    }
+
+    const activeCount = countActiveDiscoveryFilters();
+    host.innerHTML = `
+        <div class="discovery-filter-row">
+            <label class="discovery-filter-control">
+                <span>Rating</span>
+                <select id="filterMinRating" onchange="updateDiscoveryFilters()">
+                    <option value="0" ${discoveryFilters.minRating === 0 ? "selected" : ""}>Any</option>
+                    <option value="4" ${discoveryFilters.minRating === 4 ? "selected" : ""}>4.0+</option>
+                    <option value="4.2" ${discoveryFilters.minRating === 4.2 ? "selected" : ""}>4.2+</option>
+                    <option value="4.5" ${discoveryFilters.minRating === 4.5 ? "selected" : ""}>4.5+</option>
+                </select>
+            </label>
+            <label class="discovery-filter-control">
+                <span>ETA</span>
+                <select id="filterMaxEta" onchange="updateDiscoveryFilters()">
+                    <option value="0" ${discoveryFilters.maxEta === 0 ? "selected" : ""}>Any</option>
+                    <option value="20" ${discoveryFilters.maxEta === 20 ? "selected" : ""}>Under 20 min</option>
+                    <option value="30" ${discoveryFilters.maxEta === 30 ? "selected" : ""}>Under 30 min</option>
+                    <option value="40" ${discoveryFilters.maxEta === 40 ? "selected" : ""}>Under 40 min</option>
+                </select>
+            </label>
+            <label class="discovery-filter-control">
+                <span>Price for two</span>
+                <select id="filterMaxPriceForTwo" onchange="updateDiscoveryFilters()">
+                    <option value="0" ${discoveryFilters.maxPriceForTwo === 0 ? "selected" : ""}>Any</option>
+                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under ₹400</option>
+                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under ₹600</option>
+                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under ₹800</option>
+                </select>
+            </label>
+            <label class="discovery-toggle">
+                <input id="filterVegOnly" type="checkbox" ${discoveryFilters.vegOnly ? "checked" : ""} onchange="updateDiscoveryFilters()">
+                <span>Veg-friendly only</span>
+            </label>
+            <button class="secondary-button discovery-reset-btn" type="button" onclick="clearDiscoveryFilters()" ${activeCount ? "" : "disabled"}>
+                Clear${activeCount ? ` (${activeCount})` : ""}
+            </button>
+        </div>
+    `;
+}
+
+function updateDiscoveryFilters() {
+    const minRating = Number(document.getElementById("filterMinRating")?.value || 0);
+    const maxEta = Number(document.getElementById("filterMaxEta")?.value || 0);
+    const maxPriceForTwo = Number(document.getElementById("filterMaxPriceForTwo")?.value || 0);
+    const vegOnly = Boolean(document.getElementById("filterVegOnly")?.checked);
+
+    discoveryFilters = { minRating, maxEta, maxPriceForTwo, vegOnly };
+    renderRestaurants();
+}
+
+function clearDiscoveryFilters() {
+    discoveryFilters = {
+        minRating: 0,
+        maxEta: 0,
+        maxPriceForTwo: 0,
+        vegOnly: false
+    };
+    renderRestaurants();
+}
+
 function getSelectedLocationFilters() {
     const label = String(selectedLocation?.label || "").trim();
     const subtitle = String(selectedLocation?.subtitle || "").trim();
@@ -574,6 +704,7 @@ function renderRestaurants() {
     if (!grid) {
         return;
     }
+    renderDiscoveryFilters();
 
     if (!restaurants.length) {
         const hasLocation = Boolean(selectedLocation?.label && selectedLocation.label.toLowerCase() !== "other");
@@ -581,8 +712,29 @@ function renderRestaurants() {
         return;
     }
 
+    const filteredRestaurants = restaurants.filter((restaurant) => {
+        if (discoveryFilters.minRating > 0 && Number(restaurant.rating || 0) < discoveryFilters.minRating) {
+            return false;
+        }
+        if (discoveryFilters.maxEta > 0 && parseDeliveryEtaMinutes(restaurant.time) > discoveryFilters.maxEta) {
+            return false;
+        }
+        if (discoveryFilters.maxPriceForTwo > 0 && estimateRestaurantPriceForTwo(restaurant) > discoveryFilters.maxPriceForTwo) {
+            return false;
+        }
+        if (discoveryFilters.vegOnly && !isVegFriendlyRestaurant(restaurant)) {
+            return false;
+        }
+        return true;
+    });
+
+    if (!filteredRestaurants.length) {
+        grid.innerHTML = `<p class="empty-state">No restaurants match your selected filters.</p>`;
+        return;
+    }
+
     grid.innerHTML = `
-        ${restaurants.map((restaurant) => `
+        ${filteredRestaurants.map((restaurant) => `
         <article
             class="restaurant-card"
             role="button"
@@ -2878,6 +3030,7 @@ async function initializeApp() {
     try {
         updateAuthNav();
         updateLocationChip();
+        renderDiscoveryFilters();
         if (currentUser?.id) {
             await refreshCurrentUser();
         }
