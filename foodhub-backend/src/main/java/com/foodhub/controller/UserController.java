@@ -19,7 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -246,7 +249,8 @@ public class UserController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid OTP"));
             }
 
-            User user = findUserByIdentifier(parsedIdentifier).orElseGet(() -> createOtpUser(parsedIdentifier, request.name));
+            User user = findUserByIdentifier(parsedIdentifier)
+                    .orElseGet(() -> createOtpUser(parsedIdentifier, request.name, request.email, request.referralCode));
 
             otpRecord.setConsumed(true);
             authOtpRepository.save(otpRecord);
@@ -624,14 +628,27 @@ public class UserController {
             return userRepository.findByEmail(parsedIdentifier.value());
         }
 
-        Optional<User> userByNormalized = userRepository.findByPhoneNumber(parsedIdentifier.value());
-        if (userByNormalized.isPresent()) {
-            return userByNormalized;
+        List<User> candidates = new ArrayList<>();
+        for (String variant : buildPhoneLookupVariants(parsedIdentifier.value(), parsedIdentifier.raw())) {
+            candidates.addAll(userRepository.findAllByPhoneNumberOrderByIdDesc(variant));
         }
-        return userRepository.findByPhoneNumber(parsedIdentifier.raw());
+
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Map<Long, User> uniqueById = new LinkedHashMap<>();
+        for (User candidate : candidates) {
+            uniqueById.put(candidate.getId(), candidate);
+        }
+
+        return uniqueById.values().stream()
+                .filter((user) -> Boolean.TRUE.equals(user.getActive()))
+                .findFirst()
+                .or(() -> uniqueById.values().stream().findFirst());
     }
 
-    private User createOtpUser(ParsedIdentifier parsedIdentifier, String requestedName) {
+    private User createOtpUser(ParsedIdentifier parsedIdentifier, String requestedName, String requestedEmail, String referralCode) {
         User user = new User();
         String name = requestedName == null || requestedName.isBlank() ? "SnapEats User" : requestedName.trim();
         user.setName(name);
@@ -646,11 +663,21 @@ public class UserController {
             user.setPhoneNumber(null);
         } else {
             user.setPhoneNumber(parsedIdentifier.value());
-            String emailBase = parsedIdentifier.value() + "@otp.snap-eats.local";
+            String preferredEmail = requestedEmail == null ? "" : requestedEmail.trim().toLowerCase();
+            String emailBase = preferredEmail.isBlank() ? parsedIdentifier.value() + "@otp.snap-eats.local" : preferredEmail;
             String email = emailBase;
             int suffix = 1;
             while (userRepository.existsByEmail(email)) {
-                email = parsedIdentifier.value() + "+" + suffix + "@otp.snap-eats.local";
+                if (preferredEmail.isBlank()) {
+                    email = parsedIdentifier.value() + "+" + suffix + "@otp.snap-eats.local";
+                } else {
+                    int atIndex = preferredEmail.indexOf("@");
+                    if (atIndex > 0) {
+                        email = preferredEmail.substring(0, atIndex) + "+" + suffix + preferredEmail.substring(atIndex);
+                    } else {
+                        email = preferredEmail + "+" + suffix + "@otp.snap-eats.local";
+                    }
+                }
                 suffix += 1;
             }
             user.setEmail(email);
@@ -677,10 +704,30 @@ public class UserController {
         if (digits.length() < 10) {
             return null;
         }
-        if (digits.length() == 12 && digits.startsWith("91")) {
-            digits = digits.substring(2);
+        if (digits.startsWith("0") && digits.length() == 11) {
+            digits = digits.substring(1);
+        }
+        if (digits.startsWith("91") && digits.length() >= 12) {
+            digits = digits.substring(digits.length() - 10);
+        }
+        if (digits.length() > 10) {
+            digits = digits.substring(digits.length() - 10);
         }
         return new ParsedIdentifier("phone:" + digits, digits, raw, false);
+    }
+
+    private List<String> buildPhoneLookupVariants(String normalizedPhone, String rawInput) {
+        LinkedHashSet<String> variants = new LinkedHashSet<>();
+        variants.add(normalizedPhone);
+        variants.add("0" + normalizedPhone);
+        variants.add("91" + normalizedPhone);
+        variants.add("+91" + normalizedPhone);
+
+        String raw = rawInput == null ? "" : rawInput.trim();
+        if (!raw.isBlank()) {
+            variants.add(raw);
+        }
+        return new ArrayList<>(variants);
     }
 
     private record ParsedIdentifier(String key, String value, String raw, boolean email) {}
@@ -702,6 +749,8 @@ public class UserController {
         public String identifier;
         public String otp;
         public String name;
+        public String email;
+        public String referralCode;
     }
 
     public static class ResetPasswordRequest {
