@@ -16,7 +16,9 @@ import java.time.LocalTime;
         @Index(name = "idx_active", columnList = "active"),
         @Index(name = "idx_verified", columnList = "verified"),
         @Index(name = "idx_category", columnList = "category"),
-        @Index(name = "idx_rating", columnList = "rating")
+        @Index(name = "idx_rating", columnList = "rating"),
+        @Index(name = "idx_city", columnList = "city"),
+        @Index(name = "idx_locality", columnList = "locality")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class Restaurant {
@@ -61,6 +63,12 @@ public class Restaurant {
 
     @Column(length = 50)
     private String category;
+
+    @Column(length = 120)
+    private String city;
+
+    @Column(length = 160)
+    private String locality;
 
     @Column(nullable = false)
     private Boolean verified = false;
@@ -116,6 +124,12 @@ public class Restaurant {
 
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
+
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+
+    public String getLocality() { return locality; }
+    public void setLocality(String locality) { this.locality = locality; }
 
     public Boolean getVerified() { return verified; }
     public void setVerified(Boolean verified) { this.verified = verified; }

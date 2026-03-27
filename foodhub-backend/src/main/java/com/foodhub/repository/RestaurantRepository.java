@@ -27,7 +27,9 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
 
     @Query("SELECT r FROM Restaurant r WHERE " +
            "LOWER(r.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(r.cuisine) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+           "LOWER(r.cuisine) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(COALESCE(r.city, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(COALESCE(r.locality, '')) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     List<Restaurant> searchRestaurants(@Param("searchTerm") String searchTerm);
 
     @Query("SELECT r FROM Restaurant r WHERE r.active = true ORDER BY r.rating DESC")

@@ -384,10 +384,23 @@ function getRestaurantLocationCluster(restaurant) {
 }
 
 function getRestaurantLocationTags(restaurant) {
-    const cluster = getRestaurantLocationCluster(restaurant);
+    const cityText = normalizeTextForMatching(restaurant?.city || "");
+    const localityText = normalizeTextForMatching(restaurant?.locality || "");
+    const hasRealLocation = Boolean(cityText || localityText);
     const source = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""} ${restaurant?.category || ""}`);
-    const tags = new Set(cluster.tags.flatMap((tag) => normalizeTextForMatching(tag).split(" ")));
-    normalizeTextForMatching(cluster.city).split(" ").forEach((token) => tags.add(token));
+    const tags = new Set();
+    cityText.split(" ").filter((token) => token.length >= 3).forEach((token) => tags.add(token));
+    localityText.split(" ").filter((token) => token.length >= 3).forEach((token) => tags.add(token));
+
+    if (!hasRealLocation) {
+        const cluster = getRestaurantLocationCluster(restaurant);
+        cluster.tags
+            .flatMap((tag) => normalizeTextForMatching(tag).split(" "))
+            .filter((token) => token.length >= 3)
+            .forEach((token) => tags.add(token));
+        normalizeTextForMatching(cluster.city).split(" ").forEach((token) => tags.add(token));
+    }
+
     source.split(" ").filter((token) => token.length >= 4).forEach((token) => tags.add(token));
     return tags;
 }
@@ -704,6 +717,11 @@ function renderRestaurants() {
                     ${restaurant.verified ? ' <span class="verified-mark">Verified</span>' : ""}
                 </div>
                 <div class="restaurant-cuisine">${escapeHtml(restaurant.cuisine || "")}</div>
+                ${(restaurant.locality || restaurant.city) ? `
+                    <div class="restaurant-serving">
+                        Serves ${escapeHtml([restaurant.locality, restaurant.city].filter(Boolean).join(", "))}
+                    </div>
+                ` : ""}
                 <div class="restaurant-meta">
                     <div class="rating">★ ${formatNumber(restaurant.rating)}</div>
                     <div class="delivery-time">${escapeHtml(restaurant.time || "")}</div>

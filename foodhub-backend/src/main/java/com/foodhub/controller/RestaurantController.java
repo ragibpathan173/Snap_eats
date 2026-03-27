@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,6 +20,16 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/restaurants")
 @CrossOrigin(origins = "*")
 public class RestaurantController {
+    private static final List<Map<String, String>> LOCATION_FALLBACKS = List.of(
+            Map.of("city", "New Delhi", "locality", "Jamia Nagar"),
+            Map.of("city", "Bengaluru", "locality", "Koramangala"),
+            Map.of("city", "Mumbai", "locality", "Bandra West"),
+            Map.of("city", "Kolkata", "locality", "Salt Lake"),
+            Map.of("city", "Hyderabad", "locality", "Hitech City"),
+            Map.of("city", "Chennai", "locality", "Adyar"),
+            Map.of("city", "Pune", "locality", "Baner"),
+            Map.of("city", "Ahmedabad", "locality", "Navrangpura")
+    );
 
     @Autowired
     private RestaurantRepository restaurantRepository;
@@ -41,6 +52,52 @@ public class RestaurantController {
                 e.printStackTrace();
             }
         }
+        backfillRestaurantLocations();
+    }
+
+    private void backfillRestaurantLocations() {
+        List<Restaurant> restaurants = restaurantRepository.findAll();
+        boolean changed = false;
+
+        for (Restaurant restaurant : restaurants) {
+            String city = restaurant.getCity();
+            String locality = restaurant.getLocality();
+            if ((city != null && !city.isBlank()) && (locality != null && !locality.isBlank())) {
+                continue;
+            }
+
+            int clusterIndex = resolveClusterIndex(restaurant.getRestaurantId(), restaurant.getName());
+            Map<String, String> fallback = LOCATION_FALLBACKS.get(clusterIndex);
+            if (city == null || city.isBlank()) {
+                restaurant.setCity(fallback.get("city"));
+                changed = true;
+            }
+            if (locality == null || locality.isBlank()) {
+                restaurant.setLocality(fallback.get("locality"));
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            restaurantRepository.saveAll(restaurants);
+            System.out.println("✅ Restaurant location fields backfilled for current dataset");
+        }
+    }
+
+    private int resolveClusterIndex(String restaurantId, String name) {
+        String candidate = restaurantId == null ? "" : restaurantId.replaceAll("[^0-9]", "");
+        int numeric = 0;
+        if (!candidate.isBlank()) {
+            try {
+                numeric = Integer.parseInt(candidate);
+            } catch (NumberFormatException ignored) {
+                numeric = 0;
+            }
+        }
+        if (numeric <= 0) {
+            numeric = Math.abs((name == null ? "" : name).hashCode());
+        }
+        return Math.floorMod(numeric - 1, LOCATION_FALLBACKS.size());
     }
 
     @GetMapping
