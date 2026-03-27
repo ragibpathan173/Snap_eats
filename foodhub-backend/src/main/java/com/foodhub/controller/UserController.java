@@ -8,6 +8,7 @@ import com.foodhub.repository.AuthOtpRepository;
 import com.foodhub.repository.PasswordResetOtpRepository;
 import com.foodhub.repository.UserRepository;
 import com.foodhub.security.JwtService;
+import com.foodhub.service.OtpDeliveryService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,9 @@ public class UserController {
 
     @Autowired
     private JwtService jwtService;
+
+    @Autowired
+    private OtpDeliveryService otpDeliveryService;
 
     @Value("${security.otp.dev-return:true}")
     private boolean otpDevReturn;
@@ -155,15 +159,21 @@ public class UserController {
             passwordResetOtpRepository.save(passwordResetOtp);
 
             log.info("Password reset OTP generated for {}", normalizedEmail);
-            if (otpDevReturn) {
+            OtpDeliveryService.DeliveryResult deliveryResult = otpDeliveryService.sendPasswordResetOtp(normalizedEmail, otp);
+            if (!deliveryResult.delivered() && otpDevReturn) {
                 return ResponseEntity.ok(Map.of(
-                        "message", "OTP generated for password reset.",
+                        "message", "OTP generated for password reset (dev mode).",
                         "devOtp", otp,
                         "expiresInMinutes", OTP_EXPIRY_MINUTES
                 ));
             }
 
-            return ResponseEntity.ok(Map.of("message", "If this email is registered, an OTP has been sent."));
+            if (!deliveryResult.delivered()) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", deliveryResult.reason()));
+            }
+
+            return ResponseEntity.ok(Map.of("message", "OTP sent to your email."));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to generate OTP: " + e.getMessage()));
@@ -196,15 +206,27 @@ public class UserController {
             authOtp.setAttemptCount(0);
             authOtpRepository.save(authOtp);
 
-            if (otpDevReturn) {
+            OtpDeliveryService.DeliveryResult deliveryResult = otpDeliveryService.sendAuthOtp(
+                    parsedIdentifier.value(),
+                    parsedIdentifier.email(),
+                    otp
+            );
+            if (!deliveryResult.delivered() && otpDevReturn) {
                 return ResponseEntity.ok(Map.of(
-                        "message", "OTP generated for sign in.",
+                        "message", "OTP generated for sign in (dev mode).",
                         "devOtp", otp,
                         "expiresInMinutes", OTP_EXPIRY_MINUTES
                 ));
             }
 
-            return ResponseEntity.ok(Map.of("message", "OTP sent successfully."));
+            if (!deliveryResult.delivered()) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", deliveryResult.reason()));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", parsedIdentifier.email() ? "OTP sent to your email." : "OTP sent to your phone."
+            ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to generate OTP: " + e.getMessage()));

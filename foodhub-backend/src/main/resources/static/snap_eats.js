@@ -41,6 +41,7 @@ let otpAuthDraftEmail = "";
 let otpAuthDraftReferralCode = "";
 let otpAuthFlowMode = "login";
 let otpAuthStep = "form";
+let otpAuthLastSentIdentifier = "";
 let otpAuthCooldownUntil = 0;
 let otpAuthCooldownTimer = null;
 let selectedLocation = loadSelectedLocation();
@@ -92,8 +93,24 @@ function startOtpAuthCooldown(seconds = 30) {
     }, 1000);
 }
 
+function clearOtpAuthCooldown() {
+    otpAuthCooldownUntil = 0;
+    if (otpAuthCooldownTimer) {
+        window.clearInterval(otpAuthCooldownTimer);
+        otpAuthCooldownTimer = null;
+    }
+}
+
 function updateOtpAuthIdentifier(value) {
-    otpAuthDraftIdentifier = String(value || "").trim();
+    const nextValue = String(value || "").trim();
+    if (otpAuthDraftIdentifier !== nextValue) {
+        otpAuthDraftIdentifier = nextValue;
+        if (otpAuthLastSentIdentifier && otpAuthLastSentIdentifier !== nextValue) {
+            clearOtpAuthCooldown();
+        }
+    } else {
+        otpAuthDraftIdentifier = nextValue;
+    }
 }
 
 function updateOtpAuthName(value) {
@@ -1464,6 +1481,9 @@ function openAuthModal(event) {
     const modal = document.getElementById("authModal");
     if (!modal) {
         return;
+    }
+    if (!currentUser && (!otpAuthDraftIdentifier || otpAuthStep === "verify")) {
+        resetOtpAuthFlow();
     }
 
     modal.classList.add("open");
@@ -2882,7 +2902,11 @@ async function requestLoginSignupOtp(event) {
         return;
     }
 
-    if (getOtpAuthCooldownSeconds() > 0) {
+    if (getOtpAuthCooldownSeconds() > 0 && otpAuthLastSentIdentifier === identifier) {
+        if (feedback) {
+            feedback.textContent = `Please wait ${getOtpAuthCooldownSeconds()}s before requesting OTP again for this number/email.`;
+            feedback.className = "checkout-feedback error";
+        }
         return;
     }
 
@@ -2900,6 +2924,7 @@ async function requestLoginSignupOtp(event) {
             body: JSON.stringify({ identifier })
         });
 
+        otpAuthLastSentIdentifier = identifier;
         startOtpAuthCooldown(30);
         otpAuthStep = "verify";
         renderAuthModal("otp");
@@ -2968,12 +2993,27 @@ async function verifyLoginSignupOtp(event) {
 function setOtpAuthFlowMode(mode) {
     otpAuthFlowMode = mode === "signup" ? "signup" : "login";
     otpAuthStep = "form";
+    clearOtpAuthCooldown();
+    otpAuthLastSentIdentifier = "";
     renderAuthModal("otp");
 }
 
 function resetOtpAuthStep() {
     otpAuthStep = "form";
+    clearOtpAuthCooldown();
+    otpAuthLastSentIdentifier = "";
     renderAuthModal("otp");
+}
+
+function resetOtpAuthFlow() {
+    otpAuthStep = "form";
+    otpAuthFlowMode = "login";
+    otpAuthDraftIdentifier = "";
+    otpAuthDraftName = "";
+    otpAuthDraftEmail = "";
+    otpAuthDraftReferralCode = "";
+    otpAuthLastSentIdentifier = "";
+    clearOtpAuthCooldown();
 }
 
 async function loginUser(event) {
@@ -3133,6 +3173,7 @@ async function resetPasswordWithOtp(event) {
 function logoutUser() {
     saveCurrentUser(null);
     saveAuthToken("");
+    resetOtpAuthFlow();
     savedAddresses = [];
     orderHistory = [];
     favoriteRestaurants = [];
