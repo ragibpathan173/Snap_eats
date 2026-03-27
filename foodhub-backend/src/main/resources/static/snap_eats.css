@@ -675,18 +675,6 @@ body {
     color: #686b78;
 }
 
-.restaurant-location-note {
-    grid-column: 1 / -1;
-    margin-bottom: 8px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid #ffe3cf;
-    background: #fff8f3;
-    color: #8a3e15;
-    font-size: 14px;
-    font-weight: 600;
-}
-
 .modal {
     position: fixed;
     inset: 0;

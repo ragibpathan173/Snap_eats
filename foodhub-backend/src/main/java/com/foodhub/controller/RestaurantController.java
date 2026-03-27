@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -106,8 +108,19 @@ public class RestaurantController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<List<Restaurant>> getActiveRestaurants() {
-        return ResponseEntity.ok(restaurantRepository.findByActiveTrue());
+    public ResponseEntity<List<Restaurant>> getActiveRestaurants(
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String locality,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String query) {
+        List<Restaurant> restaurants = restaurantRepository.findByActiveTrue()
+                .stream()
+                .filter(restaurant -> matchesCategory(restaurant, category))
+                .filter(restaurant -> matchesSearchQuery(restaurant, query))
+                .filter(restaurant -> matchesLocation(restaurant, city, locality))
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(restaurants);
     }
 
     @GetMapping("/{id}")
@@ -126,10 +139,12 @@ public class RestaurantController {
 
     // ✅ FIXED HERE
     @GetMapping("/category/{category}")
-    public ResponseEntity<List<Restaurant>> getRestaurantsByCategory(@PathVariable String category) {
-        List<Restaurant> restaurants =
-                restaurantRepository.findByCategoryAndActiveTrue(category);
-        return ResponseEntity.ok(restaurants);
+    public ResponseEntity<List<Restaurant>> getRestaurantsByCategory(
+            @PathVariable String category,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String locality,
+            @RequestParam(required = false) String query) {
+        return getActiveRestaurants(city, locality, category, query);
     }
 
     @GetMapping("/verified")
@@ -145,10 +160,12 @@ public class RestaurantController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Restaurant>> searchRestaurants(@RequestParam String query) {
-        return ResponseEntity.ok(
-                restaurantRepository.searchRestaurants(query)
-        );
+    public ResponseEntity<List<Restaurant>> searchRestaurants(
+            @RequestParam String query,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String locality,
+            @RequestParam(required = false) String category) {
+        return getActiveRestaurants(city, locality, category, query);
     }
 
     @GetMapping("/top-rated")
@@ -159,5 +176,60 @@ public class RestaurantController {
                         .limit(10)
                         .collect(Collectors.toList())
         );
+    }
+
+    private boolean matchesCategory(Restaurant restaurant, String category) {
+        String normalizedCategory = normalize(category);
+        if (normalizedCategory.isBlank() || "all".equals(normalizedCategory)) {
+            return true;
+        }
+        return normalize(restaurant.getCategory()).equals(normalizedCategory);
+    }
+
+    private boolean matchesSearchQuery(Restaurant restaurant, String query) {
+        String normalizedQuery = normalize(query);
+        if (normalizedQuery.isBlank()) {
+            return true;
+        }
+
+        String searchable = String.join(" ",
+                normalize(restaurant.getName()),
+                normalize(restaurant.getCuisine()),
+                normalize(restaurant.getCategory()),
+                normalize(restaurant.getCity()),
+                normalize(restaurant.getLocality())
+        );
+        return searchable.contains(normalizedQuery);
+    }
+
+    private boolean matchesLocation(Restaurant restaurant, String city, String locality) {
+        String normalizedCity = normalize(city);
+        String normalizedLocality = normalize(locality);
+        if (normalizedCity.isBlank() && normalizedLocality.isBlank()) {
+            return true;
+        }
+
+        String restaurantCity = normalize(restaurant.getCity());
+        String restaurantLocality = normalize(restaurant.getLocality());
+
+        boolean cityMatch = normalizedCity.isBlank()
+                || restaurantCity.contains(normalizedCity)
+                || normalizedCity.contains(restaurantCity)
+                || restaurantLocality.contains(normalizedCity);
+
+        boolean localityMatch = normalizedLocality.isBlank()
+                || restaurantLocality.contains(normalizedLocality)
+                || normalizedLocality.contains(restaurantLocality)
+                || restaurantCity.contains(normalizedLocality);
+
+        return cityMatch && localityMatch;
+    }
+
+    private String normalize(String value) {
+        return Objects.toString(value, "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 }

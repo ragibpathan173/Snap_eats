@@ -5,16 +5,6 @@ const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
-const RESTAURANT_LOCATION_CLUSTERS = [
-    { city: "New Delhi", tags: ["delhi", "new delhi", "okhla", "jamia nagar", "south delhi", "nizamuddin"] },
-    { city: "Bengaluru", tags: ["bengaluru", "bangalore", "koramangala", "indiranagar", "hsr", "btm"] },
-    { city: "Mumbai", tags: ["mumbai", "bandra", "andheri", "powai", "juhu", "thane"] },
-    { city: "Kolkata", tags: ["kolkata", "salt lake", "new town", "park street", "howrah"] },
-    { city: "Hyderabad", tags: ["hyderabad", "hitech city", "gachibowli", "jubilee hills", "madhapur"] },
-    { city: "Chennai", tags: ["chennai", "adyar", "anna nagar", "velachery", "t nagar"] },
-    { city: "Pune", tags: ["pune", "baner", "hinjewadi", "kothrud", "wakad"] },
-    { city: "Ahmedabad", tags: ["ahmedabad", "navrangpura", "prahlad nagar", "satellite", "bopal"] }
-];
 
 let categories = [];
 let restaurants = [];
@@ -308,7 +298,7 @@ function applyLocationSelection(location) {
     saveSelectedLocation(location);
     pushRecentLocation(location);
     closeLocationPicker();
-    renderRestaurants();
+    fetchRestaurants(activeCategory, document.getElementById("searchInput")?.value || "").catch(() => {});
 }
 
 function handleLocationChipKeydown(event) {
@@ -340,136 +330,38 @@ function normalizeTextForMatching(value) {
         .trim();
 }
 
-function hashString(value) {
-    return [...String(value || "")].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 0);
-}
+function getSelectedLocationFilters() {
+    const label = String(selectedLocation?.label || "").trim();
+    const subtitle = String(selectedLocation?.subtitle || "").trim();
+    if (!label || label.toLowerCase() === "other") {
+        return {};
+    }
 
-function getSelectedLocationSearchText() {
-    return normalizeTextForMatching(`${selectedLocation?.label || ""} ${selectedLocation?.subtitle || ""}`);
-}
+    const normalizedSource = normalizeTextForMatching(`${label} ${subtitle}`);
+    const cityAliases = [
+        { canonical: "New Delhi", patterns: ["new delhi", "delhi"] },
+        { canonical: "Mumbai", patterns: ["mumbai", "bombay"] },
+        { canonical: "Pune", patterns: ["pune"] },
+        { canonical: "Bengaluru", patterns: ["bengaluru", "bangalore"] },
+        { canonical: "Hyderabad", patterns: ["hyderabad"] },
+        { canonical: "Kolkata", patterns: ["kolkata", "calcutta"] },
+        { canonical: "Chennai", patterns: ["chennai"] },
+        { canonical: "Ahmedabad", patterns: ["ahmedabad"] }
+    ];
 
-function getLocationMatchTokens(locationSearchText) {
-    const baseTokens = locationSearchText.split(" ").filter((token) => token.length >= 3);
-    const joined = ` ${locationSearchText} `;
-    const expandedTokens = new Set(baseTokens);
-
-    const aliases = {
-        delhi: ["new delhi", "ncr"],
-        bengaluru: ["bangalore"],
-        bangalore: ["bengaluru"],
-        mumbai: ["bombay"],
-        kolkata: ["calcutta"],
-        gurugram: ["gurgaon"],
-        noida: ["ncr"]
-    };
-
-    Object.entries(aliases).forEach(([key, values]) => {
-        if (joined.includes(` ${key} `)) {
-            values.forEach((value) => normalizeTextForMatching(value).split(" ").forEach((token) => {
-                if (token.length >= 3) {
-                    expandedTokens.add(token);
-                }
-            }));
+    let detectedCity = "";
+    for (const entry of cityAliases) {
+        if (entry.patterns.some((pattern) => normalizedSource.includes(pattern))) {
+            detectedCity = entry.canonical;
+            break;
         }
-    });
-
-    return [...expandedTokens];
-}
-
-function getRestaurantLocationCluster(restaurant) {
-    const numericIdMatch = String(restaurant?.restaurantId || "").match(/\d+/);
-    const numericId = numericIdMatch ? Number(numericIdMatch[0]) : hashString(restaurant?.restaurantId || restaurant?.name || "0");
-    const clusterIndex = Math.max(0, (numericId - 1) % RESTAURANT_LOCATION_CLUSTERS.length);
-    return RESTAURANT_LOCATION_CLUSTERS[clusterIndex];
-}
-
-function getRestaurantLocationTags(restaurant) {
-    const cityText = normalizeTextForMatching(restaurant?.city || "");
-    const localityText = normalizeTextForMatching(restaurant?.locality || "");
-    const hasRealLocation = Boolean(cityText || localityText);
-    const source = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""} ${restaurant?.category || ""}`);
-    const tags = new Set();
-    cityText.split(" ").filter((token) => token.length >= 3).forEach((token) => tags.add(token));
-    localityText.split(" ").filter((token) => token.length >= 3).forEach((token) => tags.add(token));
-
-    if (!hasRealLocation) {
-        const cluster = getRestaurantLocationCluster(restaurant);
-        cluster.tags
-            .flatMap((tag) => normalizeTextForMatching(tag).split(" "))
-            .filter((token) => token.length >= 3)
-            .forEach((token) => tags.add(token));
-        normalizeTextForMatching(cluster.city).split(" ").forEach((token) => tags.add(token));
     }
 
-    source.split(" ").filter((token) => token.length >= 4).forEach((token) => tags.add(token));
-    return tags;
-}
-
-function getRestaurantLocationScore(restaurant, tokens) {
-    if (!tokens.length) {
-        return 0;
-    }
-
-    const tags = getRestaurantLocationTags(restaurant);
-    const searchable = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""}`);
-
-    return tokens.reduce((score, token) => {
-        if (tags.has(token)) {
-            return score + 3;
-        }
-        if (searchable.includes(token)) {
-            return score + 1;
-        }
-        return score;
-    }, 0);
-}
-
-function getLocationAwareRestaurants(allRestaurants) {
-    const locationSearchText = getSelectedLocationSearchText();
-    if (!locationSearchText || locationSearchText === "other") {
-        return {
-            items: allRestaurants,
-            message: ""
-        };
-    }
-
-    const tokens = getLocationMatchTokens(locationSearchText);
-    if (!tokens.length) {
-        return {
-            items: allRestaurants,
-            message: ""
-        };
-    }
-
-    const scoredRestaurants = allRestaurants.map((restaurant) => ({
-        restaurant,
-        score: getRestaurantLocationScore(restaurant, tokens)
-    }));
-
-    const matched = scoredRestaurants
-        .filter((entry) => entry.score > 0)
-        .sort((a, b) => b.score - a.score || (b.restaurant.rating || 0) - (a.restaurant.rating || 0))
-        .map((entry) => entry.restaurant);
-
-    if (matched.length >= 4 || (allRestaurants.length <= 6 && matched.length > 0)) {
-        return {
-            items: matched,
-            message: `Showing restaurants serving around ${selectedLocation.label}.`
-        };
-    }
-
-    const seed = hashString(locationSearchText);
-    const fallback = [...allRestaurants]
-        .sort((a, b) => {
-            const deltaA = Math.abs((hashString(a.restaurantId || a.name) % 1024) - (seed % 1024));
-            const deltaB = Math.abs((hashString(b.restaurantId || b.name) % 1024) - (seed % 1024));
-            return deltaA - deltaB || (b.rating || 0) - (a.rating || 0);
-        })
-        .slice(0, Math.min(18, allRestaurants.length));
-
+    const genericLabels = new Set(["other", "current location"]);
+    const locality = genericLabels.has(label.toLowerCase()) ? "" : label;
     return {
-        items: fallback,
-        message: `No exact area match for ${selectedLocation.label} yet. Showing nearby popular options.`
+        city: detectedCity,
+        locality
     };
 }
 
@@ -565,14 +457,21 @@ async function fetchCategories() {
 }
 
 async function fetchRestaurants(category = activeCategory, searchQuery = "") {
-    let endpoint;
-    if (searchQuery.trim()) {
-        endpoint = `${API_BASE_URL}/restaurants/search?query=${encodeURIComponent(searchQuery.trim())}`;
-    } else if (category === "all") {
-        endpoint = `${API_BASE_URL}/restaurants/active`;
-    } else {
-        endpoint = `${API_BASE_URL}/restaurants/category/${encodeURIComponent(category)}`;
+    const params = new URLSearchParams();
+    const location = getSelectedLocationFilters();
+    if (location.city) {
+        params.set("city", location.city);
     }
+    if (location.locality) {
+        params.set("locality", location.locality);
+    }
+    if (category && category !== "all") {
+        params.set("category", category);
+    }
+    if (searchQuery.trim()) {
+        params.set("query", searchQuery.trim());
+    }
+    const endpoint = `${API_BASE_URL}/restaurants/active${params.toString() ? `?${params.toString()}` : ""}`;
 
     restaurants = await fetchJson(endpoint);
     renderRestaurants();
@@ -677,21 +576,13 @@ function renderRestaurants() {
     }
 
     if (!restaurants.length) {
-        grid.innerHTML = `<p class="empty-state">No restaurants found for this selection.</p>`;
-        return;
-    }
-
-    const locationFiltered = getLocationAwareRestaurants(restaurants);
-    const visibleRestaurants = locationFiltered.items;
-
-    if (!visibleRestaurants.length) {
-        grid.innerHTML = `<p class="empty-state">No restaurants available near your selected location right now.</p>`;
+        const hasLocation = Boolean(selectedLocation?.label && selectedLocation.label.toLowerCase() !== "other");
+        grid.innerHTML = `<p class="empty-state">${hasLocation ? "Not serviceable in this area." : "No restaurants found for this selection."}</p>`;
         return;
     }
 
     grid.innerHTML = `
-        ${locationFiltered.message ? `<div class="restaurant-location-note">${escapeHtml(locationFiltered.message)}</div>` : ""}
-        ${visibleRestaurants.map((restaurant) => `
+        ${restaurants.map((restaurant) => `
         <article
             class="restaurant-card"
             role="button"
