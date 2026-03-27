@@ -3,6 +3,7 @@ package com.foodhub.controller;
 import com.foodhub.config.DemoUserDataLoader;
 import com.foodhub.model.User;
 import com.foodhub.repository.UserRepository;
+import com.foodhub.security.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,6 +26,9 @@ public class UserController {
 
     @Autowired(required = false)
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
 
     // ===== CREATE =====
     
@@ -52,7 +56,7 @@ public class UserController {
             user.setActive(user.getActive() == null ? true : user.getActive());
 
             User savedUser = userRepository.save(user);
-            return ResponseEntity.status(HttpStatus.CREATED).body(sanitizeUser(savedUser));
+            return ResponseEntity.status(HttpStatus.CREATED).body(buildAuthResponse(savedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Failed to register user: " + e.getMessage()));
@@ -88,7 +92,7 @@ public class UserController {
                         .body(Map.of("error", "Your account is inactive"));
             }
 
-            return ResponseEntity.ok(sanitizeUser(user));
+            return ResponseEntity.ok(buildAuthResponse(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to log in: " + e.getMessage()));
@@ -387,6 +391,13 @@ public class UserController {
         responseUser.setCreatedAt(user.getCreatedAt());
         responseUser.setUpdatedAt(user.getUpdatedAt());
         return responseUser;
+    }
+
+    private Map<String, Object> buildAuthResponse(User user) {
+        return Map.of(
+                "token", jwtService.generateToken(user),
+                "user", sanitizeUser(user)
+        );
     }
 
     public static class LoginRequest {

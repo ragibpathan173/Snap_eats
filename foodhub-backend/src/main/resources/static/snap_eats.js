@@ -1,6 +1,7 @@
 const API_BASE_URL = "/api";
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
+const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";
 const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
@@ -33,6 +34,7 @@ let paymentFormType = "CARD";
 let checkoutPaymentChoice = "CASH";
 let latestOrderSuccess = null;
 let currentUser = loadCurrentUser();
+let authToken = loadAuthToken();
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
@@ -92,6 +94,9 @@ async function fetchJson(url, options = {}) {
     if (currentUser?.id) {
         headers.set("X-User-Id", String(currentUser.id));
     }
+    if (authToken) {
+        headers.set("Authorization", `Bearer ${authToken}`);
+    }
     if (!headers.has("X-Correlation-Id")) {
         headers.set("X-Correlation-Id", buildCorrelationId());
     }
@@ -124,6 +129,11 @@ async function fetchJson(url, options = {}) {
         error.status = response.status;
         error.correlationId = response.headers.get("X-Correlation-Id") || "";
 
+        if (response.status === 401 && authToken) {
+            saveCurrentUser(null);
+            saveAuthToken("");
+        }
+
         if (!shouldRetryRequest(error, method, attempt, maxRetries)) {
             throw error;
         }
@@ -139,6 +149,14 @@ function loadCurrentUser() {
         return raw ? JSON.parse(raw) : null;
     } catch {
         return null;
+    }
+}
+
+function loadAuthToken() {
+    try {
+        return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "";
+    } catch {
+        return "";
     }
 }
 
@@ -191,6 +209,15 @@ function saveCurrentUser(user) {
         localStorage.removeItem(AUTH_STORAGE_KEY);
     }
     updateAuthNav();
+}
+
+function saveAuthToken(token) {
+    authToken = token || "";
+    if (authToken) {
+        localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, authToken);
+    } else {
+        localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    }
 }
 
 function saveSelectedLocation(location) {
@@ -770,6 +797,7 @@ async function refreshCurrentUser() {
         saveCurrentUser(user);
     } catch {
         saveCurrentUser(null);
+        saveAuthToken("");
     }
 }
 
@@ -2717,7 +2745,7 @@ async function loginUser(event) {
     }
 
     try {
-        const user = await fetchJson(`${API_BASE_URL}/users/login`, {
+        const authResponse = await fetchJson(`${API_BASE_URL}/users/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -2725,7 +2753,8 @@ async function loginUser(event) {
             body: JSON.stringify({ email, password })
         });
 
-        saveCurrentUser(user);
+        saveAuthToken(authResponse?.token || "");
+        saveCurrentUser(authResponse?.user || authResponse);
         await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
         renderAuthModal();
     } catch (error) {
@@ -2755,7 +2784,7 @@ async function signupUser(event) {
     }
 
     try {
-        const user = await fetchJson(`${API_BASE_URL}/users/register`, {
+        const authResponse = await fetchJson(`${API_BASE_URL}/users/register`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -2763,7 +2792,8 @@ async function signupUser(event) {
             body: JSON.stringify(payload)
         });
 
-        saveCurrentUser(user);
+        saveAuthToken(authResponse?.token || "");
+        saveCurrentUser(authResponse?.user || authResponse);
         savedAddresses = [];
         orderHistory = [];
         favoriteRestaurants = [];
@@ -2784,6 +2814,7 @@ async function signupUser(event) {
 
 function logoutUser() {
     saveCurrentUser(null);
+    saveAuthToken("");
     savedAddresses = [];
     orderHistory = [];
     favoriteRestaurants = [];
