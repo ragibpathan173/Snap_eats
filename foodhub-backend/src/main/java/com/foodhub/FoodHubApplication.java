@@ -2,25 +2,39 @@ package com.foodhub;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.core.env.Environment;
 
 @SpringBootApplication
 public class FoodHubApplication {
 
+    private final Environment environment;
+
+    public FoodHubApplication(Environment environment) {
+        this.environment = environment;
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(FoodHubApplication.class, args);
-        System.out.println("\n╔═══════════════════════════════════════════╗");
-        System.out.println("║   🍔 FoodHub Backend Started Successfully! ║");
-        System.out.println("╚═══════════════════════════════════════════╝");
-        System.out.println("📍 API Base URL:        http://localhost:8080/api");
-        System.out.println("📚 Swagger UI:          http://localhost:8080/swagger-ui.html");
-        System.out.println("🗄️  H2 Console:          http://localhost:8080/h2-console");
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        System.out.println("📋 Available Endpoints:");
-        System.out.println("   • Restaurants:       /api/restaurants");
-        System.out.println("   • Categories:        /api/categories");
-        System.out.println("   • Menu Items:        /api/menu-items");
-        System.out.println("   • Users:             /api/users");
-        System.out.println("   • Orders:            /api/orders");
-        System.out.println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void printStartupSummary() {
+        String port = environment.getProperty("local.server.port",
+                environment.getProperty("server.port", "8081"));
+        String baseUrl = "http://localhost:" + port;
+
+        System.out.println();
+        System.out.println("============================================");
+        System.out.println(" FoodHub Backend Started Successfully");
+        System.out.println("============================================");
+        System.out.println(" API Base URL:        " + baseUrl + "/api");
+        System.out.println(" Swagger UI:          " + baseUrl + "/swagger-ui.html");
+        System.out.println(" H2 Console:          " + baseUrl + "/h2-console");
+        System.out.println(" Health (liveness):   " + baseUrl + "/actuator/health/liveness");
+        System.out.println(" Health (readiness):  " + baseUrl + "/actuator/health/readiness");
+        System.out.println("============================================");
+        System.out.println();
     }
 }

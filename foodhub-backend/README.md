@@ -86,12 +86,14 @@ mvn spring-boot:run
 ```
 
 4. **Access the application**
-- API Base URL: http://localhost:8080/api
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- H2 Console: http://localhost:8080/h2-console
+- API Base URL: http://localhost:8081/api
+- Swagger UI: http://localhost:8081/swagger-ui.html
+- H2 Console: http://localhost:8081/h2-console
+- Health (liveness): http://localhost:8081/actuator/health/liveness
+- Health (readiness): http://localhost:8081/actuator/health/readiness
 
 ### H2 Database Access
-- JDBC URL: `jdbc:h2:mem:foodhub`
+- JDBC URL: `jdbc:h2:file:./data/foodhub`
 - Username: `sa`
 - Password: *(leave blank)*
 
@@ -207,11 +209,12 @@ src/main/java/com/foodhub/
 ### application.properties
 ```properties
 # Server
-server.port=8080
+server.port=8081
 
 # Database (H2)
-spring.datasource.url=jdbc:h2:mem:foodhub
-spring.jpa.hibernate.ddl-auto=create-drop
+spring.datasource.url=jdbc:h2:file:./data/foodhub;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=TRUE
+spring.jpa.hibernate.ddl-auto=update
+spring.flyway.enabled=true
 
 # For MySQL (Production)
 # spring.datasource.url=jdbc:mysql://localhost:3306/foodhub

@@ -668,6 +668,18 @@ body {
     color: #686b78;
 }
 
+.restaurant-location-note {
+    grid-column: 1 / -1;
+    margin-bottom: 8px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid #ffe3cf;
+    background: #fff8f3;
+    color: #8a3e15;
+    font-size: 14px;
+    font-weight: 600;
+}
+
 .modal {
     position: fixed;
     inset: 0;
@@ -1038,6 +1050,29 @@ body.modal-open {
     display: grid;
     gap: 14px;
     margin-bottom: 22px;
+}
+
+.location-gps-status {
+    min-height: 20px;
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.location-gps-status.idle {
+    visibility: hidden;
+}
+
+.location-gps-status.loading {
+    color: #4b5563;
+}
+
+.location-gps-status.success {
+    color: #0f9d58;
+}
+
+.location-gps-status.error {
+    color: #d14343;
 }
 
 .location-search-input {
@@ -1458,6 +1493,86 @@ body.modal-open {
     margin-bottom: 18px;
 }
 
+.order-success-shell {
+    padding: 28px;
+}
+
+.order-success-card {
+    border-radius: 24px;
+    border: 1px solid #e3e8ef;
+    background: linear-gradient(140deg, #ffffff 0%, #fff7f2 55%, #f4f7ff 100%);
+    padding: 24px;
+}
+
+.order-success-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(20, 76, 42, 0.12);
+    color: #144c2a;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.order-success-copy {
+    margin-top: 10px;
+    color: #4b5563;
+}
+
+.order-success-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.order-success-timeline {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.order-success-step {
+    display: grid;
+    grid-template-columns: 16px 1fr;
+    gap: 10px;
+    color: #94a3b8;
+}
+
+.order-success-step.active {
+    color: #1f2937;
+}
+
+.order-success-step-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 999px;
+    margin-top: 4px;
+    border: 2px solid #d1d5db;
+    background: #fff;
+}
+
+.order-success-step.active .order-success-step-dot {
+    border-color: #cb202d;
+    background: #cb202d;
+}
+
+.order-success-step p {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.order-success-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
 .order-restaurant {
     display: flex;
     gap: 14px;
@@ -1504,6 +1619,70 @@ body.modal-open {
 .status-cancelled {
     background: rgba(180, 35, 24, 0.12);
     color: #b42318;
+}
+
+.order-tracking-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    border-radius: 16px;
+    border: 1px solid #e3e8ef;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: #f8f8fb;
+}
+
+.order-tracking-kicker {
+    margin-bottom: 6px;
+    color: #6b7280;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+}
+
+.order-tracking-hero h4 {
+    font-size: 20px;
+    color: #0f172a;
+}
+
+.order-tracking-hero p {
+    margin-top: 6px;
+    color: #4b5563;
+}
+
+.order-tracking-side {
+    min-width: 160px;
+    text-align: right;
+    display: grid;
+    gap: 6px;
+}
+
+.order-tracking-eta {
+    font-size: 16px;
+    font-weight: 800;
+    color: #111827;
+}
+
+.order-tracking-side small {
+    color: #6b7280;
+}
+
+.order-tracking-hero.status-preparing {
+    background: rgba(255, 208, 140, 0.2);
+}
+
+.order-tracking-hero.status-out_for_delivery {
+    background: rgba(28, 100, 242, 0.08);
+}
+
+.order-tracking-hero.status-delivered {
+    background: rgba(20, 76, 42, 0.08);
+}
+
+.order-tracking-hero.status-cancelled {
+    background: rgba(180, 35, 24, 0.08);
 }
 
 .order-progress {
@@ -1585,6 +1764,41 @@ body.modal-open {
 
 .order-address-block {
     margin-bottom: 18px;
+}
+
+.order-milestone-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.order-milestone {
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    display: grid;
+    gap: 4px;
+}
+
+.order-milestone span {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.order-milestone strong {
+    color: #4b5563;
+    font-size: 13px;
+}
+
+.order-milestone.active {
+    border-color: rgba(203, 32, 45, 0.3);
+    background: rgba(203, 32, 45, 0.06);
+}
+
+.order-milestone.active strong {
+    color: #cb202d;
 }
 
 .order-note {
@@ -2284,6 +2498,8 @@ body.modal-open {
     .cart-layout,
     .address-book-layout,
     .order-meta-grid,
+    .order-success-grid,
+    .order-milestone-row,
     .account-grid,
     .account-layout,
     .account-stat-grid {
@@ -2369,6 +2585,16 @@ body.modal-open {
 
     .order-progress {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .order-tracking-hero {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .order-tracking-side {
+        text-align: left;
+        min-width: 0;
     }
     .address-form-row {
         grid-template-columns: 1fr;

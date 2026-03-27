@@ -78,16 +78,23 @@ cd foodhub-backend
 mvn spring-boot:run
 ```
 
+If port conflicts happen, use:
+
+```powershell
+cd foodhub-backend
+powershell -ExecutionPolicy Bypass -File .\start-dev.ps1
+```
+
 Open:
 
 ```text
-http://localhost:8080/
+http://localhost:8081/
 ```
 
 Direct page:
 
 ```text
-http://localhost:8080/snap_eats.html
+http://localhost:8081/snap_eats.html
 ```
 
 ## Build and Test

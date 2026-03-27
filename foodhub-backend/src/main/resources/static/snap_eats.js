@@ -4,6 +4,17 @@ const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
+const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+const RESTAURANT_LOCATION_CLUSTERS = [
+    { city: "New Delhi", tags: ["delhi", "new delhi", "okhla", "jamia nagar", "south delhi", "nizamuddin"] },
+    { city: "Bengaluru", tags: ["bengaluru", "bangalore", "koramangala", "indiranagar", "hsr", "btm"] },
+    { city: "Mumbai", tags: ["mumbai", "bandra", "andheri", "powai", "juhu", "thane"] },
+    { city: "Kolkata", tags: ["kolkata", "salt lake", "new town", "park street", "howrah"] },
+    { city: "Hyderabad", tags: ["hyderabad", "hitech city", "gachibowli", "jubilee hills", "madhapur"] },
+    { city: "Chennai", tags: ["chennai", "adyar", "anna nagar", "velachery", "t nagar"] },
+    { city: "Pune", tags: ["pune", "baner", "hinjewadi", "kothrud", "wakad"] },
+    { city: "Ahmedabad", tags: ["ahmedabad", "navrangpura", "prahlad nagar", "satellite", "bopal"] }
+];
 
 let categories = [];
 let restaurants = [];
@@ -24,6 +35,7 @@ let currentUser = loadCurrentUser();
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
+let locationGpsStatus = { type: "idle", message: "" };
 const pincodeLookupCache = new Map();
 
 async function fetchJson(url, options = {}) {
@@ -296,6 +308,7 @@ function applyLocationSelection(location) {
     saveSelectedLocation(location);
     pushRecentLocation(location);
     closeLocationPicker();
+    renderRestaurants();
 }
 
 function handleLocationChipKeydown(event) {
@@ -317,6 +330,134 @@ function formatAddressLine(address) {
         address.state,
         address.pincode
     ].filter(Boolean).join(", ");
+}
+
+function normalizeTextForMatching(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function hashString(value) {
+    return [...String(value || "")].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 0);
+}
+
+function getSelectedLocationSearchText() {
+    return normalizeTextForMatching(`${selectedLocation?.label || ""} ${selectedLocation?.subtitle || ""}`);
+}
+
+function getLocationMatchTokens(locationSearchText) {
+    const baseTokens = locationSearchText.split(" ").filter((token) => token.length >= 3);
+    const joined = ` ${locationSearchText} `;
+    const expandedTokens = new Set(baseTokens);
+
+    const aliases = {
+        delhi: ["new delhi", "ncr"],
+        bengaluru: ["bangalore"],
+        bangalore: ["bengaluru"],
+        mumbai: ["bombay"],
+        kolkata: ["calcutta"],
+        gurugram: ["gurgaon"],
+        noida: ["ncr"]
+    };
+
+    Object.entries(aliases).forEach(([key, values]) => {
+        if (joined.includes(` ${key} `)) {
+            values.forEach((value) => normalizeTextForMatching(value).split(" ").forEach((token) => {
+                if (token.length >= 3) {
+                    expandedTokens.add(token);
+                }
+            }));
+        }
+    });
+
+    return [...expandedTokens];
+}
+
+function getRestaurantLocationCluster(restaurant) {
+    const numericIdMatch = String(restaurant?.restaurantId || "").match(/\d+/);
+    const numericId = numericIdMatch ? Number(numericIdMatch[0]) : hashString(restaurant?.restaurantId || restaurant?.name || "0");
+    const clusterIndex = Math.max(0, (numericId - 1) % RESTAURANT_LOCATION_CLUSTERS.length);
+    return RESTAURANT_LOCATION_CLUSTERS[clusterIndex];
+}
+
+function getRestaurantLocationTags(restaurant) {
+    const cluster = getRestaurantLocationCluster(restaurant);
+    const source = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""} ${restaurant?.category || ""}`);
+    const tags = new Set(cluster.tags.flatMap((tag) => normalizeTextForMatching(tag).split(" ")));
+    normalizeTextForMatching(cluster.city).split(" ").forEach((token) => tags.add(token));
+    source.split(" ").filter((token) => token.length >= 4).forEach((token) => tags.add(token));
+    return tags;
+}
+
+function getRestaurantLocationScore(restaurant, tokens) {
+    if (!tokens.length) {
+        return 0;
+    }
+
+    const tags = getRestaurantLocationTags(restaurant);
+    const searchable = normalizeTextForMatching(`${restaurant?.name || ""} ${restaurant?.cuisine || ""}`);
+
+    return tokens.reduce((score, token) => {
+        if (tags.has(token)) {
+            return score + 3;
+        }
+        if (searchable.includes(token)) {
+            return score + 1;
+        }
+        return score;
+    }, 0);
+}
+
+function getLocationAwareRestaurants(allRestaurants) {
+    const locationSearchText = getSelectedLocationSearchText();
+    if (!locationSearchText || locationSearchText === "other") {
+        return {
+            items: allRestaurants,
+            message: ""
+        };
+    }
+
+    const tokens = getLocationMatchTokens(locationSearchText);
+    if (!tokens.length) {
+        return {
+            items: allRestaurants,
+            message: ""
+        };
+    }
+
+    const scoredRestaurants = allRestaurants.map((restaurant) => ({
+        restaurant,
+        score: getRestaurantLocationScore(restaurant, tokens)
+    }));
+
+    const matched = scoredRestaurants
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => b.score - a.score || (b.restaurant.rating || 0) - (a.restaurant.rating || 0))
+        .map((entry) => entry.restaurant);
+
+    if (matched.length >= 4 || (allRestaurants.length <= 6 && matched.length > 0)) {
+        return {
+            items: matched,
+            message: `Showing restaurants serving around ${selectedLocation.label}.`
+        };
+    }
+
+    const seed = hashString(locationSearchText);
+    const fallback = [...allRestaurants]
+        .sort((a, b) => {
+            const deltaA = Math.abs((hashString(a.restaurantId || a.name) % 1024) - (seed % 1024));
+            const deltaB = Math.abs((hashString(b.restaurantId || b.name) % 1024) - (seed % 1024));
+            return deltaA - deltaB || (b.rating || 0) - (a.rating || 0);
+        })
+        .slice(0, Math.min(18, allRestaurants.length));
+
+    return {
+        items: fallback,
+        message: `No exact area match for ${selectedLocation.label} yet. Showing nearby popular options.`
+    };
 }
 
 async function lookupPincodeDetails(pincode) {
@@ -527,7 +668,17 @@ function renderRestaurants() {
         return;
     }
 
-    grid.innerHTML = restaurants.map((restaurant) => `
+    const locationFiltered = getLocationAwareRestaurants(restaurants);
+    const visibleRestaurants = locationFiltered.items;
+
+    if (!visibleRestaurants.length) {
+        grid.innerHTML = `<p class="empty-state">No restaurants available near your selected location right now.</p>`;
+        return;
+    }
+
+    grid.innerHTML = `
+        ${locationFiltered.message ? `<div class="restaurant-location-note">${escapeHtml(locationFiltered.message)}</div>` : ""}
+        ${visibleRestaurants.map((restaurant) => `
         <article
             class="restaurant-card"
             role="button"
@@ -559,7 +710,8 @@ function renderRestaurants() {
                 </div>
             </div>
         </article>
-    `).join("");
+    `).join("")}
+    `;
 }
 
 function isRestaurantFavorite(restaurantId) {
@@ -834,6 +986,167 @@ function dismissOrderSuccess() {
     renderCart();
 }
 
+function parseOrderDate(value) {
+    if (!value) {
+        return null;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function plusMinutes(date, minutes) {
+    if (!date) {
+        return null;
+    }
+    return new Date(date.getTime() + (minutes * 60000));
+}
+
+function getTrackedOrderStage(order) {
+    const status = String(order?.status || "").toUpperCase();
+
+    if (status === "CANCELLED" || status === "DELIVERED") {
+        return status;
+    }
+
+    const createdAt = parseOrderDate(order?.createdAt) || new Date();
+    const estimatedDelivery = parseOrderDate(order?.estimatedDeliveryTime) || plusMinutes(createdAt, 35);
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - createdAt.getTime()) / 60000));
+
+    if (status === "OUT_FOR_DELIVERY") {
+        if (estimatedDelivery && Date.now() >= estimatedDelivery.getTime() + (5 * 60000)) {
+            return "DELIVERED";
+        }
+        return "OUT_FOR_DELIVERY";
+    }
+
+    if (elapsedMinutes < 5) {
+        return "CONFIRMED";
+    }
+    if (elapsedMinutes < 16) {
+        return "PREPARING";
+    }
+    if (estimatedDelivery && Date.now() >= estimatedDelivery.getTime() + (5 * 60000)) {
+        return "DELIVERED";
+    }
+    return "OUT_FOR_DELIVERY";
+}
+
+function getEtaLabel(order) {
+    const stage = getTrackedOrderStage(order);
+    if (stage === "CANCELLED") {
+        return "Cancelled";
+    }
+    if (stage === "DELIVERED") {
+        const deliveredAt = parseOrderDate(order?.actualDeliveryTime);
+        return deliveredAt ? `Delivered at ${formatTime(deliveredAt)}` : "Delivered";
+    }
+
+    const createdAt = parseOrderDate(order?.createdAt) || new Date();
+    const estimatedDelivery = parseOrderDate(order?.estimatedDeliveryTime) || plusMinutes(createdAt, 35);
+    if (!estimatedDelivery) {
+        return "ETA TBD";
+    }
+    if (stage === "OUT_FOR_DELIVERY") {
+        return `Arriving by ${formatTime(estimatedDelivery)}`;
+    }
+    return `ETA ${formatTime(estimatedDelivery)}`;
+}
+
+function getTrackingHeadline(order) {
+    const stage = getTrackedOrderStage(order);
+    if (stage === "CANCELLED") {
+        return "This order was cancelled";
+    }
+    if (stage === "DELIVERED") {
+        return "Delivered to your doorstep";
+    }
+    if (stage === "OUT_FOR_DELIVERY") {
+        return "Rider is heading your way";
+    }
+    if (stage === "PREPARING") {
+        return "Your food is being prepared";
+    }
+    return "Order confirmed by restaurant";
+}
+
+function getTrackingCopy(order) {
+    const stage = getTrackedOrderStage(order);
+    if (stage === "CANCELLED") {
+        return "You can place a fresh order anytime from your favorites.";
+    }
+    if (stage === "DELIVERED") {
+        return "Enjoy your meal. You can reorder this basket anytime.";
+    }
+    if (stage === "OUT_FOR_DELIVERY") {
+        return "Packing is complete and your rider is on the route.";
+    }
+    if (stage === "PREPARING") {
+        return "The kitchen has started cooking your items right now.";
+    }
+    return "We are locking your order details and assigning the kitchen.";
+}
+
+function getTrackingSubcopy(order) {
+    const stage = getTrackedOrderStage(order);
+    if (stage === "CANCELLED") {
+        return "Refund status will reflect in your payment history.";
+    }
+    if (stage === "DELIVERED") {
+        return "Thanks for ordering with SnapEats.";
+    }
+    if (stage === "OUT_FOR_DELIVERY") {
+        return "Keep your phone handy for rider updates.";
+    }
+    if (stage === "PREPARING") {
+        return "We will update you when it leaves the restaurant.";
+    }
+    return "Next update: preparing starts shortly.";
+}
+
+function buildSuccessTimeline(order) {
+    const stage = getTrackedOrderStage(order);
+    const stages = ["CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY", "DELIVERED"];
+    const activeIndex = stages.indexOf(stage);
+    const effectiveIndex = activeIndex === -1 ? 0 : activeIndex;
+    const copyByStep = {
+        CONFIRMED: "Restaurant accepted your order.",
+        PREPARING: "Kitchen is preparing your food.",
+        OUT_FOR_DELIVERY: "Packed and out for delivery.",
+        DELIVERED: "Delivered to your selected address."
+    };
+
+    return stages.map((entry, index) => ({
+        title: formatStatus(entry),
+        copy: copyByStep[entry],
+        active: stage === "CANCELLED" ? false : index <= effectiveIndex
+    }));
+}
+
+function buildOrderMilestones(order) {
+    const stage = getTrackedOrderStage(order);
+    const createdAt = parseOrderDate(order?.createdAt) || new Date();
+    const confirmedAt = createdAt;
+    const preparingAt = plusMinutes(createdAt, 8);
+    const outForDeliveryAt = plusMinutes(createdAt, 18);
+    const deliveredAt = parseOrderDate(order?.actualDeliveryTime)
+        || parseOrderDate(order?.estimatedDeliveryTime)
+        || plusMinutes(createdAt, 35);
+
+    const steps = [
+        { key: "CONFIRMED", label: "Confirmed", time: formatTime(confirmedAt) },
+        { key: "PREPARING", label: "Preparing", time: formatTime(preparingAt) },
+        { key: "OUT_FOR_DELIVERY", label: "Out for delivery", time: formatTime(outForDeliveryAt) },
+        { key: "DELIVERED", label: "Delivered", time: stage === "DELIVERED" ? formatTime(deliveredAt) : "Pending" }
+    ];
+
+    if (stage === "CANCELLED") {
+        return steps.map((step, index) => ({ ...step, active: index === 0 }));
+    }
+
+    const activeIndex = Math.max(0, steps.findIndex((step) => step.key === stage));
+    return steps.map((step, index) => ({ ...step, active: index <= activeIndex }));
+}
+
 function openAddressBook(event) {
     if (event) {
         event.preventDefault();
@@ -890,6 +1203,7 @@ function openLocationPicker(event) {
         return;
     }
 
+    locationGpsStatus = { type: "idle", message: "" };
     modal.classList.add("open");
     document.body.classList.add("modal-open");
     renderLocationPicker();
@@ -951,9 +1265,20 @@ function closeLocationPicker() {
     }
 
     modal.classList.remove("open");
+    locationGpsStatus = { type: "idle", message: "" };
     if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
+}
+
+function setLocationGpsStatus(type, message) {
+    locationGpsStatus = { type, message };
+    const status = document.getElementById("locationGpsStatus");
+    if (!status) {
+        return;
+    }
+    status.className = `location-gps-status ${type}`;
+    status.textContent = message || "";
 }
 
 function renderLocationPicker(query = "") {
@@ -976,6 +1301,7 @@ function renderLocationPicker(query = "") {
                     placeholder="Search for area, street name..."
                     oninput="renderLocationPicker(this.value)"
                 >
+                <p id="locationGpsStatus" class="location-gps-status ${locationGpsStatus.type}">${escapeHtml(locationGpsStatus.message || "")}</p>
             </div>
 
             <section class="location-panel">
@@ -1062,24 +1388,104 @@ function saveManualLocation(event) {
     applyLocationSelection({ label, subtitle });
 }
 
-function useCurrentLocation() {
+function getCurrentPosition(options = {}) {
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+}
+
+function getAddressLineFromReverseGeocode(address) {
+    const primaryLabel = [
+        address.suburb,
+        address.neighbourhood,
+        address.quarter,
+        address.city_district,
+        address.town,
+        address.village,
+        address.city
+    ].find(Boolean) || "Current location";
+
+    const detailParts = [
+        address.city || address.town || address.village,
+        address.state_district,
+        address.state,
+        address.postcode
+    ].filter(Boolean);
+
+    const subtitle = detailParts.length ? detailParts.join(", ") : "Detected from GPS";
+    return {
+        label: primaryLabel,
+        subtitle
+    };
+}
+
+async function resolveReadableCurrentLocation(latitude, longitude) {
+    const fallbackLocation = {
+        label: "Current location",
+        subtitle: `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`
+    };
+
+    const params = new URLSearchParams({
+        format: "jsonv2",
+        lat: String(latitude),
+        lon: String(longitude),
+        zoom: "18",
+        addressdetails: "1"
+    });
+
+    try {
+        const response = await fetch(`${REVERSE_GEOCODE_BASE_URL}?${params.toString()}`, {
+            headers: {
+                Accept: "application/json"
+            }
+        });
+        if (!response.ok) {
+            throw new Error("Reverse geocode failed");
+        }
+
+        const payload = await response.json();
+        const address = payload?.address;
+        if (!address) {
+            throw new Error("No address found");
+        }
+
+        const readableLocation = getAddressLineFromReverseGeocode(address);
+        return {
+            location: readableLocation,
+            usedFallback: false
+        };
+    } catch {
+        return {
+            location: fallbackLocation,
+            usedFallback: true
+        };
+    }
+}
+
+async function useCurrentLocation() {
     if (!navigator.geolocation) {
-        alert("Geolocation is not supported in this browser.");
+        setLocationGpsStatus("error", "Geolocation is not supported in this browser.");
         return;
     }
 
-    navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        applyLocationSelection({
-            label: "Current location",
-            subtitle: `Lat ${latitude.toFixed(3)}, Lng ${longitude.toFixed(3)}`
+    setLocationGpsStatus("loading", "Detecting your current location...");
+
+    try {
+        const position = await getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000
         });
-    }, () => {
-        alert("Unable to fetch your current location.");
-    }, {
-        enableHighAccuracy: true,
-        timeout: 10000
-    });
+        const { latitude, longitude } = position.coords;
+        const { location, usedFallback } = await resolveReadableCurrentLocation(latitude, longitude);
+        if (usedFallback) {
+            setLocationGpsStatus("error", "Could not fetch address details. Using GPS coordinates.");
+        } else {
+            setLocationGpsStatus("success", `Location found: ${location.label}`);
+        }
+        applyLocationSelection(location);
+    } catch {
+        setLocationGpsStatus("error", "Unable to fetch your current location. Please allow location access.");
+    }
 }
 
 function renderCart() {
@@ -2323,6 +2729,7 @@ async function submitOrder(event) {
     }
 
     try {
+        const placedItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
         const deliveryFee = getDeliveryFee();
         const response = await fetchJson(`${API_BASE_URL}/orders/checkout`, {
             method: "POST",
@@ -2351,6 +2758,17 @@ async function submitOrder(event) {
             feedback.textContent = `Order placed successfully to ${defaultAddress.label} using ${selectedPayment.label}. Order number: ${response.order.orderNumber}`;
             feedback.className = "checkout-feedback success";
         }
+
+        latestOrderSuccess = {
+            order: {
+                ...(response.order || {}),
+                restaurantName: cart.restaurantName || response.order?.restaurantName || "Your order",
+                status: response.order?.status || "CONFIRMED"
+            },
+            addressLabel: defaultAddress.label,
+            paymentLabel: selectedPayment.label,
+            itemCount: placedItemCount
+        };
 
         cart = createEmptyCart();
         saveCart();
