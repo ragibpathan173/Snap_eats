@@ -104,6 +104,23 @@ cd foodhub-backend
 mvn test
 ```
 
+Integration test suite includes:
+- OTP auth APIs (email and phone)
+- Location-based restaurant filtering
+- Admin RBAC for menu mutations
+- Payment method create/list flow
+- Order checkout and `my orders` retrieval
+
+Test profile config:
+- `foodhub-backend/src/test/resources/application-test.properties`
+- Uses isolated in-memory H2 DB for repeatable runs
+
+Frontend smoke checks (while backend is running):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\frontend_smoke_test.ps1
+```
+
 ## API Overview
 
 Common endpoints used by the frontend:
