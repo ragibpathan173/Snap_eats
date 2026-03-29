@@ -217,6 +217,14 @@ function applyCouponFromCart(event) {
     applyCouponCode(code, "cart");
 }
 
+function applyCouponFromList(code) {
+    const input = document.getElementById("couponCodeInput");
+    if (input) {
+        input.value = code;
+    }
+    applyCouponCode(code, "cart");
+}
+
 function applyCouponFromOffers(code) {
     const applied = applyCouponCode(code, "offers");
     if (applied) {
@@ -3500,13 +3508,12 @@ function renderCart() {
                         <div class="checkout-total"><span>Total</span><strong>${formatCurrency(finalAmount)}</strong></div>
                     </div>
 
-                    <section class="coupon-panel">
+                    <section class="coupon-panel ${appliedCoupon ? "coupon-has-applied" : ""}">
                         <div class="coupon-panel-head">
                             <div>
                                 <p class="menu-eyebrow">Coupons</p>
                                 <h3>Apply coupon code</h3>
                             </div>
-                            <button class="secondary-button" type="button" onclick="openOffers(event)">View offers</button>
                         </div>
                         <div class="coupon-input-row">
                             <input id="couponCodeInput" type="text" placeholder="Enter coupon code" value="${escapeAttribute(appliedCouponCode)}">
@@ -3521,6 +3528,30 @@ function renderCart() {
                         ${couponFeedback.message ? `
                             <div class="checkout-feedback ${couponFeedback.type === "error" ? "error" : "success"}">${escapeHtml(couponFeedback.message)}</div>
                         ` : ""}
+                        <div class="coupon-list">
+                            ${PLATFORM_COUPONS.map((coupon) => {
+                                const isApplied = normalizeCouponCode(appliedCouponCode) === coupon.code;
+                                return `
+                                <article class="coupon-card ${isApplied ? "applied" : ""}">
+                                    <div class="coupon-card-head">
+                                        <div>
+                                            <span class="coupon-code">${escapeHtml(coupon.code)}</span>
+                                            <h4>${escapeHtml(coupon.title)}</h4>
+                                        </div>
+                                        ${isApplied ? '<span class="offer-applied-pill">Applied</span>' : ""}
+                                    </div>
+                                    <p>${escapeHtml(coupon.description)}</p>
+                                    <div class="coupon-card-meta">
+                                        <span>Min order ${formatCurrency(coupon.minOrder)}</span>
+                                        <span>${coupon.discountType === "PERCENT" ? `${formatNumber(coupon.discountValue)}% off` : `${formatCurrency(coupon.discountValue)} off`}</span>
+                                    </div>
+                                    <button class="${isApplied ? "secondary-button" : "primary-button"}" type="button" onclick="applyCouponFromList('${escapeAttribute(coupon.code)}')" ${isApplied ? "disabled" : ""}>
+                                        ${isApplied ? "Applied" : "Apply coupon"}
+                                    </button>
+                                </article>
+                                `;
+                            }).join("")}
+                        </div>
                     </section>
 
                     <section class="address-summary-card">

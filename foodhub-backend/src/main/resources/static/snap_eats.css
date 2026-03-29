@@ -1879,6 +1879,67 @@ body.modal-open {
     background: rgba(15, 157, 88, 0.06);
 }
 
+.coupon-list {
+    margin-top: 14px;
+    display: none;
+    gap: 12px;
+}
+
+.coupon-panel:focus-within .coupon-list {
+    display: grid;
+}
+
+.coupon-panel.coupon-has-applied .coupon-list {
+    display: none;
+}
+
+.coupon-card {
+    border: 1px solid #edf0f3;
+    border-radius: 14px;
+    padding: 14px;
+    background: #fff;
+    display: grid;
+    gap: 8px;
+}
+
+.coupon-card.applied {
+    border-color: rgba(15, 157, 88, 0.35);
+    background: rgba(15, 157, 88, 0.05);
+}
+
+.coupon-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.coupon-card h4 {
+    margin: 6px 0 0;
+    font-size: 16px;
+}
+
+.coupon-code {
+    display: inline-block;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: #d72d3d;
+}
+
+.coupon-card p {
+    margin: 0;
+    color: #4e5967;
+    font-size: 14px;
+}
+
+.coupon-card-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 13px;
+    color: #5f6b7a;
+}
+
 .checkout-form {
     display: grid;
     gap: 14px;
