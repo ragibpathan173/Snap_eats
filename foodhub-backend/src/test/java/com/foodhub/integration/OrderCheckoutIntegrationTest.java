@@ -67,5 +67,110 @@ class OrderCheckoutIntegrationTest extends IntegrationTestBase {
         JsonNode myOrders = readJson(myOrdersResult);
         Assertions.assertTrue(myOrders.isArray() && myOrders.size() > 0);
     }
-}
 
+    @Test
+    void shouldApplyCouponDiscountDuringCheckout() throws Exception {
+        String userToken = loginAs("guest@snap-eats.local", "guest-pass");
+
+        MvcResult addressesResult = mockMvc.perform(get("/api/addresses")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode addresses = readJson(addressesResult);
+        long addressId = addresses.get(0).path("id").asLong();
+
+        MvcResult restaurantsResult = mockMvc.perform(get("/api/restaurants/active"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode restaurants = readJson(restaurantsResult);
+        String restaurantCode = restaurants.get(0).path("restaurantId").asText("");
+
+        Map<String, Object> checkoutPayload = Map.of(
+                "restaurantCode", restaurantCode,
+                "addressId", addressId,
+                "paymentMethod", "CASH",
+                "couponCode", "SNAP20",
+                "items", List.of(
+                        Map.of(
+                                "itemId", "itest-coupon-item",
+                                "name", "Coupon Test Dish",
+                                "quantity", 2,
+                                "price", 160.0
+                        )
+                )
+        );
+
+        MvcResult checkoutResult = mockMvc.perform(post("/api/orders/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(checkoutPayload)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        JsonNode orderNode = readJson(checkoutResult).path("order");
+        Assertions.assertEquals(64.0, orderNode.path("discount").asDouble(0), 0.01);
+    }
+
+    @Test
+    void shouldRejectWelcomeCouponForExistingUser() throws Exception {
+        String userToken = loginAs("guest@snap-eats.local", "guest-pass");
+
+        MvcResult addressesResult = mockMvc.perform(get("/api/addresses")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode addresses = readJson(addressesResult);
+        long addressId = addresses.get(0).path("id").asLong();
+
+        MvcResult restaurantsResult = mockMvc.perform(get("/api/restaurants/active"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode restaurants = readJson(restaurantsResult);
+        String restaurantCode = restaurants.get(0).path("restaurantId").asText("");
+
+        Map<String, Object> firstOrderPayload = Map.of(
+                "restaurantCode", restaurantCode,
+                "addressId", addressId,
+                "paymentMethod", "CASH",
+                "items", List.of(
+                        Map.of(
+                                "itemId", "itest-first-order-item",
+                                "name", "First Order Dish",
+                                "quantity", 1,
+                                "price", 220.0
+                        )
+                )
+        );
+
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(firstOrderPayload)))
+                .andExpect(status().isCreated());
+
+        Map<String, Object> secondOrderPayload = Map.of(
+                "restaurantCode", restaurantCode,
+                "addressId", addressId,
+                "paymentMethod", "CASH",
+                "couponCode", "WELCOME50",
+                "items", List.of(
+                        Map.of(
+                                "itemId", "itest-second-order-item",
+                                "name", "Second Order Dish",
+                                "quantity", 1,
+                                "price", 260.0
+                        )
+                )
+        );
+
+        MvcResult rejectedResult = mockMvc.perform(post("/api/orders/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(secondOrderPayload)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        JsonNode errorBody = readJson(rejectedResult);
+        Assertions.assertTrue(errorBody.path("error").asText("").contains("new users"));
+    }
+}

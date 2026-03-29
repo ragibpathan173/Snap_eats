@@ -9,6 +9,35 @@ const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 const RESTAURANT_PAGE_SIZE = 12;
 const RETRY_DELAY_MS = 350;
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
+const PLATFORM_COUPONS = [
+    {
+        code: "WELCOME50",
+        title: "Flat Rs 50 off",
+        description: "New users only · valid on orders above Rs 199.",
+        discountType: "FLAT",
+        discountValue: 50,
+        minOrder: 199,
+        maxDiscount: 50
+    },
+    {
+        code: "SNAP20",
+        title: "20% off up to Rs 120",
+        description: "Applies on orders above Rs 299.",
+        discountType: "PERCENT",
+        discountValue: 20,
+        minOrder: 299,
+        maxDiscount: 120
+    },
+    {
+        code: "MEAL30",
+        title: "Flat Rs 30 off",
+        description: "Quick savings on orders above Rs 149.",
+        discountType: "FLAT",
+        discountValue: 30,
+        minOrder: 149,
+        maxDiscount: 30
+    }
+];
 
 let categories = [];
 let restaurants = [];
@@ -36,6 +65,8 @@ let orderHistory = [];
 let activeAccountSection = "orders";
 let paymentFormType = "CARD";
 let checkoutPaymentChoice = "CASH";
+let appliedCouponCode = "";
+let couponFeedback = { type: "", message: "" };
 let latestOrderSuccess = null;
 let currentUser = loadCurrentUser();
 let authToken = loadAuthToken();
@@ -62,6 +93,120 @@ const pincodeLookupCache = new Map();
 
 function isAuthenticatedSession() {
     return Boolean(currentUser?.id && authToken);
+}
+
+function normalizeCouponCode(value) {
+    return String(value || "").trim().toUpperCase();
+}
+
+function resetCouponState() {
+    appliedCouponCode = "";
+    couponFeedback = { type: "", message: "" };
+}
+
+function getPlatformCouponByCode(code) {
+    const normalizedCode = normalizeCouponCode(code);
+    return PLATFORM_COUPONS.find((coupon) => coupon.code === normalizedCode) || null;
+}
+
+function calculateCouponDiscount(coupon, subtotal) {
+    if (!coupon || subtotal <= 0) {
+        return 0;
+    }
+    if (subtotal < Number(coupon.minOrder || 0)) {
+        return 0;
+    }
+    if (coupon.discountType === "PERCENT") {
+        const raw = subtotal * (Number(coupon.discountValue || 0) / 100);
+        return roundAmount(Math.min(raw, Number(coupon.maxDiscount || raw)));
+    }
+    return roundAmount(Math.min(Number(coupon.discountValue || 0), Number(coupon.maxDiscount || coupon.discountValue || 0)));
+}
+
+function getAppliedCoupon() {
+    return getPlatformCouponByCode(appliedCouponCode);
+}
+
+function getCouponDiscount(subtotal = getCartSubtotal()) {
+    const appliedCoupon = getAppliedCoupon();
+    return calculateCouponDiscount(appliedCoupon, subtotal);
+}
+
+function getCouponValidationMessage(coupon, subtotal) {
+    if (!coupon) {
+        return "Invalid coupon code.";
+    }
+    if (coupon.code === "WELCOME50" && orderHistory.length > 0) {
+        return "WELCOME50 is only for new users.";
+    }
+    if (!cart.items.length) {
+        return "Add items to your cart before applying a coupon.";
+    }
+    if (subtotal < Number(coupon.minOrder || 0)) {
+        return `Coupon requires a minimum order of ${formatCurrency(coupon.minOrder)}.`;
+    }
+    return "";
+}
+
+function applyCouponCode(code, source = "cart") {
+    const normalizedCode = normalizeCouponCode(code);
+    const subtotal = getCartSubtotal();
+    const coupon = getPlatformCouponByCode(normalizedCode);
+    const validationMessage = getCouponValidationMessage(coupon, subtotal);
+
+    if (validationMessage) {
+        couponFeedback = { type: "error", message: validationMessage };
+        if (source !== "offers") {
+            renderCart();
+        } else {
+            renderOffersModal();
+        }
+        return false;
+    }
+
+    appliedCouponCode = normalizedCode;
+    const discountAmount = getCouponDiscount(subtotal);
+    couponFeedback = { type: "success", message: `Coupon ${normalizedCode} applied. You saved ${formatCurrency(discountAmount)}.` };
+    renderCart();
+    if (document.getElementById("offersModal")?.classList.contains("open")) {
+        renderOffersModal();
+    }
+    return true;
+}
+
+function applyCouponFromCart(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    const input = document.getElementById("couponCodeInput");
+    const code = input?.value || "";
+    applyCouponCode(code, "cart");
+}
+
+function applyCouponFromOffers(code) {
+    const applied = applyCouponCode(code, "offers");
+    if (applied) {
+        openCart();
+    }
+}
+
+function removeAppliedCoupon() {
+    if (!appliedCouponCode) {
+        return;
+    }
+    const removedCode = appliedCouponCode;
+    appliedCouponCode = "";
+    couponFeedback = { type: "success", message: `Coupon ${removedCode} removed.` };
+    renderCart();
+    if (document.getElementById("offersModal")?.classList.contains("open")) {
+        renderOffersModal();
+    }
+}
+
+function getRestaurantOffers() {
+    return restaurants
+        .filter((restaurant) => restaurant.discount)
+        .slice(0, 24);
 }
 
 function getOtpAuthCooldownSeconds() {
@@ -807,6 +952,9 @@ async function fetchRestaurants(category = activeCategory, searchQuery = "") {
     } finally {
         restaurantsLoading = false;
         renderRestaurants();
+        if (document.getElementById("offersModal")?.classList.contains("open")) {
+            renderOffersModal();
+        }
     }
 }
 
@@ -1247,6 +1395,7 @@ function addToCart(itemId) {
             return;
         }
         cart = createEmptyCart();
+        resetCouponState();
     }
 
     cart.restaurantCode = activeRestaurant.restaurantId;
@@ -1284,6 +1433,7 @@ function changeCartQuantity(itemId, delta) {
 
     if (!cart.items.length) {
         cart = createEmptyCart();
+        resetCouponState();
     }
 
     saveCart();
@@ -1543,6 +1693,21 @@ function openLocationPicker(event) {
     renderLocationPicker();
 }
 
+function openOffers(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("offersModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderOffersModal();
+}
+
 function closeCart() {
     const modal = document.getElementById("cartModal");
     if (!modal) {
@@ -1600,6 +1765,18 @@ function closeLocationPicker() {
 
     modal.classList.remove("open");
     locationGpsStatus = { type: "idle", message: "" };
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeOffers() {
+    const modal = document.getElementById("offersModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
     if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
@@ -1685,6 +1862,87 @@ function renderLocationPicker(query = "") {
         locationSearchInput.focus();
         locationSearchInput.setSelectionRange(locationSearchInput.value.length, locationSearchInput.value.length);
     }
+}
+
+function renderOffersModal() {
+    const content = document.getElementById("offersModalContent");
+    if (!content) {
+        return;
+    }
+
+    const platformOffersMarkup = PLATFORM_COUPONS.map((coupon) => {
+        const isApplied = normalizeCouponCode(appliedCouponCode) === coupon.code;
+        return `
+            <article class="offer-card ${isApplied ? "applied" : ""}">
+                <div class="offer-card-head">
+                    <div>
+                        <span class="offer-code">${escapeHtml(coupon.code)}</span>
+                        <h3>${escapeHtml(coupon.title)}</h3>
+                    </div>
+                    ${isApplied ? '<span class="offer-applied-pill">Applied</span>' : ""}
+                </div>
+                <p>${escapeHtml(coupon.description)}</p>
+                <div class="offer-meta-row">
+                    <span>Min order ${formatCurrency(coupon.minOrder)}</span>
+                    <span>${coupon.discountType === "PERCENT" ? `${formatNumber(coupon.discountValue)}% off` : `${formatCurrency(coupon.discountValue)} off`}</span>
+                </div>
+                <button class="${isApplied ? "secondary-button" : "primary-button"}" type="button" onclick="applyCouponFromOffers('${escapeAttribute(coupon.code)}')" ${isApplied ? "disabled" : ""}>
+                    ${isApplied ? "Already applied" : "Apply coupon"}
+                </button>
+            </article>
+        `;
+    }).join("");
+
+    const restaurantOffers = getRestaurantOffers();
+    const restaurantOffersMarkup = restaurantOffers.length ? restaurantOffers.map((restaurant) => `
+            <article class="restaurant-offer-card">
+                <div class="restaurant-offer-top">
+                    <strong>${escapeHtml(restaurant.name)}</strong>
+                    <span class="restaurant-offer-discount">${escapeHtml(restaurant.discount)}</span>
+                </div>
+                <p>${escapeHtml(restaurant.cuisine || "Multiple cuisines")} · ${escapeHtml(restaurant.time || "Fast delivery")}</p>
+                <small>Auto-applied on menu items. No coupon code needed.</small>
+            </article>
+        `).join("") : `
+            <div class="account-placeholder-card compact">
+                <p>No restaurant offers available right now.</p>
+            </div>
+        `;
+
+    content.innerHTML = `
+        <div class="offers-shell">
+            <div class="offers-header">
+                <div>
+                    <p class="menu-eyebrow">Offers</p>
+                    <h2>Coupons and restaurant deals</h2>
+                </div>
+                <button class="secondary-button" type="button" onclick="openCart()">Open cart</button>
+            </div>
+            ${couponFeedback.message ? `
+                <div class="checkout-feedback ${couponFeedback.type === "error" ? "error" : "success"}">${escapeHtml(couponFeedback.message)}</div>
+            ` : ""}
+
+            <section class="offers-section">
+                <div class="offers-section-head">
+                    <h3>Coupon codes</h3>
+                    <p>Use these codes in cart for extra savings.</p>
+                </div>
+                <div class="offers-grid">
+                    ${platformOffersMarkup}
+                </div>
+            </section>
+
+            <section class="offers-section">
+                <div class="offers-section-head">
+                    <h3>Restaurant offers</h3>
+                    <p>Live deals from active restaurants near you.</p>
+                </div>
+                <div class="restaurant-offers-grid">
+                    ${restaurantOffersMarkup}
+                </div>
+            </section>
+        </div>
+    `;
 }
 
 function toggleManualLocationForm() {
@@ -1893,7 +2151,14 @@ function renderCart() {
     const subtotal = getCartSubtotal();
     const deliveryFee = getDeliveryFee(subtotal);
     const subscriptionDiscount = getSubscriptionDiscount(subtotal);
-    const finalAmount = roundAmount(Math.max(0, subtotal + deliveryFee - subscriptionDiscount));
+    const previouslyAppliedCoupon = getAppliedCoupon();
+    if (previouslyAppliedCoupon && subtotal < Number(previouslyAppliedCoupon.minOrder || 0)) {
+        appliedCouponCode = "";
+        couponFeedback = { type: "error", message: `Coupon ${previouslyAppliedCoupon.code} removed. Minimum order is ${formatCurrency(previouslyAppliedCoupon.minOrder)}.` };
+    }
+    const appliedCoupon = getAppliedCoupon();
+    const couponDiscount = calculateCouponDiscount(appliedCoupon, subtotal);
+    const finalAmount = roundAmount(Math.max(0, subtotal + deliveryFee - subscriptionDiscount - couponDiscount));
     const defaultAddress = getDefaultAddress();
     const canCheckout = Boolean(defaultAddress);
 
@@ -1936,8 +2201,34 @@ function renderCart() {
                         ${subscriptionDiscount > 0 ? `
                             <div><span>Subscription discount</span><strong>- ${formatCurrency(subscriptionDiscount)}</strong></div>
                         ` : ""}
+                        ${couponDiscount > 0 ? `
+                            <div><span>Coupon discount</span><strong>- ${formatCurrency(couponDiscount)}</strong></div>
+                        ` : ""}
                         <div class="checkout-total"><span>Total</span><strong>${formatCurrency(finalAmount)}</strong></div>
                     </div>
+
+                    <section class="coupon-panel">
+                        <div class="coupon-panel-head">
+                            <div>
+                                <p class="menu-eyebrow">Coupons</p>
+                                <h3>Apply coupon code</h3>
+                            </div>
+                            <button class="secondary-button" type="button" onclick="openOffers(event)">View offers</button>
+                        </div>
+                        <div class="coupon-input-row">
+                            <input id="couponCodeInput" type="text" placeholder="Enter coupon code" value="${escapeAttribute(appliedCouponCode)}">
+                            <button class="primary-button" type="button" onclick="applyCouponFromCart(event)">Apply</button>
+                        </div>
+                        ${appliedCoupon ? `
+                            <div class="coupon-applied-row">
+                                <span><strong>${escapeHtml(appliedCoupon.code)}</strong> · ${escapeHtml(appliedCoupon.title)}</span>
+                                <button class="text-button danger-button" type="button" onclick="removeAppliedCoupon()">Remove</button>
+                            </div>
+                        ` : ""}
+                        ${couponFeedback.message ? `
+                            <div class="checkout-feedback ${couponFeedback.type === "error" ? "error" : "success"}">${escapeHtml(couponFeedback.message)}</div>
+                        ` : ""}
+                    </section>
 
                     <section class="address-summary-card">
                         <div class="address-summary-head">
@@ -3199,6 +3490,7 @@ async function signupUser(event) {
         subscriptionPlans = [];
         currentSubscription = null;
         subscriptionFeedback = { type: "", message: "" };
+        resetCouponState();
         checkoutPaymentChoice = "CASH";
         renderCart();
         renderOrders();
@@ -3298,6 +3590,7 @@ function logoutUser() {
     subscriptionPlans = [];
     currentSubscription = null;
     subscriptionFeedback = { type: "", message: "" };
+    resetCouponState();
     checkoutPaymentChoice = "CASH";
     closeAuthModal();
     renderAddressBook();
@@ -3728,6 +4021,7 @@ async function deleteAddress(addressId) {
 
 function clearCart() {
     cart = createEmptyCart();
+    resetCouponState();
     saveCart();
     if (activeRestaurant) {
         renderMenuModal();
@@ -3763,7 +4057,9 @@ async function submitOrder(event) {
         const placedItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
         const subtotal = getCartSubtotal();
         const deliveryFee = getDeliveryFee(subtotal);
-        const discount = getSubscriptionDiscount(subtotal);
+        const subscriptionDiscount = getSubscriptionDiscount(subtotal);
+        const couponDiscount = getCouponDiscount(subtotal);
+        const discount = roundAmount(subscriptionDiscount + couponDiscount);
         const response = await fetchJson(`${API_BASE_URL}/orders/checkout`, {
             method: "POST",
             headers: {
@@ -3775,6 +4071,7 @@ async function submitOrder(event) {
                 customerName: defaultAddress.recipientName,
                 specialInstructions: notes,
                 paymentMethod,
+                couponCode: appliedCouponCode || null,
                 deliveryFee,
                 discount,
                 items: cart.items.map((item) => ({
@@ -3804,6 +4101,7 @@ async function submitOrder(event) {
         };
 
         cart = createEmptyCart();
+        resetCouponState();
         saveCart();
         await fetchOrders();
         if (activeRestaurant) {
@@ -3870,7 +4168,7 @@ function closeMenu() {
 }
 
 function anyModalOpen() {
-    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal"].some((modalId) =>
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal"].some((modalId) =>
         document.getElementById(modalId)?.classList.contains("open")
     );
 }
@@ -4097,7 +4395,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal"].forEach((modalId) => {
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
@@ -4112,6 +4410,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         closeOrders();
                     } else if (modalId === "locationModal") {
                         closeLocationPicker();
+                    } else if (modalId === "offersModal") {
+                        closeOffers();
                     } else {
                         closeAuthModal();
                     }
@@ -4128,6 +4428,7 @@ document.addEventListener("DOMContentLoaded", () => {
             closeOrders();
             closeAuthModal();
             closeLocationPicker();
+            closeOffers();
             closeSearchBar();
         }
     });

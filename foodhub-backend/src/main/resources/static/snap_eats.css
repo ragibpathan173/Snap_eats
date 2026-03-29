@@ -1114,6 +1114,10 @@ body.modal-open {
     width: min(760px, 100%);
 }
 
+.offers-modal-content {
+    width: min(1100px, 100%);
+}
+
 .location-picker-shell {
     padding: 36px 40px 40px;
 }
@@ -1364,6 +1368,52 @@ body.modal-open {
     font-size: 18px;
 }
 
+.coupon-panel {
+    margin-bottom: 18px;
+    padding: 18px;
+    border-radius: 18px;
+    background: #fff;
+    border: 1px solid #edf0f3;
+}
+
+.coupon-panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.coupon-panel-head h3 {
+    color: #02060c;
+}
+
+.coupon-input-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.coupon-input-row input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d7dce2;
+    border-radius: 12px;
+    font: inherit;
+}
+
+.coupon-applied-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 157, 88, 0.2);
+    background: rgba(15, 157, 88, 0.06);
+}
+
 .checkout-form {
     display: grid;
     gap: 14px;
@@ -1539,6 +1589,141 @@ body.modal-open {
 
 .orders-shell {
     padding: 28px;
+}
+
+.offers-shell {
+    padding: 28px;
+}
+
+.offers-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.offers-section + .offers-section {
+    margin-top: 24px;
+}
+
+.offers-section-head h3 {
+    color: #02060c;
+    font-size: 28px;
+}
+
+.offers-section-head p {
+    margin-top: 8px;
+    color: #686b78;
+}
+
+.offers-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.offer-card {
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+    border-radius: 18px;
+    border: 1px solid #edf0f3;
+    background: #fff;
+}
+
+.offer-card.applied {
+    border-color: rgba(15, 157, 88, 0.35);
+    box-shadow: 0 14px 24px rgba(15, 157, 88, 0.12);
+}
+
+.offer-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.offer-card h3 {
+    color: #02060c;
+    font-size: 22px;
+}
+
+.offer-card p {
+    color: #686b78;
+}
+
+.offer-code {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(203, 32, 45, 0.1);
+    color: #cb202d;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+}
+
+.offer-applied-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(15, 157, 88, 0.14);
+    color: #0f9d58;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.offer-meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 13px;
+    color: #27303f;
+    font-weight: 600;
+}
+
+.restaurant-offers-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.restaurant-offer-card {
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid #edf0f3;
+    background: #fff;
+}
+
+.restaurant-offer-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+}
+
+.restaurant-offer-discount {
+    font-size: 12px;
+    font-weight: 700;
+    color: #cb202d;
+}
+
+.restaurant-offer-card p {
+    margin-top: 8px;
+    color: #686b78;
+}
+
+.restaurant-offer-card small {
+    display: inline-block;
+    margin-top: 10px;
+    color: #27303f;
+    font-weight: 600;
 }
 
 .orders-header {
@@ -2818,6 +3003,25 @@ body.modal-open {
     .subscription-current-card {
         grid-template-columns: 1fr;
         display: grid;
+    }
+
+    .coupon-input-row {
+        grid-template-columns: 1fr;
+    }
+
+    .coupon-applied-row {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .offers-header {
+        grid-template-columns: 1fr;
+        display: grid;
+    }
+
+    .offers-grid,
+    .restaurant-offers-grid {
+        grid-template-columns: 1fr;
     }
 
     .checkout-payment-card {

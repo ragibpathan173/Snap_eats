@@ -36,7 +36,7 @@
                     </span>
                     <span>Search</span>
                 </a>
-                <a href="#" class="nav-link">
+                <a href="#" class="nav-link" onclick="openOffers(event)">
                     <span class="nav-link-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M12 2 9.2 7.63 3 8.53l4.5 4.39-1.06 6.2L12 16.2l5.56 2.92-1.06-6.2L21 8.53l-6.2-.9L12 2Zm0 3.24 1.66 3.35.19.39.43.06 3.7.54-2.67 2.61-.31.3.07.43.63 3.69-3.31-1.74L12 14.7l-.39.21-3.31 1.74.63-3.69.07-.43-.31-.3-2.67-2.61 3.7-.54.43-.06.19-.39L12 5.24Z"/></svg>
                     </span>
@@ -221,6 +221,13 @@
         <div class="modal-content location-modal-content">
             <span class="close-btn" onclick="closeLocationPicker()">&times;</span>
             <div id="locationModalContent"></div>
+        </div>
+    </div>
+
+    <div id="offersModal" class="modal">
+        <div class="modal-content offers-modal-content">
+            <span class="close-btn" onclick="closeOffers()">&times;</span>
+            <div id="offersModalContent"></div>
         </div>
     </div>
 

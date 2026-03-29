@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -31,6 +32,11 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class OrderController {
     private static final double BASE_DELIVERY_FEE = 40.0;
+    private static final Map<String, CouponRule> COUPON_RULES = Map.of(
+            "WELCOME50", new CouponRule("WELCOME50", CouponType.FLAT, 50.0, 199.0, 50.0),
+            "SNAP20", new CouponRule("SNAP20", CouponType.PERCENT, 20.0, 299.0, 120.0),
+            "MEAL30", new CouponRule("MEAL30", CouponType.FLAT, 30.0, 149.0, 30.0)
+    );
 
     @Autowired
     private OrderRepository orderRepository;
@@ -113,7 +119,13 @@ public class OrderController {
                     .sum();
             Optional<UserSubscription> activeSubscription = userSubscriptionRepository.findByUserIdAndActiveTrue(checkoutUser.getId());
             double deliveryFee = calculateDeliveryFee(subtotal, activeSubscription.orElse(null));
-            double discount = calculateSubscriptionDiscount(subtotal, activeSubscription.orElse(null));
+            double subscriptionDiscount = calculateSubscriptionDiscount(subtotal, activeSubscription.orElse(null));
+            CouponEvaluation couponEvaluation = evaluateCoupon(subtotal, request.couponCode, checkoutUser.getId());
+            if (couponEvaluation.errorMessage() != null && !couponEvaluation.errorMessage().isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", couponEvaluation.errorMessage()));
+            }
+            double couponDiscount = couponEvaluation.discountAmount();
+            double discount = subscriptionDiscount + couponDiscount;
             double finalAmount = Math.max(0.0, subtotal + deliveryFee - discount);
 
             Order order = new Order();
@@ -154,6 +166,7 @@ public class OrderController {
             Map<String, Object> response = new HashMap<>();
             response.put("order", savedOrder);
             response.put("items", savedItems);
+            response.put("appliedCouponCode", couponEvaluation.couponCode());
             response.put("message", "Order placed successfully");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
@@ -475,6 +488,42 @@ public class OrderController {
         return Math.min(rawDiscount, maxDiscountCap);
     }
 
+    private CouponEvaluation evaluateCoupon(double subtotal, String couponCode, Long userId) {
+        if (subtotal <= 0) {
+            return new CouponEvaluation(0.0, "", "");
+        }
+
+        String normalizedCode = normalizeCouponCode(couponCode);
+        if (normalizedCode.isBlank()) {
+            return new CouponEvaluation(0.0, "", "");
+        }
+
+        CouponRule couponRule = COUPON_RULES.get(normalizedCode);
+        if (couponRule == null) {
+            return new CouponEvaluation(0.0, "", "Invalid coupon code.");
+        }
+        if (subtotal < couponRule.minOrderAmount()) {
+            return new CouponEvaluation(0.0, "", "Coupon requires minimum order of Rs " + roundAmount(couponRule.minOrderAmount()) + ".");
+        }
+
+        if ("WELCOME50".equals(normalizedCode)) {
+            long existingOrders = orderRepository.countUserOrders(userId);
+            if (existingOrders > 0) {
+                return new CouponEvaluation(0.0, "", "WELCOME50 is valid only for new users.");
+            }
+        }
+
+        if (couponRule.type() == CouponType.PERCENT) {
+            double rawDiscount = subtotal * (couponRule.discountValue() / 100.0);
+            return new CouponEvaluation(Math.min(rawDiscount, couponRule.maxDiscountAmount()), normalizedCode, "");
+        }
+        return new CouponEvaluation(Math.min(couponRule.discountValue(), couponRule.maxDiscountAmount()), normalizedCode, "");
+    }
+
+    private String normalizeCouponCode(String couponCode) {
+        return couponCode == null ? "" : couponCode.trim().toUpperCase(Locale.ROOT);
+    }
+
     private Restaurant resolveRestaurant(CheckoutRequest request) {
         if (request.restaurantId != null) {
             return restaurantRepository.findById(request.restaurantId).orElse(null);
@@ -550,6 +599,7 @@ public class OrderController {
         public String customerName;
         public String specialInstructions;
         public String paymentMethod;
+        public String couponCode;
         public Double deliveryFee;
         public Double discount;
         public List<CheckoutItemRequest> items;
@@ -587,5 +637,19 @@ public class OrderController {
         public Boolean canCancel;
         public Boolean canReorder;
         public List<OrderItem> items;
+    }
+
+    private enum CouponType {
+        FLAT, PERCENT
+    }
+
+    private record CouponRule(String code,
+                              CouponType type,
+                              Double discountValue,
+                              Double minOrderAmount,
+                              Double maxDiscountAmount) {
+    }
+
+    private record CouponEvaluation(double discountAmount, String couponCode, String errorMessage) {
     }
 }
