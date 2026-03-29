@@ -3902,7 +3902,7 @@ function renderCart() {
                             <button class="payment-option-row" type="button" onclick="openUpiPage(event)">
                                 <div>
                                     <strong>UPI</strong>
-                                    <p>All UPI apps supported${upiAppChoice ? ` • ${escapeHtml(upiAppChoice)}` : ""}.</p>
+                                    <p>PhonePe, Paytm, Amazon Pay &amp; more${upiAppChoice ? ` • ${escapeHtml(upiAppChoice)}` : ""}.</p>
                                 </div>
                                 <span class="payment-type-pill">UPI</span>
                                 <span class="payment-offer-arrow">›</span>
@@ -3910,7 +3910,7 @@ function renderCart() {
                             <button class="payment-option-row" type="button" onclick="openNetbankingPage(event)">
                                 <div>
                                     <strong>Netbanking</strong>
-                                    <p>Select from a list of banks${netbankingBankChoice ? ` • ${escapeHtml(netbankingBankChoice)}` : ""}.</p>
+                                    <p>HDFC, ICICI, SBI &amp; more${netbankingBankChoice ? ` • ${escapeHtml(netbankingBankChoice)}` : ""}.</p>
                                 </div>
                                 <span class="payment-type-pill">Bank</span>
                                 <span class="payment-offer-arrow">›</span>
