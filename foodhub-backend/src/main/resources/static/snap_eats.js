@@ -513,6 +513,17 @@ function updateLocationChip() {
     locationChipLabel.textContent = selectedLocation?.label || "Other";
 }
 
+function syncHeaderOffsetVar() {
+    const header = document.querySelector(".header");
+    const searchStrip = document.getElementById("headerSearchStrip");
+    const headerHeight = header ? header.getBoundingClientRect().height : 0;
+    const stripHeight = searchStrip && searchStrip.classList.contains("open")
+        ? searchStrip.getBoundingClientRect().height
+        : 0;
+    const totalOffset = Math.max(80, Math.round(headerHeight + stripHeight));
+    document.documentElement.style.setProperty("--app-header-offset", `${totalOffset}px`);
+}
+
 function openSearchBar() {
     const searchStrip = document.getElementById("headerSearchStrip");
     const searchInput = document.getElementById("searchInput");
@@ -521,8 +532,12 @@ function openSearchBar() {
     }
 
     searchStrip.classList.add("open");
+    syncHeaderOffsetVar();
     searchInput.scrollIntoView({ behavior: "smooth", block: "center" });
-    window.setTimeout(() => searchInput.focus(), 160);
+    window.setTimeout(() => {
+        syncHeaderOffsetVar();
+        searchInput.focus();
+    }, 160);
 }
 
 function closeSearchBar() {
@@ -532,6 +547,7 @@ function closeSearchBar() {
     }
 
     searchStrip.classList.remove("open");
+    syncHeaderOffsetVar();
 }
 
 function toggleSearchBar(event) {
@@ -4710,6 +4726,7 @@ async function initializeApp() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    syncHeaderOffsetVar();
     initializeApp();
 
     const searchInput = document.getElementById("searchInput");
@@ -4776,6 +4793,10 @@ document.addEventListener("DOMContentLoaded", () => {
             closeCorporatePage();
             closeSearchBar();
         }
+    });
+
+    window.addEventListener("resize", () => {
+        syncHeaderOffsetVar();
     });
 });
 
