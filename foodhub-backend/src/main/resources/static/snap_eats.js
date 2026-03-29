@@ -43,6 +43,68 @@ const PLATFORM_COUPONS = [
         maxDiscount: 30
     }
 ];
+const PAYMENT_OFFERS = [
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 4% Cashback",
+        description: "Pay using Axis Bank ACE Credit Card & get an additional 4% cashback."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 4% Cashback",
+        description: "Pay using Flipkart Axis Bank Credit Card & get an additional 4% cashback."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 10% Cashback",
+        description: "Pay using HSBC Live+ Credit Card & get an additional 10% cashback (₹1000 monthly limit)."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 10% Cashback",
+        description: "Pay using Swiggy HDFC Bank Credit Card or Swiggy Black HDFC Bank Credit Card & get an additional 10% cashback on all orders (₹1500 monthly limit)."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 10% Cashback",
+        description: "Pay using Airtel Axis Bank Credit Card & get an additional 10% cashback."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 5% Cashback",
+        description: "Pay using Swiggy Orange HDFC Bank Credit Card & get an additional 5% cashback on all orders (₹1500 monthly limit)."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Extra 5% Cashback",
+        description: "Pay using HDFC Bank Millennia Credit Card & get an additional 5% cashback (₹1000 monthly limit)."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Earn 5X Reward Points",
+        description: "Earn 5X reward points on eligible spends via PhonePe HDFC Bank Ultimo Credit Cards."
+    },
+    {
+        type: "CARD",
+        category: "BANK",
+        title: "Earn 10X Reward Points",
+        description: "Earn 10X reward points on eligible spends via SBI SimplyCLICK Credit Cards."
+    },
+    {
+        type: "UPI",
+        category: "BANK",
+        title: "UPI Cashpoints",
+        description: "Earn bonus cashpoints on eligible UPI payments via SnapEats."
+    }
+];
 
 let categories = [];
 let restaurants = [];
@@ -70,6 +132,11 @@ let orderHistory = [];
 let activeAccountSection = "orders";
 let paymentFormType = "CARD";
 let checkoutPaymentChoice = "CASH";
+let checkoutView = "cart";
+let couponListOpen = false;
+let paymentOffersOpen = false;
+let paymentChoiceTouched = false;
+let noContactDelivery = false;
 let appliedCouponCode = "";
 let couponFeedback = { type: "", message: "" };
 let latestOrderSuccess = null;
@@ -191,6 +258,9 @@ function applyCouponCode(code, source = "cart") {
     if (validationMessage) {
         couponFeedback = { type: "error", message: validationMessage };
         if (source !== "offers") {
+            couponListOpen = true;
+        }
+        if (source !== "offers") {
             renderCart();
         } else {
             renderOffersModal();
@@ -201,6 +271,7 @@ function applyCouponCode(code, source = "cart") {
     appliedCouponCode = normalizedCode;
     const discountAmount = getCouponDiscount(subtotal);
     couponFeedback = { type: "success", message: `Coupon ${normalizedCode} applied. You saved ${formatCurrency(discountAmount)}.` };
+    couponListOpen = false;
     renderCart();
     if (document.getElementById("offersModal")?.classList.contains("open")) {
         renderOffersModal();
@@ -239,6 +310,7 @@ function removeAppliedCoupon() {
     const removedCode = appliedCouponCode;
     appliedCouponCode = "";
     couponFeedback = { type: "success", message: `Coupon ${removedCode} removed.` };
+    couponListOpen = false;
     renderCart();
     if (document.getElementById("offersModal")?.classList.contains("open")) {
         renderOffersModal();
@@ -674,10 +746,15 @@ function getCartItemQuantity(itemId) {
 
 function ensureCheckoutPaymentChoice() {
     if (!savedPaymentMethods.length) {
-        checkoutPaymentChoice = "CASH";
+        if (!checkoutPaymentChoice) {
+            checkoutPaymentChoice = "CASH";
+        }
         return;
     }
 
+    if (["CASH", "UPI", "WALLET", "NETBANKING"].includes(checkoutPaymentChoice)) {
+        return;
+    }
     const hasSelectedSavedMethod = savedPaymentMethods.some((method) => `saved:${method.id}` === checkoutPaymentChoice);
     if (checkoutPaymentChoice === "CASH" || hasSelectedSavedMethod) {
         return;
@@ -689,6 +766,10 @@ function ensureCheckoutPaymentChoice() {
 
 function setCheckoutPaymentChoice(choice) {
     checkoutPaymentChoice = choice;
+    paymentChoiceTouched = true;
+    if (checkoutPaymentChoice === "CASH") {
+        noContactDelivery = false;
+    }
     renderCart();
 }
 
@@ -700,6 +781,15 @@ function getCheckoutPaymentSelection() {
             type: "CASH",
             label: "Cash on delivery"
         };
+    }
+    if (checkoutPaymentChoice === "UPI") {
+        return { type: "UPI", label: "UPI" };
+    }
+    if (checkoutPaymentChoice === "WALLET") {
+        return { type: "WALLET", label: "Wallet" };
+    }
+    if (checkoutPaymentChoice === "NETBANKING") {
+        return { type: "NETBANKING", label: "Netbanking" };
     }
 
     const selectedMethod = savedPaymentMethods.find((method) => `saved:${method.id}` === checkoutPaymentChoice);
@@ -2416,6 +2506,7 @@ function openCart(event) {
         event.preventDefault();
     }
 
+    checkoutView = "cart";
     switchHeaderPanel("cart");
 
     const modal = document.getElementById("cartModal");
@@ -2425,6 +2516,40 @@ function openCart(event) {
 
     modal.classList.add("open");
     document.body.classList.add("modal-open");
+    renderCart();
+}
+
+function openPaymentPage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "payment";
+    paymentOffersOpen = false;
+    renderCart();
+}
+
+function backToCart(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "cart";
+    renderCart();
+}
+
+function togglePaymentOffers(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    paymentOffersOpen = !paymentOffersOpen;
+    renderCart();
+}
+
+function toggleNoContactDelivery(event) {
+    if (event && event.target) {
+        noContactDelivery = Boolean(event.target.checked);
+    } else {
+        noContactDelivery = !noContactDelivery;
+    }
     renderCart();
 }
 
@@ -3462,37 +3587,251 @@ function renderCart() {
     const finalAmount = roundAmount(Math.max(0, subtotal + deliveryFee - subscriptionDiscount - couponDiscount));
     const defaultAddress = getDefaultAddress();
     const canCheckout = Boolean(defaultAddress);
+    const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+    const savingsAmount = roundAmount(subscriptionDiscount + couponDiscount);
+    const showNoContact = !(checkoutPaymentChoice === "CASH" && paymentChoiceTouched);
+
+    if (checkoutView === "payment") {
+        const summaryLine = `${itemCount} item${itemCount === 1 ? "" : "s"} • Total ${formatCurrency(finalAmount)}${savingsAmount > 0 ? ` • Savings of ${formatCurrency(savingsAmount)}` : ""}`;
+        const paymentOffers = PAYMENT_OFFERS.filter((offer) => ["CARD", "UPI"].includes(offer.type) && offer.category === "BANK");
+        const cardMethods = savedPaymentMethods.filter((method) => method.methodType === "CARD");
+        const otherMethods = savedPaymentMethods.filter((method) => method.methodType !== "CARD");
+        const hasUpiSaved = otherMethods.some((method) => method.methodType === "UPI");
+        const hasWalletSaved = otherMethods.some((method) => method.methodType === "WALLET");
+        content.innerHTML = `
+            <div class="cart-shell payment-shell">
+                <div class="payment-header">
+                    <button class="text-button payment-back" type="button" onclick="backToCart(event)">&#8592;</button>
+                    <div>
+                        <p class="menu-eyebrow">Payment</p>
+                        <h2>Payment options</h2>
+                        <p class="payment-summary-line">${summaryLine}</p>
+                    </div>
+                </div>
+
+                <div class="payment-route-card">
+                    <div class="payment-route-item">
+                        <span class="payment-route-dot"></span>
+                        <div>
+                            <strong>${escapeHtml(cart.restaurantName || "Restaurant")}</strong>
+                            <p>Delivery in 35 mins</p>
+                        </div>
+                    </div>
+                    <div class="payment-route-item">
+                        <span class="payment-route-dot address"></span>
+                        <div>
+                            <strong>${defaultAddress ? escapeHtml(defaultAddress.label) : "Add delivery address"}</strong>
+                            <p>${defaultAddress ? escapeHtml(formatAddressLine(defaultAddress)) : "Select a default delivery address to continue."}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="payment-offer-banner">
+                    <span>Save more with payment offers</span>
+                    <button class="text-button" type="button" onclick="togglePaymentOffers(event)">${paymentOffersOpen ? "Hide offers" : "View offers"}</button>
+                </div>
+                <div class="payment-offer-list ${paymentOffersOpen ? "open" : ""}">
+                    ${paymentOffers.map((offer) => `
+                        <div class="payment-offer-row">
+                            <div class="payment-offer-icon">${offer.type === "UPI" ? "UPI" : "CARD"}</div>
+                            <div class="payment-offer-copy">
+                                <strong>${escapeHtml(offer.title)}</strong>
+                                <p>${escapeHtml(offer.description)}</p>
+                            </div>
+                            <span class="payment-offer-arrow">›</span>
+                        </div>
+                    `).join("")}
+                </div>
+
+                <form class="payment-options-form" onsubmit="submitOrder(event)">
+                    <div class="payment-section">
+                        <h3>Credit &amp; debit cards</h3>
+                        <button class="payment-option-card" type="button" onclick="openAuthModal(); setAccountSection('payments')">
+                            <span class="payment-option-icon">+</span>
+                            <div>
+                                <strong>Add new card</strong>
+                                <p>Save and pay using cards.</p>
+                            </div>
+                        </button>
+                        ${cardMethods.length ? `
+                            <div class="payment-method-list">
+                                ${cardMethods.map((method) => `
+                                    <label class="checkout-payment-card ${checkoutPaymentChoice === `saved:${method.id}` ? "selected" : ""}">
+                                        <input
+                                            type="radio"
+                                            name="checkoutPaymentChoice"
+                                            value="saved:${method.id}"
+                                            ${checkoutPaymentChoice === `saved:${method.id}` ? "checked" : ""}
+                                            onchange="setCheckoutPaymentChoice(this.value)"
+                                        >
+                                        <div>
+                                            <strong>${escapeHtml(formatPaymentMethodLabel(method))}</strong>
+                                            <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
+                                        </div>
+                                        <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
+                                    </label>
+                                `).join("")}
+                            </div>
+                        ` : `<p class="payment-empty-note">No cards saved yet.</p>`}
+                    </div>
+
+                    <div class="payment-section">
+                        <h3>More payment options</h3>
+                        <div class="payment-method-list">
+                            ${otherMethods.map((method) => `
+                                <label class="checkout-payment-card ${checkoutPaymentChoice === `saved:${method.id}` ? "selected" : ""}">
+                                    <input
+                                        type="radio"
+                                        name="checkoutPaymentChoice"
+                                        value="saved:${method.id}"
+                                        ${checkoutPaymentChoice === `saved:${method.id}` ? "checked" : ""}
+                                        onchange="setCheckoutPaymentChoice(this.value)"
+                                    >
+                                    <div>
+                                        <strong>${escapeHtml(formatPaymentMethodLabel(method))}</strong>
+                                        <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
+                                    </div>
+                                        <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
+                                    </label>
+                            `).join("")}
+                            ${hasUpiSaved ? "" : `
+                                <label class="checkout-payment-card ${checkoutPaymentChoice === "UPI" ? "selected" : ""}">
+                                    <input
+                                        type="radio"
+                                        name="checkoutPaymentChoice"
+                                        value="UPI"
+                                        ${checkoutPaymentChoice === "UPI" ? "checked" : ""}
+                                        onchange="setCheckoutPaymentChoice(this.value)"
+                                    >
+                                    <div>
+                                        <strong>UPI</strong>
+                                        <p>Pay using any UPI app.</p>
+                                    </div>
+                                    <span class="payment-type-pill">UPI</span>
+                                </label>
+                            `}
+                            ${hasWalletSaved ? "" : `
+                                <label class="checkout-payment-card ${checkoutPaymentChoice === "WALLET" ? "selected" : ""}">
+                                    <input
+                                        type="radio"
+                                        name="checkoutPaymentChoice"
+                                        value="WALLET"
+                                        ${checkoutPaymentChoice === "WALLET" ? "checked" : ""}
+                                        onchange="setCheckoutPaymentChoice(this.value)"
+                                    >
+                                    <div>
+                                        <strong>Wallets</strong>
+                                        <p>PhonePe, Paytm, Amazon Pay &amp; more.</p>
+                                    </div>
+                                    <span class="payment-type-pill">Wallet</span>
+                                </label>
+                            `}
+                            <label class="checkout-payment-card ${checkoutPaymentChoice === "NETBANKING" ? "selected" : ""}">
+                                <input
+                                    type="radio"
+                                    name="checkoutPaymentChoice"
+                                    value="NETBANKING"
+                                    ${checkoutPaymentChoice === "NETBANKING" ? "checked" : ""}
+                                    onchange="setCheckoutPaymentChoice(this.value)"
+                                >
+                                <div>
+                                    <strong>Netbanking</strong>
+                                    <p>Select from a list of banks.</p>
+                                </div>
+                                <span class="payment-type-pill">Bank</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="payment-section">
+                        <h3>Pay on delivery</h3>
+                        <div class="payment-method-list">
+                            <label class="checkout-payment-card ${checkoutPaymentChoice === "CASH" ? "selected" : ""}">
+                                <input
+                                    type="radio"
+                                    name="checkoutPaymentChoice"
+                                    value="CASH"
+                                    ${checkoutPaymentChoice === "CASH" ? "checked" : ""}
+                                    onchange="setCheckoutPaymentChoice(this.value)"
+                                >
+                                <div>
+                                    <strong>Cash on delivery</strong>
+                                    <p>Pay in cash or UPI when your order arrives.</p>
+                                </div>
+                                <span class="payment-type-pill">Cash</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="primary-button checkout-button" type="submit" ${canCheckout ? "" : "disabled"}>
+                        ${canCheckout ? `Pay ${formatCurrency(finalAmount)}` : "Add a default address first"}
+                    </button>
+                </form>
+                <div id="checkoutFeedback" class="checkout-feedback"></div>
+            </div>`;
+        return;
+    }
 
     content.innerHTML = `
         <div class="cart-shell">
-            <div class="cart-header">
-                <div>
-                    <p class="menu-eyebrow">Ready to order</p>
-                    <h2>${escapeHtml(cart.restaurantName)}</h2>
-                </div>
-                <button class="text-button" type="button" onclick="clearCart()">Clear cart</button>
-            </div>
-
             <div class="cart-layout">
-                <section class="cart-items-list">
-                    ${cart.items.map((item) => `
-                        <article class="cart-item-card">
-                            <img src="${item.image}" alt="${escapeHtml(item.name)}" class="cart-item-image">
-                            <div class="cart-item-copy">
-                                <h3>${escapeHtml(item.name)}</h3>
-                                <p>${formatCurrency(item.price)} each</p>
+                <section class="checkout-main">
+                    <section class="address-summary-card">
+                        <div class="address-summary-head">
+                            <div>
+                                <p class="menu-eyebrow">Delivery address</p>
+                                <h3>${defaultAddress ? escapeHtml(defaultAddress.label) : "No default address set"}</h3>
                             </div>
-                            <div class="cart-item-controls">
-                                <button type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', -1)">-</button>
-                                <span>${item.quantity}</span>
-                                <button type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', 1)">+</button>
+                            <button class="secondary-button" type="button" onclick="openAddressBook()">
+                                ${defaultAddress ? "Manage addresses" : "Add address"}
+                            </button>
+                        </div>
+                        ${defaultAddress ? `
+                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} - ${escapeHtml(defaultAddress.phoneNumber)}</p>
+                            <p class="address-line">${escapeHtml(formatAddressLine(defaultAddress))}</p>
+                        ` : `
+                            <p class="address-empty-note">Save at least one address and mark it as default before placing an order.</p>
+                        `}
+                    </section>
+
+                    <section class="payment-entry-card">
+                        <div class="payment-entry-head">
+                            <div>
+                                <p class="menu-eyebrow">Payment</p>
+                                <h3>Choose payment method</h3>
                             </div>
-                            <div class="cart-item-total">${formatCurrency(item.price * item.quantity)}</div>
-                        </article>
-                    `).join("")}
+                            <button class="secondary-button" type="button" onclick="openAuthModal(); setAccountSection('payments')">Manage payments</button>
+                        </div>
+                        <p class="payment-entry-copy">Select your payment option on the next step.</p>
+                        <button class="primary-button checkout-button" type="button" onclick="openPaymentPage(event)" ${canCheckout ? "" : "disabled"}>
+                            ${canCheckout ? "Proceed to pay" : "Add a default address first"}
+                        </button>
+                    </section>
                 </section>
 
-                <section class="checkout-panel">
+                <section class="checkout-panel order-summary-panel">
+                    <div class="order-summary-head">
+                        <p class="menu-eyebrow">Order from</p>
+                        <h3>${escapeHtml(cart.restaurantName)}</h3>
+                    </div>
+                    <section class="cart-items-list">
+                        ${cart.items.map((item) => `
+                            <article class="cart-item-card">
+                                <img src="${item.image}" alt="${escapeHtml(item.name)}" class="cart-item-image">
+                                <div class="cart-item-copy">
+                                    <h3>${escapeHtml(item.name)}</h3>
+                                    <p>${formatCurrency(item.price)} each</p>
+                                </div>
+                                <div class="cart-item-controls">
+                                    <button type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', -1)">-</button>
+                                    <span>${item.quantity}</span>
+                                    <button type="button" onclick="changeCartQuantity('${escapeAttribute(item.itemId)}', 1)">+</button>
+                                </div>
+                                <div class="cart-item-total">${formatCurrency(item.price * item.quantity)}</div>
+                            </article>
+                        `).join("")}
+                    </section>
+
                     <div class="checkout-summary">
                         <div><span>Subtotal</span><strong>${formatCurrency(subtotal)}</strong></div>
                         <div>
@@ -3508,7 +3847,19 @@ function renderCart() {
                         <div class="checkout-total"><span>Total</span><strong>${formatCurrency(finalAmount)}</strong></div>
                     </div>
 
-                    <section class="coupon-panel ${appliedCoupon ? "coupon-has-applied" : ""}">
+                    ${showNoContact ? `
+                        <div class="no-contact-card">
+                            <label class="no-contact-toggle">
+                                <input type="checkbox" ${noContactDelivery ? "checked" : ""} onchange="toggleNoContactDelivery(event)">
+                                <div>
+                                    <strong>Opt in for No-contact Delivery</strong>
+                                    <p>Unwell, or avoiding contact? Please select no-contact delivery. Partner will safely place the order outside your door (not for COD).</p>
+                                </div>
+                            </label>
+                        </div>
+                    ` : ""}
+
+                    <section class="coupon-panel ${appliedCoupon ? "coupon-has-applied" : ""} ${couponListOpen ? "coupon-list-open" : ""}">
                         <div class="coupon-panel-head">
                             <div>
                                 <p class="menu-eyebrow">Coupons</p>
@@ -3553,76 +3904,6 @@ function renderCart() {
                             }).join("")}
                         </div>
                     </section>
-
-                    <section class="address-summary-card">
-                        <div class="address-summary-head">
-                            <div>
-                                <p class="menu-eyebrow">Delivery address</p>
-                                <h3>${defaultAddress ? escapeHtml(defaultAddress.label) : "No default address set"}</h3>
-                            </div>
-                            <button class="secondary-button" type="button" onclick="openAddressBook()">
-                                ${defaultAddress ? "Manage addresses" : "Add address"}
-                            </button>
-                        </div>
-                        ${defaultAddress ? `
-                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} - ${escapeHtml(defaultAddress.phoneNumber)}</p>
-                            <p class="address-line">${escapeHtml(formatAddressLine(defaultAddress))}</p>
-                        ` : `
-                            <p class="address-empty-note">Save at least one address and mark it as default before placing an order.</p>
-                        `}
-                    </section>
-
-                    <form class="checkout-form" onsubmit="submitOrder(event)">
-                        <div class="checkout-payment-section">
-                            <div class="checkout-payment-head">
-                                <div>
-                                    <p class="menu-eyebrow">Payment</p>
-                                    <h3>Choose how you want to pay</h3>
-                                </div>
-                                <button class="secondary-button" type="button" onclick="openAuthModal(); setAccountSection('payments')">Manage payments</button>
-                            </div>
-                            <div class="checkout-payment-list">
-                                ${savedPaymentMethods.map((method) => `
-                                    <label class="checkout-payment-card ${checkoutPaymentChoice === `saved:${method.id}` ? "selected" : ""}">
-                                        <input
-                                            type="radio"
-                                            name="checkoutPaymentChoice"
-                                            value="saved:${method.id}"
-                                            ${checkoutPaymentChoice === `saved:${method.id}` ? "checked" : ""}
-                                            onchange="setCheckoutPaymentChoice(this.value)"
-                                        >
-                                        <div>
-                                            <strong>${escapeHtml(formatPaymentMethodLabel(method))}</strong>
-                                            <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
-                                        </div>
-                                        <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
-                                    </label>
-                                `).join("")}
-                                <label class="checkout-payment-card ${checkoutPaymentChoice === "CASH" ? "selected" : ""}">
-                                    <input
-                                        type="radio"
-                                        name="checkoutPaymentChoice"
-                                        value="CASH"
-                                        ${checkoutPaymentChoice === "CASH" ? "checked" : ""}
-                                        onchange="setCheckoutPaymentChoice(this.value)"
-                                    >
-                                    <div>
-                                        <strong>Cash on delivery</strong>
-                                        <p>Pay in cash when your order arrives.</p>
-                                    </div>
-                                    <span class="payment-type-pill">Cash</span>
-                                </label>
-                            </div>
-                        </div>
-                        <label>
-                            Notes
-                            <textarea id="checkoutNotes" rows="2" placeholder="Add delivery notes (optional)"></textarea>
-                        </label>
-                        <button class="primary-button checkout-button" type="submit" ${canCheckout ? "" : "disabled"}>
-                            ${canCheckout ? "Place order to default address" : "Add a default address first"}
-                        </button>
-                    </form>
-                    <div id="checkoutFeedback" class="checkout-feedback"></div>
                 </section>
             </div>
         </div>`;
