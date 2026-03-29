@@ -105,6 +105,52 @@ const PAYMENT_OFFERS = [
         description: "Earn bonus cashpoints on eligible UPI payments via SnapEats."
     }
 ];
+const NETBANKING_POPULAR_BANKS = [
+    "HDFC Bank",
+    "ICICI Bank",
+    "State Bank of India",
+    "Axis Bank",
+    "Kotak Mahindra Bank",
+    "Yes Bank"
+];
+const NETBANKING_ALL_BANKS = [
+    "Allahabad Bank",
+    "Andhra Bank",
+    "AU Small Finance Bank",
+    "Axis Bank",
+    "Bandhan Bank",
+    "Bank of Baroda",
+    "Bank of India",
+    "Bank of Maharashtra",
+    "Canara Bank",
+    "Central Bank of India",
+    "City Union Bank",
+    "Corporation Bank",
+    "DCB Bank",
+    "Dhanlaxmi Bank",
+    "Development Credit Bank",
+    "Federal Bank",
+    "HDFC Bank",
+    "ICICI Bank",
+    "IDBI Bank",
+    "IDFC First Bank",
+    "Indian Bank",
+    "Indian Overseas Bank",
+    "IndusInd Bank",
+    "Jammu & Kashmir Bank",
+    "Karnataka Bank",
+    "Karur Vysya Bank",
+    "Kotak Mahindra Bank",
+    "Punjab & Sind Bank",
+    "Punjab National Bank",
+    "RBL Bank",
+    "South Indian Bank",
+    "State Bank of India",
+    "Tamilnad Mercantile Bank",
+    "Union Bank of India",
+    "UCO Bank",
+    "Yes Bank"
+];
 
 let categories = [];
 let restaurants = [];
@@ -137,6 +183,7 @@ let couponListOpen = false;
 let paymentOffersOpen = false;
 let paymentChoiceTouched = false;
 let noContactDelivery = false;
+let netbankingBankChoice = "";
 let appliedCouponCode = "";
 let couponFeedback = { type: "", message: "" };
 let latestOrderSuccess = null;
@@ -752,7 +799,7 @@ function ensureCheckoutPaymentChoice() {
         return;
     }
 
-    if (["CASH", "UPI", "WALLET", "NETBANKING"].includes(checkoutPaymentChoice)) {
+    if (["CASH", "UPI", "WALLET", "NETBANKING", "PLUXEE"].includes(checkoutPaymentChoice)) {
         return;
     }
     const hasSelectedSavedMethod = savedPaymentMethods.some((method) => `saved:${method.id}` === checkoutPaymentChoice);
@@ -789,7 +836,10 @@ function getCheckoutPaymentSelection() {
         return { type: "WALLET", label: "Wallet" };
     }
     if (checkoutPaymentChoice === "NETBANKING") {
-        return { type: "NETBANKING", label: "Netbanking" };
+        return { type: "NETBANKING", label: netbankingBankChoice ? `Netbanking - ${netbankingBankChoice}` : "Netbanking" };
+    }
+    if (checkoutPaymentChoice === "PLUXEE") {
+        return { type: "PLUXEE", label: "Pluxee" };
     }
 
     const selectedMethod = savedPaymentMethods.find((method) => `saved:${method.id}` === checkoutPaymentChoice);
@@ -2553,6 +2603,13 @@ function toggleNoContactDelivery(event) {
     renderCart();
 }
 
+function selectNetbankingBank(bankName) {
+    netbankingBankChoice = bankName;
+    checkoutPaymentChoice = "NETBANKING";
+    paymentChoiceTouched = true;
+    renderCart();
+}
+
 function dismissOrderSuccess() {
     latestOrderSuccess = null;
     renderCart();
@@ -3694,6 +3751,20 @@ function renderCart() {
                                         <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
                                     </label>
                             `).join("")}
+                            <label class="checkout-payment-card ${checkoutPaymentChoice === "PLUXEE" ? "selected" : ""}">
+                                <input
+                                    type="radio"
+                                    name="checkoutPaymentChoice"
+                                    value="PLUXEE"
+                                    ${checkoutPaymentChoice === "PLUXEE" ? "checked" : ""}
+                                    onchange="setCheckoutPaymentChoice(this.value)"
+                                >
+                                <div>
+                                    <strong>Pluxee</strong>
+                                    <p>Pluxee card valid only on Food &amp; Instamart.</p>
+                                </div>
+                                <span class="payment-type-pill">Meal</span>
+                            </label>
                             ${hasUpiSaved ? "" : `
                                 <label class="checkout-payment-card ${checkoutPaymentChoice === "UPI" ? "selected" : ""}">
                                     <input
@@ -3741,6 +3812,29 @@ function renderCart() {
                                 <span class="payment-type-pill">Bank</span>
                             </label>
                         </div>
+                        ${checkoutPaymentChoice === "NETBANKING" ? `
+                            <div class="netbanking-section">
+                                <h4>Popular banks</h4>
+                                <div class="netbanking-list">
+                                    ${NETBANKING_POPULAR_BANKS.map((bank) => `
+                                        <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
+                                            <span class="netbanking-icon">${escapeHtml(bank.split(" ")[0].slice(0, 2).toUpperCase())}</span>
+                                            <span class="netbanking-name">${escapeHtml(bank)}</span>
+                                            <span class="netbanking-arrow">›</span>
+                                        </button>
+                                    `).join("")}
+                                </div>
+                                <h4>All banks</h4>
+                                <div class="netbanking-list">
+                                    ${NETBANKING_ALL_BANKS.map((bank) => `
+                                        <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
+                                            <span class="netbanking-name">${escapeHtml(bank)}</span>
+                                            <span class="netbanking-arrow">›</span>
+                                        </button>
+                                    `).join("")}
+                                </div>
+                            </div>
+                        ` : ""}
                     </div>
 
                     <div class="payment-section">
