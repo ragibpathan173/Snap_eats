@@ -566,6 +566,7 @@ function toggleSearchBar(event) {
         return;
     }
 
+    switchHeaderPanel("search");
     openSearchBar();
 }
 
@@ -576,6 +577,29 @@ function runSearch() {
     }
 
     searchRestaurants(searchInput.value);
+}
+
+function switchHeaderPanel(target) {
+    const closeByKey = {
+        menu: closeMenu,
+        cart: closeCart,
+        address: closeAddressBook,
+        orders: closeOrders,
+        auth: closeAuthModal,
+        location: closeLocationPicker,
+        offers: closeOffers,
+        corporate: closeCorporatePage
+    };
+
+    Object.entries(closeByKey).forEach(([key, closeFn]) => {
+        if (key !== target && typeof closeFn === "function") {
+            closeFn();
+        }
+    });
+
+    if (target !== "search") {
+        closeSearchBar();
+    }
 }
 
 function getDefaultAddress() {
@@ -1494,6 +1518,8 @@ function openCart(event) {
         event.preventDefault();
     }
 
+    switchHeaderPanel("cart");
+
     const modal = document.getElementById("cartModal");
     if (!modal) {
         return;
@@ -1675,6 +1701,8 @@ function openAddressBook(event) {
         event.preventDefault();
     }
 
+    switchHeaderPanel("address");
+
     const modal = document.getElementById("addressModal");
     if (!modal) {
         return;
@@ -1695,6 +1723,8 @@ function openOrders(event) {
         event.preventDefault();
     }
 
+    switchHeaderPanel("orders");
+
     const modal = document.getElementById("ordersModal");
     if (!modal) {
         return;
@@ -1710,6 +1740,8 @@ function openAuthModal(event) {
     if (event) {
         event.preventDefault();
     }
+
+    switchHeaderPanel("auth");
 
     const modal = document.getElementById("authModal");
     if (!modal) {
@@ -1758,6 +1790,8 @@ function openLocationPicker(event) {
         event.preventDefault();
     }
 
+    switchHeaderPanel("location");
+
     const modal = document.getElementById("locationModal");
     if (!modal) {
         return;
@@ -1774,6 +1808,8 @@ function openOffers(event) {
         event.preventDefault();
     }
 
+    switchHeaderPanel("offers");
+
     const modal = document.getElementById("offersModal");
     if (!modal) {
         return;
@@ -1788,6 +1824,8 @@ function openCorporatePage(event) {
     if (event) {
         event.preventDefault();
     }
+
+    switchHeaderPanel("corporate");
 
     const modal = document.getElementById("corporateModal");
     if (!modal) {
