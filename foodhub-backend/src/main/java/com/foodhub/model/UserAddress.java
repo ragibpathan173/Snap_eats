@@ -47,6 +47,12 @@ public class UserAddress {
     @Column(nullable = false, length = 20)
     private String pincode;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
     @Column(nullable = false)
     private Boolean defaultAddress = false;
 
@@ -89,6 +95,12 @@ public class UserAddress {
 
     public String getPincode() { return pincode; }
     public void setPincode(String pincode) { this.pincode = pincode; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 
     public Boolean getDefaultAddress() { return defaultAddress; }
     public void setDefaultAddress(Boolean defaultAddress) { this.defaultAddress = defaultAddress; }

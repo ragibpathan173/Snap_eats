@@ -8,6 +8,8 @@ const OWNER_NAME = "Ragib Ali Khan";
 const OWNER_EMAIL = "ragibpathan173@gmail.com";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
+const FORWARD_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/search";
+const PHOTON_GEOCODE_BASE_URL = "https://photon.komoot.io/api/";
 const RESTAURANT_PAGE_SIZE = 12;
 const RETRY_DELAY_MS = 350;
 const RETRYABLE_STATUS_CODES = new Set([408, 425, 429, 500, 502, 503, 504]);
@@ -94,6 +96,15 @@ let discoveryFilters = {
     vegOnly: false
 };
 const pincodeLookupCache = new Map();
+let addressMap = null;
+let addressMapMarker = null;
+let addressMapLoadingPromise = null;
+let addressMapSearchResultsCache = [];
+let addressMapSearchLayer = null;
+let addressMapSearchDebounceTimer = null;
+let addressLocationConfirmed = false;
+let addressLocationAreaLabel = "";
+let addressPendingSearchSelection = null;
 
 function isAuthenticatedSession() {
     return Boolean(currentUser?.id && authToken);
@@ -735,6 +746,40 @@ function formatAddressLine(address) {
     ].filter(Boolean).join(", ");
 }
 
+function parseCoordinate(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    const normalized = String(value).trim();
+    if (!normalized) {
+        return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getAddressCoordinates(address) {
+    const latitude = parseCoordinate(address?.latitude);
+    const longitude = parseCoordinate(address?.longitude);
+    if (latitude == null || longitude == null) {
+        return null;
+    }
+    return { latitude, longitude };
+}
+
+function formatCoordinate(value) {
+    const numeric = parseCoordinate(value);
+    return numeric == null ? "" : numeric.toFixed(6);
+}
+
+function getAddressMapUrl(address) {
+    const coordinates = getAddressCoordinates(address);
+    if (!coordinates) {
+        return "";
+    }
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(coordinates.latitude)}&mlon=${encodeURIComponent(coordinates.longitude)}#map=18/${encodeURIComponent(coordinates.latitude)}/${encodeURIComponent(coordinates.longitude)}`;
+}
+
 function normalizeTextForMatching(value) {
     return String(value || "")
         .toLowerCase()
@@ -988,6 +1033,677 @@ async function handlePincodeInput() {
         areaOptions.innerHTML = "";
         setAddressLookupFeedback(error.message || "Unable to fetch pincode details right now.", "error");
     }
+}
+
+function setAddressMapStatus(message, type = "") {
+    const status = document.getElementById("addressMapStatus");
+    if (!status) {
+        return;
+    }
+    status.textContent = message || "";
+    status.className = `address-map-status ${type}`.trim();
+}
+
+function hasAddressPinSelection() {
+    const latitude = parseCoordinate(document.getElementById("addressLatitude")?.value);
+    const longitude = parseCoordinate(document.getElementById("addressLongitude")?.value);
+    return latitude != null && longitude != null;
+}
+
+function setAddressLocationAreaLabel(label = "") {
+    addressLocationAreaLabel = String(label || "").trim();
+    const areaLabel = document.getElementById("addressSelectedAreaLabel");
+    if (!areaLabel) {
+        return;
+    }
+    areaLabel.textContent = addressLocationAreaLabel || "No delivery area selected yet";
+    syncAddressFormLockState();
+}
+
+function syncAddressFormLockState() {
+    const ids = [
+        "addressLabel",
+        "addressRecipientName",
+        "addressPhoneNumber",
+        "addressLine",
+        "addressLandmark",
+        "addressCity",
+        "addressState",
+        "addressPincode",
+        "addressDefault"
+    ];
+
+    ids.forEach((id) => {
+        const element = document.getElementById(id);
+        if (!element) {
+            return;
+        }
+        element.disabled = !addressLocationConfirmed;
+    });
+
+    const lockHint = document.getElementById("addressDetailsLockHint");
+    if (lockHint) {
+        lockHint.textContent = addressLocationConfirmed
+            ? "Location confirmed. Fill complete address details below."
+            : "Step 3: Confirm map pin first, then complete full address details.";
+        lockHint.className = `address-details-lock-hint ${addressLocationConfirmed ? "ready" : "locked"}`;
+    }
+
+    const summary = document.getElementById("addressSelectedAreaRow");
+    if (summary) {
+        summary.classList.toggle("visible", Boolean(addressLocationAreaLabel));
+    }
+
+    const confirmButton = document.getElementById("addressConfirmPinButton");
+    if (confirmButton) {
+        confirmButton.disabled = !hasAddressPinSelection();
+    }
+
+    const detailsSection = document.getElementById("addressDetailsSection");
+    if (detailsSection) {
+        detailsSection.classList.toggle("visible", addressLocationConfirmed);
+        detailsSection.classList.toggle("hidden", !addressLocationConfirmed);
+    }
+
+    const mapCanvas = document.getElementById("addressMapCanvas");
+    if (mapCanvas) {
+        const shouldHideMap = !hasAddressPinSelection() && !addressLocationConfirmed;
+        const wasHidden = mapCanvas.classList.contains("address-map-canvas-hidden");
+        mapCanvas.classList.toggle("address-map-canvas-hidden", shouldHideMap);
+        if (wasHidden && !shouldHideMap && addressMap) {
+            window.setTimeout(() => {
+                if (addressMap) {
+                    addressMap.invalidateSize();
+                }
+            }, 90);
+        }
+    }
+}
+
+function updateAddressCoordinateInputs(latitude, longitude) {
+    const latitudeInput = document.getElementById("addressLatitude");
+    const longitudeInput = document.getElementById("addressLongitude");
+    if (latitudeInput) {
+        latitudeInput.value = formatCoordinate(latitude);
+    }
+    if (longitudeInput) {
+        longitudeInput.value = formatCoordinate(longitude);
+    }
+    syncAddressFormLockState();
+}
+
+function destroyAddressMap() {
+    if (addressMapSearchDebounceTimer) {
+        clearTimeout(addressMapSearchDebounceTimer);
+        addressMapSearchDebounceTimer = null;
+    }
+    addressPendingSearchSelection = null;
+    if (addressMap) {
+        addressMap.remove();
+    }
+    addressMap = null;
+    addressMapMarker = null;
+    addressMapSearchResultsCache = [];
+    addressMapSearchLayer = null;
+}
+
+function getAddressMapInitialCoordinates(editingAddress) {
+    const existing = getAddressCoordinates(editingAddress);
+    if (existing) {
+        return existing;
+    }
+
+    const selectedLatitude = parseCoordinate(selectedLocation?.latitude ?? selectedLocation?.lat);
+    const selectedLongitude = parseCoordinate(selectedLocation?.longitude ?? selectedLocation?.lng ?? selectedLocation?.lon);
+    if (selectedLatitude != null && selectedLongitude != null) {
+        return { latitude: selectedLatitude, longitude: selectedLongitude };
+    }
+
+    return { latitude: 28.6139, longitude: 77.2090 };
+}
+
+function ensureLeafletAssets() {
+    if (window.L && typeof window.L.map === "function") {
+        return Promise.resolve(window.L);
+    }
+    if (addressMapLoadingPromise) {
+        return addressMapLoadingPromise;
+    }
+
+    addressMapLoadingPromise = new Promise((resolve, reject) => {
+        const existingCss = document.getElementById("leafletStylesheet");
+        if (!existingCss) {
+            const leafletCss = document.createElement("link");
+            leafletCss.id = "leafletStylesheet";
+            leafletCss.rel = "stylesheet";
+            leafletCss.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+            leafletCss.integrity = "sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=";
+            leafletCss.crossOrigin = "";
+            document.head.appendChild(leafletCss);
+        }
+
+        const onReady = () => {
+            if (window.L && typeof window.L.map === "function") {
+                resolve(window.L);
+            } else {
+                reject(new Error("Map library unavailable"));
+            }
+        };
+
+        const existingScript = document.getElementById("leafletScript");
+        if (existingScript) {
+            existingScript.addEventListener("load", onReady, { once: true });
+            existingScript.addEventListener("error", () => reject(new Error("Map script failed to load")), { once: true });
+            if (window.L && typeof window.L.map === "function") {
+                onReady();
+            }
+            return;
+        }
+
+        const leafletScript = document.createElement("script");
+        leafletScript.id = "leafletScript";
+        leafletScript.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+        leafletScript.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
+        leafletScript.crossOrigin = "";
+        leafletScript.async = true;
+        leafletScript.addEventListener("load", onReady, { once: true });
+        leafletScript.addEventListener("error", () => reject(new Error("Map script failed to load")), { once: true });
+        document.body.appendChild(leafletScript);
+    }).catch((error) => {
+        addressMapLoadingPromise = null;
+        throw error;
+    });
+
+    return addressMapLoadingPromise;
+}
+
+async function initializeAddressMap(editingAddress = null) {
+    const canvas = document.getElementById("addressMapCanvas");
+    if (!canvas) {
+        return;
+    }
+
+    destroyAddressMap();
+    setAddressMapStatus("Loading map...", "loading");
+
+    try {
+        const L = await ensureLeafletAssets();
+        const existingCoordinates = getAddressCoordinates(editingAddress);
+        const initialCoordinates = existingCoordinates || getAddressMapInitialCoordinates(editingAddress);
+        addressMap = L.map(canvas, { zoomControl: true }).setView(
+            [initialCoordinates.latitude, initialCoordinates.longitude],
+            16
+        );
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            maxZoom: 19,
+            attribution: "&copy; OpenStreetMap contributors"
+        }).addTo(addressMap);
+
+        addressMapMarker = L.marker([initialCoordinates.latitude, initialCoordinates.longitude], {
+            draggable: true
+        }).addTo(addressMap);
+
+        if (existingCoordinates) {
+            updateAddressCoordinateInputs(initialCoordinates.latitude, initialCoordinates.longitude);
+        } else {
+            updateAddressCoordinateInputs(null, null);
+        }
+
+        addressMap.on("click", (mapEvent) => {
+            if (!addressMapMarker) {
+                return;
+            }
+            clearAddressMapSearchLayer();
+            const { lat, lng } = mapEvent.latlng;
+            addressMapMarker.setLatLng([lat, lng]);
+            updateAddressCoordinateInputs(lat, lng);
+            setAddressMapStatus("Pin moved. Click 'Confirm and proceed'.", "success");
+        });
+
+        addressMapMarker.on("dragend", () => {
+            clearAddressMapSearchLayer();
+            const markerPosition = addressMapMarker.getLatLng();
+            updateAddressCoordinateInputs(markerPosition.lat, markerPosition.lng);
+            setAddressMapStatus("Pin moved. Click 'Confirm and proceed'.", "success");
+        });
+
+        setAddressMapStatus(
+            existingCoordinates
+                ? "Existing pin loaded. Adjust it if needed."
+                : "Tap on map to set your exact delivery pin.",
+            "success"
+        );
+
+        if (addressPendingSearchSelection) {
+            const pending = addressPendingSearchSelection;
+            addressPendingSearchSelection = null;
+            selectAddressMapSearchResult(pending.latitude, pending.longitude, pending.label, pending.bounds, false);
+        }
+
+        window.setTimeout(() => {
+            if (addressMap) {
+                addressMap.invalidateSize();
+            }
+        }, 120);
+    } catch {
+        canvas.classList.add("address-map-unavailable");
+        setAddressMapStatus("Map could not load right now. You can still save address manually.", "error");
+    }
+}
+
+async function centerAddressMapOnCurrentLocation() {
+    if (!navigator.geolocation) {
+        setAddressMapStatus("Geolocation is not supported in this browser.", "error");
+        return;
+    }
+    if (!addressMap || !addressMapMarker) {
+        setAddressMapStatus("Map is not ready yet. Please wait a moment.", "error");
+        return;
+    }
+
+    setAddressMapStatus("Detecting your current location...", "loading");
+
+    try {
+        const position = await getCurrentPosition({
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        });
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        addressMap.setView([latitude, longitude], Math.max(16, addressMap.getZoom()));
+        addressMapMarker.setLatLng([latitude, longitude]);
+        updateAddressCoordinateInputs(latitude, longitude);
+        renderAddressMapSearchResults([]);
+        setAddressLocationAreaLabel("Live location");
+        setAddressMapStatus("Live location shown. Adjust pin exactly, then click 'Confirm and proceed'.", "success");
+    } catch {
+        setAddressMapStatus("Unable to detect your location. Please allow GPS access and retry.", "error");
+    }
+}
+
+function parseSearchBoundingBox(boundingbox) {
+    if (!Array.isArray(boundingbox) || boundingbox.length < 4) {
+        return null;
+    }
+    const south = parseCoordinate(boundingbox[0]);
+    const north = parseCoordinate(boundingbox[1]);
+    const west = parseCoordinate(boundingbox[2]);
+    const east = parseCoordinate(boundingbox[3]);
+    if (south == null || north == null || west == null || east == null) {
+        return null;
+    }
+    return { south, north, west, east };
+}
+
+function clearAddressMapSearchLayer() {
+    if (addressMap && addressMapSearchLayer && typeof addressMap.removeLayer === "function") {
+        addressMap.removeLayer(addressMapSearchLayer);
+    }
+    addressMapSearchLayer = null;
+}
+
+function computeBoundsDistance(bounds) {
+    if (!bounds) {
+        return 0;
+    }
+    const latDelta = Math.abs(bounds.north - bounds.south);
+    const lngDelta = Math.abs(bounds.east - bounds.west);
+    return Math.max(latDelta, lngDelta);
+}
+
+function normalizeSearchResult(item) {
+    const latitude = parseCoordinate(item?.lat);
+    const longitude = parseCoordinate(item?.lon);
+    if (latitude == null || longitude == null) {
+        return null;
+    }
+    const label = String(item.display_name || "Selected location");
+    const labelParts = label.split(",").map((part) => part.trim()).filter(Boolean);
+    return {
+        latitude,
+        longitude,
+        label,
+        title: labelParts[0] || label,
+        subtitle: labelParts.slice(1).join(", "),
+        bounds: parseSearchBoundingBox(item.boundingbox)
+    };
+}
+
+function renderAddressMapSearchResults(results = []) {
+    const host = document.getElementById("addressMapSearchResults");
+    if (!host) {
+        return;
+    }
+
+    if (!Array.isArray(results) || !results.length) {
+        addressMapSearchResultsCache = [];
+        host.innerHTML = "";
+        return;
+    }
+
+    addressMapSearchResultsCache = results
+        .map(normalizeSearchResult)
+        .filter(Boolean);
+
+    host.innerHTML = addressMapSearchResultsCache.map((item, index) => `
+        <button
+            class="address-map-result"
+            type="button"
+            onclick="selectAddressMapSearchResultByIndex(${index})"
+        >
+            <strong>${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.subtitle || item.label)}</p>
+        </button>
+    `).join("");
+}
+
+async function selectAddressMapSearchResult(latitude, longitude, label = "Selected location", bounds = null, autoFill = false) {
+    const lat = parseCoordinate(latitude);
+    const lng = parseCoordinate(longitude);
+    if (lat == null || lng == null || !addressMap || !addressMapMarker) {
+        setAddressMapStatus("Unable to pin this location on map.", "error");
+        return;
+    }
+
+    const preferredZoom = 16;
+    const shouldFitBounds = bounds && typeof addressMap.fitBounds === "function" && computeBoundsDistance(bounds) > 0.005;
+    if (shouldFitBounds) {
+        addressMap.fitBounds(
+            [
+                [bounds.south, bounds.west],
+                [bounds.north, bounds.east]
+            ],
+            { padding: [30, 30], maxZoom: preferredZoom }
+        );
+    } else {
+        addressMap.flyTo([lat, lng], preferredZoom, { duration: 0.7 });
+    }
+    addressMapMarker.setLatLng([lat, lng]);
+    updateAddressCoordinateInputs(lat, lng);
+    setAddressLocationAreaLabel(label);
+    addressLocationConfirmed = false;
+    syncAddressFormLockState();
+
+    clearAddressMapSearchLayer();
+    if (window.L && typeof window.L.circle === "function") {
+        addressMapSearchLayer = window.L.circle([lat, lng], {
+            radius: 260,
+            color: "#cb202d",
+            weight: 2,
+            fillColor: "#cb202d",
+            fillOpacity: 0.12
+        }).addTo(addressMap);
+    }
+
+    if (autoFill) {
+        setAddressMapStatus(`Pinned: ${label}. Auto-filling address...`, "loading");
+        await autofillAddressFromMapPin();
+    } else {
+        setAddressMapStatus(`Area loaded for ${label}. Set exact pin and click 'Confirm and proceed'.`, "success");
+    }
+}
+
+function selectAddressMapSearchResultByIndex(index) {
+    const selected = addressMapSearchResultsCache[index];
+    if (!selected) {
+        return;
+    }
+    renderAddressMapSearchResults([]);
+    if (!addressMap || !addressMapMarker) {
+        addressPendingSearchSelection = selected;
+        setAddressMapStatus("Loading map for selected area...", "loading");
+        return;
+    }
+    selectAddressMapSearchResult(selected.latitude, selected.longitude, selected.label, selected.bounds, false);
+}
+
+async function fetchAddressSearchResults(query) {
+    const buildSearchUrl = (forceIndia) => {
+        const params = new URLSearchParams({
+            format: "jsonv2",
+            q: forceIndia ? `${query}, India` : query,
+            limit: "5",
+            addressdetails: "1"
+        });
+        if (forceIndia) {
+            params.set("countrycodes", "in");
+        }
+        return `${FORWARD_GEOCODE_BASE_URL}?${params.toString()}`;
+    };
+
+    let response = await fetch(buildSearchUrl(true), {
+        headers: { Accept: "application/json" }
+    });
+    let results = response.ok ? await response.json() : [];
+
+    if (!Array.isArray(results) || !results.length) {
+        response = await fetch(buildSearchUrl(false), {
+            headers: { Accept: "application/json" }
+        });
+        results = response.ok ? await response.json() : [];
+    }
+    if (Array.isArray(results) && results.length) {
+        return results;
+    }
+
+    const photonParams = new URLSearchParams({
+        q: `${query}, India`,
+        limit: "5"
+    });
+    response = await fetch(`${PHOTON_GEOCODE_BASE_URL}?${photonParams.toString()}`, {
+        headers: { Accept: "application/json" }
+    });
+    if (!response.ok) {
+        return [];
+    }
+    const photonPayload = await response.json();
+    const features = Array.isArray(photonPayload?.features) ? photonPayload.features : [];
+
+    return features
+        .map((feature) => {
+            const coordinates = feature?.geometry?.coordinates;
+            const properties = feature?.properties || {};
+            if (!Array.isArray(coordinates) || coordinates.length < 2) {
+                return null;
+            }
+            const longitude = parseCoordinate(coordinates[0]);
+            const latitude = parseCoordinate(coordinates[1]);
+            if (latitude == null || longitude == null) {
+                return null;
+            }
+            const labelParts = [
+                properties.name,
+                properties.street,
+                properties.city || properties.county || properties.state
+            ].filter(Boolean);
+            return {
+                lat: latitude,
+                lon: longitude,
+                display_name: labelParts.join(", ") || query
+            };
+        })
+        .filter(Boolean);
+}
+
+function handleAddressMapSearchKeydown(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        searchAddressOnMap(event);
+    }
+}
+
+function handleAddressMapSearchInput() {
+    if (addressMapSearchDebounceTimer) {
+        clearTimeout(addressMapSearchDebounceTimer);
+        addressMapSearchDebounceTimer = null;
+    }
+
+    const query = String(document.getElementById("addressMapSearchInput")?.value || "").trim();
+    if (query.length < 2) {
+        renderAddressMapSearchResults([]);
+        return;
+    }
+
+    addressMapSearchDebounceTimer = window.setTimeout(() => {
+        searchAddressOnMap(null);
+    }, 260);
+}
+
+async function searchAddressOnMap(event) {
+    if (event && typeof event.preventDefault === "function") {
+        event.preventDefault();
+    }
+
+    const searchInput = document.getElementById("addressMapSearchInput");
+    const query = String(searchInput?.value || "").trim();
+    if (!query) {
+        setAddressMapStatus("Enter an area, building, or street name to search on map.", "error");
+        renderAddressMapSearchResults([]);
+        return;
+    }
+
+    setAddressMapStatus("Searching location on map...", "loading");
+
+    try {
+        const results = await fetchAddressSearchResults(query);
+
+        if (!Array.isArray(results) || !results.length) {
+            renderAddressMapSearchResults([]);
+            setAddressMapStatus("No matching location found. Try adding city/state in search.", "error");
+            return;
+        }
+
+        const topResults = results.slice(0, 5);
+        renderAddressMapSearchResults(topResults);
+        setAddressMapStatus("Select one location from results to open it on map.", "success");
+    } catch {
+        renderAddressMapSearchResults([]);
+        setAddressMapStatus("Unable to search map location right now.", "error");
+    }
+}
+
+function getAddressLineFromMapAddress(address) {
+    return [
+        [address.house_number, address.road].filter(Boolean).join(" ").trim(),
+        [address.building, address.road].filter(Boolean).join(", "),
+        [address.road, address.neighbourhood].filter(Boolean).join(", "),
+        [address.suburb, address.neighbourhood].filter(Boolean).join(", ")
+    ].find((value) => Boolean(value && value.trim())) || "";
+}
+
+async function autofillAddressFromMapPin() {
+    const latitudeInput = document.getElementById("addressLatitude");
+    const longitudeInput = document.getElementById("addressLongitude");
+    const addressLineInput = document.getElementById("addressLine");
+    const areaInput = document.getElementById("addressLandmark");
+    const areaOptions = document.getElementById("addressAreaOptions");
+    const cityInput = document.getElementById("addressCity");
+    const stateInput = document.getElementById("addressState");
+    const pincodeInput = document.getElementById("addressPincode");
+
+    const latitude = parseCoordinate(latitudeInput?.value);
+    const longitude = parseCoordinate(longitudeInput?.value);
+
+    if (latitude == null || longitude == null) {
+        setAddressMapStatus("Set a pin on map before auto-filling address.", "error");
+        return false;
+    }
+
+    setAddressMapStatus("Fetching address details from map pin...", "loading");
+
+    const params = new URLSearchParams({
+        format: "jsonv2",
+        lat: String(latitude),
+        lon: String(longitude),
+        zoom: "18",
+        addressdetails: "1"
+    });
+
+    try {
+        const response = await fetch(`${REVERSE_GEOCODE_BASE_URL}?${params.toString()}`, {
+            headers: { Accept: "application/json" }
+        });
+        if (!response.ok) {
+            throw new Error("Reverse geocode request failed");
+        }
+
+        const payload = await response.json();
+        const address = payload?.address;
+        if (!address) {
+            throw new Error("No address details found");
+        }
+
+        const locality = [
+            address.neighbourhood,
+            address.suburb,
+            address.city_district,
+            address.quarter,
+            address.hamlet
+        ].find(Boolean) || "";
+
+        const mapAddressLine = getAddressLineFromMapAddress(address);
+        const mappedCity = address.city || address.town || address.village || address.county || "";
+        const mappedState = address.state || "";
+        const mappedPincode = String(address.postcode || "").replace(/\D/g, "").slice(0, 6);
+
+        if (addressLineInput && mapAddressLine) {
+            addressLineInput.value = mapAddressLine;
+        }
+        if (areaInput && locality) {
+            areaInput.value = locality;
+        }
+        if (areaOptions) {
+            areaOptions.innerHTML = renderAreaOptions(locality ? [locality] : [], areaInput?.value.trim() || "");
+        }
+        if (cityInput && mappedCity) {
+            cityInput.value = mappedCity;
+        }
+        if (stateInput && mappedState) {
+            stateInput.value = mappedState;
+        }
+        if (pincodeInput && mappedPincode) {
+            pincodeInput.value = mappedPincode;
+        }
+
+        const displayArea = [
+            locality,
+            mappedCity,
+            mappedState
+        ].filter(Boolean).join(", ");
+        if (displayArea) {
+            setAddressLocationAreaLabel(displayArea);
+        }
+
+        setAddressLookupFeedback("Address fields auto-filled from map pin. Please verify house/flat details.", "success");
+        setAddressMapStatus("Location confirmed. Now fill complete address details below.", "success");
+        return true;
+    } catch {
+        setAddressMapStatus("Could not auto-fill address from map pin right now.", "error");
+        return false;
+    }
+}
+
+async function confirmAddressPinAndProceed() {
+    if (!hasAddressPinSelection()) {
+        setAddressMapStatus("Set exact pin on map first.", "error");
+        return;
+    }
+
+    const success = await autofillAddressFromMapPin();
+    if (!success) {
+        return;
+    }
+
+    addressLocationConfirmed = true;
+    syncAddressFormLockState();
+}
+
+function changeAddressLocationSelection() {
+    addressLocationConfirmed = false;
+    syncAddressFormLockState();
+    setAddressMapStatus("Update map pin and click 'Confirm and proceed' again.", "loading");
 }
 
 async function fetchCategories() {
@@ -1857,6 +2573,7 @@ function closeAddressBook() {
 
     modal.classList.remove("open");
     editingAddressId = null;
+    destroyAddressMap();
     if (!anyModalOpen()) {
         document.body.classList.remove("modal-open");
     }
@@ -2714,6 +3431,16 @@ function renderAddressBook() {
 
     const editingAddress = editingAddressId ? getAddressById(editingAddressId) : null;
     const heading = editingAddress ? "Edit saved address" : "Save a new address";
+    const editingCoordinates = getAddressCoordinates(editingAddress);
+    addressLocationConfirmed = Boolean(editingAddress);
+    addressLocationAreaLabel = editingAddress
+        ? [
+            editingAddress.landmark,
+            editingAddress.city,
+            editingAddress.state
+        ].filter(Boolean).join(", ")
+        : "";
+    const detailsLocked = !addressLocationConfirmed;
 
     content.innerHTML = `
         <div class="address-book-shell">
@@ -2737,10 +3464,15 @@ function renderAddressBook() {
                                 ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
                             </div>
                             <p class="address-line">${escapeHtml(formatAddressLine(address))}</p>
+                            ${getAddressMapUrl(address) ? `
+                                <p class="address-map-link-row">
+                                    <a href="${escapeAttribute(getAddressMapUrl(address))}" target="_blank" rel="noopener noreferrer">View pinned location on map</a>
+                                </p>
+                            ` : ""}
                             <div class="address-card-actions">
                                 ${address.defaultAddress ? "" : `<button class="secondary-button" type="button" onclick="setDefaultAddress(${address.id})">Make default</button>`}
                                 <button class="text-button" type="button" onclick="startAddressEdit(${address.id})">Edit</button>
-                                <button class="text-button danger-button" type="button" onclick="deleteAddress(${address.id})">Delete</button>
+                                ${address.defaultAddress ? '<span class="address-action-note">Default address cannot be deleted.</span>' : `<button class="text-button danger-button" type="button" onclick="deleteAddress(${address.id})">Delete</button>`}
                             </div>
                         </article>
                     `).join("") : `
@@ -2757,21 +3489,55 @@ function renderAddressBook() {
                         ${editingAddress ? '<button class="text-button" type="button" onclick="resetAddressForm()">Cancel editing</button>' : ""}
                     </div>
                     <form class="address-form" onsubmit="saveAddress(event)">
+                        <div class="address-map-shell">
+                            <div class="address-map-head">
+                                <p>Pin exact location on map</p>
+                                <button class="secondary-button" type="button" onclick="centerAddressMapOnCurrentLocation()">Use live location</button>
+                            </div>
+                            <div class="address-map-search">
+                                <input
+                                    type="text"
+                                    id="addressMapSearchInput"
+                                    placeholder="Search area, building, or street name"
+                                    autocomplete="off"
+                                    onkeydown="handleAddressMapSearchKeydown(event)"
+                                    oninput="handleAddressMapSearchInput()"
+                                >
+                                <button class="secondary-button" type="button" onclick="searchAddressOnMap(event)">Search on map</button>
+                            </div>
+                            <div id="addressMapSearchResults" class="address-map-results"></div>
+                            <div id="addressMapCanvas" class="address-map-canvas ${editingCoordinates ? "" : "address-map-canvas-hidden"}" role="application" aria-label="Address map picker"></div>
+                            <div id="addressSelectedAreaRow" class="address-selected-area-row ${addressLocationAreaLabel ? "visible" : ""}">
+                                <strong>Delivery area</strong>
+                                <p id="addressSelectedAreaLabel">${escapeHtml(addressLocationAreaLabel || "No delivery area selected yet")}</p>
+                                <button class="text-button" type="button" onclick="changeAddressLocationSelection()">Change</button>
+                            </div>
+                            <div class="address-map-actions">
+                                <button class="primary-button" type="button" id="addressConfirmPinButton" onclick="confirmAddressPinAndProceed()">Confirm and proceed</button>
+                            </div>
+                            <p id="addressMapStatus" class="address-map-status">Step 1: Search and pick an area. Step 2: Set exact pin. Step 3: Confirm and proceed.</p>
+                            <input type="hidden" id="addressLatitude" value="${editingCoordinates ? escapeHtml(formatCoordinate(editingCoordinates.latitude)) : ""}">
+                            <input type="hidden" id="addressLongitude" value="${editingCoordinates ? escapeHtml(formatCoordinate(editingCoordinates.longitude)) : ""}">
+                        </div>
+                        <p id="addressDetailsLockHint" class="address-details-lock-hint ${detailsLocked ? "locked" : "ready"}">
+                            ${detailsLocked ? "Step 3: Confirm map pin first, then complete full address details." : "Location confirmed. Fill complete address details below."}
+                        </p>
+                        <div id="addressDetailsSection" class="address-details-section ${detailsLocked ? "hidden" : "visible"}">
                         <label>
                             Address label
-                            <input type="text" id="addressLabel" placeholder="Home, Work, Hostel" value="${editingAddress ? escapeHtml(editingAddress.label) : ""}" required>
+                            <input type="text" id="addressLabel" placeholder="Home, Work, Hostel" value="${editingAddress ? escapeHtml(editingAddress.label) : ""}" ${detailsLocked ? "disabled" : ""} required>
                         </label>
                         <label>
                             Recipient name
-                            <input type="text" id="addressRecipientName" placeholder="Name for delivery" value="${editingAddress ? escapeHtml(editingAddress.recipientName) : ""}" required>
+                            <input type="text" id="addressRecipientName" placeholder="Name for delivery" value="${editingAddress ? escapeHtml(editingAddress.recipientName) : ""}" ${detailsLocked ? "disabled" : ""} required>
                         </label>
                         <label>
                             Phone number
-                            <input type="tel" id="addressPhoneNumber" placeholder="10-digit phone" value="${editingAddress ? escapeHtml(editingAddress.phoneNumber) : ""}" required>
+                            <input type="tel" id="addressPhoneNumber" placeholder="10-digit phone" value="${editingAddress ? escapeHtml(editingAddress.phoneNumber) : ""}" ${detailsLocked ? "disabled" : ""} required>
                         </label>
                         <label>
                             Address line
-                            <textarea id="addressLine" rows="3" placeholder="House number, apartment, street" required>${editingAddress ? escapeHtml(editingAddress.addressLine) : ""}</textarea>
+                            <textarea id="addressLine" rows="3" placeholder="House number, apartment, street" ${detailsLocked ? "disabled" : ""} required>${editingAddress ? escapeHtml(editingAddress.addressLine) : ""}</textarea>
                         </label>
                         <label>
                             Area / Locality
@@ -2781,6 +3547,7 @@ function renderAddressBook() {
                                 list="addressAreaOptions"
                                 placeholder="Area or locality"
                                 value="${editingAddress ? escapeHtml(editingAddress.landmark || "") : ""}"
+                                ${detailsLocked ? "disabled" : ""}
                             >
                             <datalist id="addressAreaOptions">
                                 ${renderAreaOptions([], editingAddress?.landmark || "")}
@@ -2789,11 +3556,11 @@ function renderAddressBook() {
                         <div class="address-form-row">
                             <label>
                                 City
-                                <input type="text" id="addressCity" placeholder="City" value="${editingAddress ? escapeHtml(editingAddress.city) : ""}" required>
+                                <input type="text" id="addressCity" placeholder="City" value="${editingAddress ? escapeHtml(editingAddress.city) : ""}" ${detailsLocked ? "disabled" : ""} required>
                             </label>
                             <label>
                                 State
-                                <input type="text" id="addressState" placeholder="State" value="${editingAddress ? escapeHtml(editingAddress.state) : ""}" required>
+                                <input type="text" id="addressState" placeholder="State" value="${editingAddress ? escapeHtml(editingAddress.state) : ""}" ${detailsLocked ? "disabled" : ""} required>
                             </label>
                         </div>
                         <div class="address-form-row">
@@ -2807,13 +3574,15 @@ function renderAddressBook() {
                                     placeholder="Pincode"
                                     value="${editingAddress ? escapeHtml(editingAddress.pincode) : ""}"
                                     oninput="handlePincodeInput()"
+                                    ${detailsLocked ? "disabled" : ""}
                                     required
                                 >
                             </label>
                             <label class="address-default-toggle">
-                                <input type="checkbox" id="addressDefault" ${editingAddress?.defaultAddress ? "checked" : ""}>
+                                <input type="checkbox" id="addressDefault" ${editingAddress?.defaultAddress ? "checked" : ""} ${detailsLocked ? "disabled" : ""}>
                                 <span>Make this my default delivery address</span>
                             </label>
+                        </div>
                         </div>
                         <div id="addressLookupFeedback" class="address-lookup-feedback">
                             Enter a 6-digit pincode to auto-fill city, state, and area.
@@ -2824,6 +3593,13 @@ function renderAddressBook() {
                 </section>
             </div>
         </div>`;
+
+    initializeAddressMap(editingAddress);
+    setAddressLocationAreaLabel(addressLocationAreaLabel);
+    syncAddressFormLockState();
+    if (addressLocationConfirmed && editingAddress) {
+        setAddressMapStatus("Location loaded. You can change pin if needed.", "success");
+    }
 
     const existingPincode = document.getElementById("addressPincode")?.value.trim();
     if (existingPincode && existingPincode.length === 6) {
@@ -3383,27 +4159,13 @@ function renderAccountPanel() {
                     <div>
                         <p class="menu-eyebrow">Addresses</p>
                         <h3>Manage saved addresses</h3>
+                        <p class="account-panel-note">Use address book flow: search area -> pin on map -> fill full details.</p>
                     </div>
                     <button class="secondary-button" type="button" onclick="closeAuthModal(); openAddressBook()">Open address book</button>
                 </div>
-                <div class="account-address-list">
-                    ${savedAddresses.length ? savedAddresses.map((address) => `
-                        <article class="account-address-card ${address.defaultAddress ? "default" : ""}">
-                            <div class="address-card-head">
-                                <div>
-                                    <h3>${escapeHtml(address.label)}</h3>
-                                    <p>${escapeHtml(address.recipientName)} - ${escapeHtml(address.phoneNumber)}</p>
-                                </div>
-                                ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
-                            </div>
-                            <p class="address-line">${escapeHtml(formatAddressLine(address))}</p>
-                        </article>
-                    `).join("") : `
-                        <div class="account-placeholder-card">
-                            <strong>No addresses saved</strong>
-                            <p>Add an address so checkout can use it instantly.</p>
-                        </div>
-                    `}
+                <div class="account-placeholder-card">
+                    <strong>${savedAddresses.length ? `${savedAddresses.length} saved address${savedAddresses.length === 1 ? "" : "es"}` : "No addresses saved yet"}</strong>
+                    <p>Open address book to add, edit, delete, and manage default delivery address.</p>
                 </div>
             </div>
         `;
@@ -4355,6 +5117,15 @@ async function saveAddress(event) {
         return;
     }
 
+    if (!addressLocationConfirmed && !editingAddressId) {
+        if (feedback) {
+            feedback.textContent = "Please confirm delivery location on map first.";
+            feedback.className = "checkout-feedback error";
+        }
+        setAddressMapStatus("Confirm map pin first, then save address.", "error");
+        return;
+    }
+
     const payload = {
         label: document.getElementById("addressLabel")?.value.trim(),
         recipientName: document.getElementById("addressRecipientName")?.value.trim(),
@@ -4364,6 +5135,8 @@ async function saveAddress(event) {
         city: document.getElementById("addressCity")?.value.trim(),
         state: document.getElementById("addressState")?.value.trim(),
         pincode: document.getElementById("addressPincode")?.value.trim(),
+        latitude: parseCoordinate(document.getElementById("addressLatitude")?.value),
+        longitude: parseCoordinate(document.getElementById("addressLongitude")?.value),
         defaultAddress: document.getElementById("addressDefault")?.checked || false
     };
 
@@ -4416,6 +5189,11 @@ async function setDefaultAddress(addressId) {
 }
 
 async function deleteAddress(addressId) {
+    const address = getAddressById(addressId);
+    if (address?.defaultAddress) {
+        alert("You cannot delete the default address. Set another address as default first.");
+        return;
+    }
     if (!window.confirm("Delete this saved address?")) {
         return;
     }

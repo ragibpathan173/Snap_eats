@@ -2016,6 +2016,201 @@ body.modal-open {
     background: #fff;
 }
 
+.address-map-shell {
+    margin-top: 2px;
+    padding: 18px;
+    border-radius: 22px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    display: grid;
+    gap: 12px;
+}
+
+.address-map-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.address-map-head p {
+    margin: 0;
+    color: #27303f;
+    font-weight: 700;
+}
+
+.address-map-search {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+}
+
+.address-map-search input {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid #d7dce2;
+    border-radius: 12px;
+    font: inherit;
+    background: #fff;
+}
+
+.address-map-results {
+    display: grid;
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.address-map-result {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    color: #27303f;
+    text-align: left;
+    padding: 10px 12px;
+    font: inherit;
+    cursor: pointer;
+}
+
+.address-map-result strong {
+    display: block;
+    color: #2b313b;
+    font-size: 19px;
+}
+
+.address-map-result p {
+    margin-top: 6px;
+    color: #5f6775;
+    font-size: 15px;
+}
+
+.address-map-result:hover {
+    border-color: #cb202d;
+    background: #fff7f7;
+}
+
+.address-map-canvas {
+    width: 100%;
+    min-height: 330px;
+    border-radius: 22px;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    background: #f3f6fa;
+}
+
+.address-map-canvas.address-map-canvas-hidden {
+    display: none;
+}
+
+.address-map-canvas.address-map-unavailable {
+    display: grid;
+    place-items: center;
+    color: #5f6775;
+    font-weight: 600;
+    background: repeating-linear-gradient(
+        -45deg,
+        #eef2f7,
+        #eef2f7 14px,
+        #e4e9f0 14px,
+        #e4e9f0 28px
+    );
+}
+
+.address-map-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.address-selected-area-row {
+    display: none;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.address-selected-area-row.visible {
+    display: grid;
+}
+
+.address-selected-area-row strong {
+    color: #5f6775;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.address-selected-area-row p {
+    margin: 0;
+    color: #27303f;
+    font-weight: 600;
+}
+
+.address-details-lock-hint {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.address-details-lock-hint.locked {
+    color: #a65d00;
+}
+
+.address-details-lock-hint.ready {
+    color: #144c2a;
+}
+
+.address-details-section.hidden {
+    display: none;
+}
+
+.address-details-section.visible {
+    display: grid;
+    gap: 14px;
+}
+
+.address-map-status {
+    margin: 0;
+    color: #5f6775;
+    font-size: 14px;
+}
+
+.address-map-status.loading {
+    color: #a65d00;
+}
+
+.address-map-status.success {
+    color: #144c2a;
+}
+
+.address-map-status.error {
+    color: #b42318;
+}
+
+.address-map-link-row {
+    margin-top: 10px;
+}
+
+.address-map-link-row a {
+    color: #cb202d;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.address-map-link-row a:hover {
+    text-decoration: underline;
+}
+
+.address-map-canvas .leaflet-control-attribution {
+    font-size: 10px;
+}
+
 .address-lookup-feedback {
     color: #686b78;
     font-size: 14px;
@@ -2676,6 +2871,11 @@ body.modal-open {
 
 .account-panel-copy {
     margin-top: 10px;
+    color: #686b78;
+}
+
+.account-panel-note {
+    margin-top: 8px;
     color: #686b78;
 }
 
@@ -3628,6 +3828,20 @@ body.modal-open {
     }
     .address-form-row {
         grid-template-columns: 1fr;
+    }
+    .address-map-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .address-map-search {
+        grid-template-columns: 1fr;
+    }
+    .address-selected-area-row {
+        grid-template-columns: 1fr;
+        align-items: flex-start;
+    }
+    .address-map-canvas {
+        min-height: 260px;
     }
     .cart-item-card {
         grid-template-columns: 72px 1fr;

@@ -192,6 +192,8 @@ public class UserAddressController {
         address.setCity(request.city.trim());
         address.setState(request.state.trim());
         address.setPincode(request.pincode.trim());
+        address.setLatitude(request.latitude);
+        address.setLongitude(request.longitude);
         address.setActive(true);
     }
 
@@ -249,6 +251,8 @@ public class UserAddressController {
         public String city;
         public String state;
         public String pincode;
+        public Double latitude;
+        public Double longitude;
         public Boolean defaultAddress;
     }
 }
