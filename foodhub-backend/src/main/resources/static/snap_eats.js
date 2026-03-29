@@ -826,7 +826,7 @@ function ensureCheckoutPaymentChoice() {
         return;
     }
 
-    if (["CASH", "UPI", "WALLET", "NETBANKING", "PLUXEE"].includes(checkoutPaymentChoice)) {
+    if (["CASH", "UPI", "WALLET", "NETBANKING"].includes(checkoutPaymentChoice)) {
         return;
     }
     const hasSelectedSavedMethod = savedPaymentMethods.some((method) => `saved:${method.id}` === checkoutPaymentChoice);
@@ -864,9 +864,6 @@ function getCheckoutPaymentSelection() {
     }
     if (checkoutPaymentChoice === "NETBANKING") {
         return { type: "NETBANKING", label: netbankingBankChoice ? `Netbanking - ${netbankingBankChoice}` : "Netbanking" };
-    }
-    if (checkoutPaymentChoice === "PLUXEE") {
-        return { type: "PLUXEE", label: "Pluxee" };
     }
 
     const selectedMethod = savedPaymentMethods.find((method) => `saved:${method.id}` === checkoutPaymentChoice);
@@ -3894,20 +3891,6 @@ function renderCart() {
                     <div class="payment-section">
                         <h3>More payment options</h3>
                         <div class="payment-method-list">
-                            <label class="checkout-payment-card ${checkoutPaymentChoice === "PLUXEE" ? "selected" : ""}">
-                                <input
-                                    type="radio"
-                                    name="checkoutPaymentChoice"
-                                    value="PLUXEE"
-                                    ${checkoutPaymentChoice === "PLUXEE" ? "checked" : ""}
-                                    onchange="setCheckoutPaymentChoice(this.value)"
-                                >
-                                <div>
-                                    <strong>Pluxee</strong>
-                                    <p>Pluxee card valid only on Food &amp; Instamart.</p>
-                                </div>
-                                <span class="payment-type-pill">Meal</span>
-                            </label>
                             <button class="payment-option-row" type="button" onclick="openWalletsPage(event)">
                                 <div>
                                     <strong>Wallets</strong>
