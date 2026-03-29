@@ -4,6 +4,7 @@ const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";
 const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
+const ADDRESS_SEARCH_BIAS_KEY = "snap_eats_address_search_bias";
 const OWNER_NAME = "Ragib Ali Khan";
 const OWNER_EMAIL = "ragibpathan173@gmail.com";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
@@ -454,6 +455,40 @@ function loadRecentLocations() {
     } catch {
         return [];
     }
+}
+
+function loadAddressSearchBias() {
+    try {
+        const raw = localStorage.getItem(ADDRESS_SEARCH_BIAS_KEY);
+        if (!raw) {
+            return null;
+        }
+        const parsed = JSON.parse(raw);
+        const latitude = parseCoordinate(parsed?.latitude);
+        const longitude = parseCoordinate(parsed?.longitude);
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+        return { latitude, longitude };
+    } catch {
+        return null;
+    }
+}
+
+function saveAddressSearchBias(latitude, longitude) {
+    const lat = parseCoordinate(latitude);
+    const lng = parseCoordinate(longitude);
+    if (lat == null || lng == null) {
+        return;
+    }
+    localStorage.setItem(
+        ADDRESS_SEARCH_BIAS_KEY,
+        JSON.stringify({
+            latitude: lat,
+            longitude: lng,
+            updatedAt: Date.now()
+        })
+    );
 }
 
 function createEmptyCart() {
@@ -1337,6 +1372,129 @@ function parseSearchBoundingBox(boundingbox) {
     return { south, north, west, east };
 }
 
+function normalizeSearchQuery(query) {
+    return String(query || "")
+        .trim()
+        .replace(/[^\p{L}\p{N}\s,.-]/gu, "")
+        .replace(/\s+/g, " ");
+}
+
+function getAddressSearchBiasCoordinates() {
+    if (addressMapMarker && typeof addressMapMarker.getLatLng === "function") {
+        const markerPosition = addressMapMarker.getLatLng();
+        if (markerPosition?.lat != null && markerPosition?.lng != null) {
+            return { latitude: markerPosition.lat, longitude: markerPosition.lng };
+        }
+    }
+    return loadAddressSearchBias();
+}
+
+function buildSearchViewbox(bias, query) {
+    if (!bias) {
+        return null;
+    }
+    const tokens = normalizeSearchQuery(query).toLowerCase().split(/\s+/).filter(Boolean);
+    const isShortQuery = tokens.length <= 2 && tokens.join("").length <= 10;
+    const radius = isShortQuery ? 0.28 : 0.5;
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const south = clamp(bias.latitude - radius, -90, 90);
+    const north = clamp(bias.latitude + radius, -90, 90);
+    const west = clamp(bias.longitude - radius, -180, 180);
+    const east = clamp(bias.longitude + radius, -180, 180);
+    return {
+        viewbox: `${west},${south},${east},${north}`,
+        bounded: isShortQuery ? "1" : "0"
+    };
+}
+
+function computeApproxDistanceKm(origin, target) {
+    if (!origin || !target) {
+        return null;
+    }
+    const toRad = (value) => (value * Math.PI) / 180;
+    const dLat = toRad(target.latitude - origin.latitude);
+    const dLng = toRad(target.longitude - origin.longitude);
+    const lat1 = toRad(origin.latitude);
+    const lat2 = toRad(target.latitude);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return 6371 * c;
+}
+
+function getSearchResultCoordinates(item) {
+    const latitude = parseCoordinate(item?.lat ?? item?.latitude);
+    const longitude = parseCoordinate(item?.lon ?? item?.longitude);
+    if (latitude == null || longitude == null) {
+        return null;
+    }
+    return { latitude, longitude };
+}
+
+function getSearchResultScore(item, queryTokens, queryText, bias) {
+    const label = String(item?.display_name || "").toLowerCase();
+    const importance = Number(item?.importance) || 0;
+    const type = String(item?.type || "").toLowerCase();
+    const placeClass = String(item?.class || "").toLowerCase();
+    const address = item?.address || {};
+    let score = importance * 10;
+
+    if (label.startsWith(queryText)) {
+        score += 2;
+    }
+    const tokenMatches = queryTokens.reduce((count, token) => count + (label.includes(token) ? 1 : 0), 0);
+    score += tokenMatches * 0.4;
+
+    if (["neighbourhood", "suburb", "city_district", "quarter"].includes(type)) {
+        score += 1.5;
+    }
+    if (["city", "town", "village", "hamlet"].includes(type)) {
+        score += 1;
+    }
+    if (placeClass === "boundary" && type === "administrative") {
+        score -= 0.8;
+    }
+    if (String(address.country_code || "").toLowerCase() === "in") {
+        score += 0.8;
+    }
+    if (address.city || address.town || address.village || address.county || address.state) {
+        score += 0.4;
+    }
+
+    const coordinates = getSearchResultCoordinates(item);
+    const distanceKm = coordinates ? computeApproxDistanceKm(bias, coordinates) : null;
+    if (distanceKm != null) {
+        score += Math.max(0, 3 - distanceKm / 12);
+    }
+    return score;
+}
+
+function rankSearchResults(results, query, bias) {
+    const cleanedQuery = normalizeSearchQuery(query);
+    const queryText = cleanedQuery.toLowerCase();
+    const tokens = queryText.split(/\s+/).filter(Boolean);
+    return results
+        .slice()
+        .sort((a, b) => getSearchResultScore(b, tokens, queryText, bias) - getSearchResultScore(a, tokens, queryText, bias));
+}
+
+function dedupeSearchResults(results) {
+    const seen = new Set();
+    return results.filter((item) => {
+        const coordinates = getSearchResultCoordinates(item);
+        const lat = coordinates ? coordinates.latitude.toFixed(4) : "";
+        const lng = coordinates ? coordinates.longitude.toFixed(4) : "";
+        const label = String(item?.display_name || "").toLowerCase();
+        const key = `${lat}|${lng}|${label}`;
+        if (seen.has(key)) {
+            return false;
+        }
+        seen.add(key);
+        return true;
+    });
+}
+
 function clearAddressMapSearchLayer() {
     if (addressMap && addressMapSearchLayer && typeof addressMap.removeLayer === "function") {
         addressMap.removeLayer(addressMapSearchLayer);
@@ -1422,6 +1580,7 @@ async function selectAddressMapSearchResult(latitude, longitude, label = "Select
     }
     addressMapMarker.setLatLng([lat, lng]);
     updateAddressCoordinateInputs(lat, lng);
+    saveAddressSearchBias(lat, lng);
     setAddressLocationAreaLabel(label);
     addressLocationConfirmed = false;
     syncAddressFormLockState();
@@ -1460,40 +1619,49 @@ function selectAddressMapSearchResultByIndex(index) {
 }
 
 async function fetchAddressSearchResults(query) {
+    const cleanedQuery = normalizeSearchQuery(query);
+    const bias = getAddressSearchBiasCoordinates();
+    const viewbox = buildSearchViewbox(bias, cleanedQuery);
     const buildSearchUrl = (forceIndia) => {
         const params = new URLSearchParams({
             format: "jsonv2",
-            q: forceIndia ? `${query}, India` : query,
-            limit: "5",
+            q: forceIndia ? `${cleanedQuery}, India` : cleanedQuery,
+            limit: "8",
             addressdetails: "1"
         });
         if (forceIndia) {
             params.set("countrycodes", "in");
         }
+        if (viewbox?.viewbox) {
+            params.set("viewbox", viewbox.viewbox);
+        }
+        if (viewbox?.bounded === "1") {
+            params.set("bounded", "1");
+        }
         return `${FORWARD_GEOCODE_BASE_URL}?${params.toString()}`;
     };
 
     let response = await fetch(buildSearchUrl(true), {
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json", "Accept-Language": "en" }
     });
     let results = response.ok ? await response.json() : [];
 
     if (!Array.isArray(results) || !results.length) {
         response = await fetch(buildSearchUrl(false), {
-            headers: { Accept: "application/json" }
+            headers: { Accept: "application/json", "Accept-Language": "en" }
         });
         results = response.ok ? await response.json() : [];
     }
     if (Array.isArray(results) && results.length) {
-        return results;
+        return rankSearchResults(dedupeSearchResults(results), cleanedQuery, bias);
     }
 
     const photonParams = new URLSearchParams({
-        q: `${query}, India`,
-        limit: "5"
+        q: `${cleanedQuery}, India`,
+        limit: "8"
     });
     response = await fetch(`${PHOTON_GEOCODE_BASE_URL}?${photonParams.toString()}`, {
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json", "Accept-Language": "en" }
     });
     if (!response.ok) {
         return [];
@@ -1501,7 +1669,7 @@ async function fetchAddressSearchResults(query) {
     const photonPayload = await response.json();
     const features = Array.isArray(photonPayload?.features) ? photonPayload.features : [];
 
-    return features
+    const photonResults = features
         .map((feature) => {
             const coordinates = feature?.geometry?.coordinates;
             const properties = feature?.properties || {};
@@ -1521,10 +1689,12 @@ async function fetchAddressSearchResults(query) {
             return {
                 lat: latitude,
                 lon: longitude,
-                display_name: labelParts.join(", ") || query
+                display_name: labelParts.join(", ") || cleanedQuery
             };
         })
         .filter(Boolean);
+
+    return rankSearchResults(dedupeSearchResults(photonResults), cleanedQuery, bias);
 }
 
 function handleAddressMapSearchKeydown(event) {
@@ -1575,7 +1745,7 @@ async function searchAddressOnMap(event) {
             return;
         }
 
-        const topResults = results.slice(0, 5);
+        const topResults = results.slice(0, 7);
         renderAddressMapSearchResults(topResults);
         setAddressMapStatus("Select one location from results to open it on map.", "success");
     } catch {
@@ -1697,6 +1867,10 @@ async function confirmAddressPinAndProceed() {
     }
 
     addressLocationConfirmed = true;
+    if (addressMapMarker && typeof addressMapMarker.getLatLng === "function") {
+        const markerPosition = addressMapMarker.getLatLng();
+        saveAddressSearchBias(markerPosition?.lat, markerPosition?.lng);
+    }
     syncAddressFormLockState();
 }
 
