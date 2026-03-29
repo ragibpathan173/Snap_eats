@@ -6,11 +6,13 @@ import com.foodhub.model.OrderItem;
 import com.foodhub.model.Restaurant;
 import com.foodhub.model.User;
 import com.foodhub.model.UserAddress;
+import com.foodhub.model.UserSubscription;
 import com.foodhub.repository.OrderItemRepository;
 import com.foodhub.repository.OrderRepository;
 import com.foodhub.repository.RestaurantRepository;
 import com.foodhub.repository.UserAddressRepository;
 import com.foodhub.repository.UserRepository;
+import com.foodhub.repository.UserSubscriptionRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ import java.util.Optional;
 @RequestMapping("/api/orders")
 @CrossOrigin(origins = "*")
 public class OrderController {
+    private static final double BASE_DELIVERY_FEE = 40.0;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -43,6 +46,9 @@ public class OrderController {
 
     @Autowired
     private RestaurantRepository restaurantRepository;
+
+    @Autowired
+    private UserSubscriptionRepository userSubscriptionRepository;
 
     // ===== CREATE =====
     
@@ -105,8 +111,10 @@ public class OrderController {
             double subtotal = request.items.stream()
                     .mapToDouble(item -> (item.price == null ? 0.0 : item.price) * Math.max(1, item.quantity == null ? 1 : item.quantity))
                     .sum();
-            double deliveryFee = request.deliveryFee == null ? 40.0 : request.deliveryFee;
-            double discount = request.discount == null ? 0.0 : request.discount;
+            Optional<UserSubscription> activeSubscription = userSubscriptionRepository.findByUserIdAndActiveTrue(checkoutUser.getId());
+            double deliveryFee = calculateDeliveryFee(subtotal, activeSubscription.orElse(null));
+            double discount = calculateSubscriptionDiscount(subtotal, activeSubscription.orElse(null));
+            double finalAmount = Math.max(0.0, subtotal + deliveryFee - discount);
 
             Order order = new Order();
             order.setOrderNumber("ORD" + System.currentTimeMillis());
@@ -115,7 +123,7 @@ public class OrderController {
             order.setTotalAmount(roundAmount(subtotal));
             order.setDeliveryFee(roundAmount(deliveryFee));
             order.setDiscount(roundAmount(discount));
-            order.setFinalAmount(roundAmount(subtotal + deliveryFee - discount));
+            order.setFinalAmount(roundAmount(finalAmount));
             order.setPaymentMethod(parsePaymentMethod(request.paymentMethod));
             order.setPaymentStatus(order.getPaymentMethod() == Order.PaymentMethod.CASH
                     ? Order.PaymentStatus.PENDING
@@ -434,6 +442,37 @@ public class OrderController {
 
     private double roundAmount(double value) {
         return Math.round(value * 100.0) / 100.0;
+    }
+
+    private double calculateDeliveryFee(double subtotal, UserSubscription subscription) {
+        if (subtotal <= 0) {
+            return 0.0;
+        }
+        if (subscription == null || !Boolean.TRUE.equals(subscription.getActive())) {
+            return BASE_DELIVERY_FEE;
+        }
+
+        double minOrderForFreeDelivery = subscription.getMinOrderForFreeDelivery() == null
+                ? Double.MAX_VALUE
+                : subscription.getMinOrderForFreeDelivery();
+        return subtotal >= minOrderForFreeDelivery ? 0.0 : BASE_DELIVERY_FEE;
+    }
+
+    private double calculateSubscriptionDiscount(double subtotal, UserSubscription subscription) {
+        if (subtotal <= 0 || subscription == null || !Boolean.TRUE.equals(subscription.getActive())) {
+            return 0.0;
+        }
+
+        int discountPercent = subscription.getDiscountPercent() == null ? 0 : Math.max(0, subscription.getDiscountPercent());
+        if (discountPercent <= 0) {
+            return 0.0;
+        }
+
+        double rawDiscount = subtotal * discountPercent / 100.0;
+        double maxDiscountCap = subscription.getMaxDiscountPerOrder() == null
+                ? rawDiscount
+                : Math.max(0.0, subscription.getMaxDiscountPerOrder());
+        return Math.min(rawDiscount, maxDiscountCap);
     }
 
     private Restaurant resolveRestaurant(CheckoutRequest request) {

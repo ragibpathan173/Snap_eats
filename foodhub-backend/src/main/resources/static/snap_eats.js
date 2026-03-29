@@ -27,6 +27,10 @@ let adminEditingMenuItemId = null;
 let favoriteRestaurants = [];
 let favoriteMenuItems = [];
 let savedPaymentMethods = [];
+let subscriptionPlans = [];
+let currentSubscription = null;
+let subscriptionLoading = false;
+let subscriptionFeedback = { type: "", message: "" };
 let editingAddressId = null;
 let orderHistory = [];
 let activeAccountSection = "orders";
@@ -856,6 +860,38 @@ async function fetchPaymentMethods() {
     renderCart();
     if (currentUser) {
         renderAuthModal();
+    }
+}
+
+async function fetchSubscriptionData() {
+    if (!currentUser?.id) {
+        subscriptionPlans = [];
+        currentSubscription = null;
+        subscriptionLoading = false;
+        return;
+    }
+
+    subscriptionLoading = true;
+    if (activeAccountSection === "subscription") {
+        renderAuthModal();
+    }
+
+    try {
+        const [plans, subscription] = await Promise.all([
+            fetchJson(`${API_BASE_URL}/subscriptions/plans`),
+            fetchJson(`${API_BASE_URL}/subscriptions/me`)
+        ]);
+        subscriptionPlans = Array.isArray(plans) ? plans : [];
+        currentSubscription = subscription && typeof subscription === "object" ? subscription : null;
+    } catch {
+        subscriptionPlans = [];
+        currentSubscription = null;
+    } finally {
+        subscriptionLoading = false;
+        renderCart();
+        if (currentUser && activeAccountSection === "subscription") {
+            renderAuthModal();
+        }
     }
 }
 
@@ -1855,8 +1891,9 @@ function renderCart() {
     }
 
     const subtotal = getCartSubtotal();
-    const deliveryFee = getDeliveryFee();
-    const finalAmount = subtotal + deliveryFee;
+    const deliveryFee = getDeliveryFee(subtotal);
+    const subscriptionDiscount = getSubscriptionDiscount(subtotal);
+    const finalAmount = roundAmount(Math.max(0, subtotal + deliveryFee - subscriptionDiscount));
     const defaultAddress = getDefaultAddress();
     const canCheckout = Boolean(defaultAddress);
 
@@ -1892,7 +1929,13 @@ function renderCart() {
                 <section class="checkout-panel">
                     <div class="checkout-summary">
                         <div><span>Subtotal</span><strong>${formatCurrency(subtotal)}</strong></div>
-                        <div><span>Delivery fee</span><strong>${formatCurrency(deliveryFee)}</strong></div>
+                        <div>
+                            <span>Delivery fee</span>
+                            <strong>${deliveryFee > 0 ? formatCurrency(deliveryFee) : "FREE"}</strong>
+                        </div>
+                        ${subscriptionDiscount > 0 ? `
+                            <div><span>Subscription discount</span><strong>- ${formatCurrency(subscriptionDiscount)}</strong></div>
+                        ` : ""}
                         <div class="checkout-total"><span>Total</span><strong>${formatCurrency(finalAmount)}</strong></div>
                     </div>
 
@@ -2237,6 +2280,9 @@ function setAccountSection(section) {
     if (section === "admin" && isAdminUser() && !adminRestaurants.length) {
         loadAdminRestaurants();
     }
+    if (section === "subscription" && currentUser?.id && !subscriptionPlans.length && !subscriptionLoading) {
+        fetchSubscriptionData();
+    }
 }
 
 function renderAccountSidebar() {
@@ -2381,15 +2427,82 @@ function renderAccountPanel() {
         return renderAdminPanel();
     }
     if (activeAccountSection === "subscription") {
+        const hasActiveSubscription = Boolean(currentSubscription?.active);
+        const activePlanCode = String(currentSubscription?.planCode || "").toUpperCase();
         return `
             <div class="account-panel">
                 <p class="menu-eyebrow">SnapSubscription</p>
-                <h3>Save more on every meal</h3>
-                <p class="account-panel-copy">Unlock free deliveries, member-only deals, and faster support when your subscription goes live.</p>
-                <div class="account-placeholder-card">
-                    <strong>No active plan yet</strong>
-                    <p>We can add subscription plans here next if you want a full Swiggy One style screen.</p>
-                </div>
+                <h3>Membership plans</h3>
+                <p class="account-panel-copy">Choose a plan and save more on every order with free delivery and member discounts.</p>
+                ${subscriptionFeedback.message ? `<div class="checkout-feedback ${subscriptionFeedback.type === "error" ? "error" : "success"}">${escapeHtml(subscriptionFeedback.message)}</div>` : ""}
+                ${subscriptionLoading ? `
+                    <div class="account-placeholder-card">
+                        <strong>Loading plans...</strong>
+                    </div>
+                ` : `
+                    <div class="account-stat-grid">
+                        <div class="account-card">
+                            <span>Current status</span>
+                            <strong>${hasActiveSubscription ? escapeHtml(currentSubscription.planName || "Active") : "Not subscribed"}</strong>
+                        </div>
+                        <div class="account-card">
+                            <span>Monthly fee</span>
+                            <strong>${hasActiveSubscription ? `${formatCurrency(currentSubscription.monthlyPrice || 0)}/month` : "Choose a plan"}</strong>
+                        </div>
+                    </div>
+
+                    ${hasActiveSubscription ? `
+                        <div class="subscription-current-card">
+                            <div>
+                                <strong>${escapeHtml(currentSubscription.planName || "Membership active")}</strong>
+                                <p>${escapeHtml(currentSubscription.description || "Membership perks are active on your account.")}</p>
+                                <p class="subscription-current-meta">
+                                    Renews ${currentSubscription.nextBillingAt ? escapeHtml(formatDateTime(currentSubscription.nextBillingAt)) : "every 30 days"}
+                                </p>
+                            </div>
+                            <button class="text-button danger-button" type="button" onclick="cancelSubscription()">Cancel plan</button>
+                        </div>
+                    ` : `
+                        <div class="account-placeholder-card compact">
+                            <strong>No active plan yet</strong>
+                            <p>Select any plan below to unlock member savings on checkout.</p>
+                        </div>
+                    `}
+
+                    <div class="subscription-plan-grid">
+                        ${subscriptionPlans.length ? subscriptionPlans.map((plan) => {
+                            const isCurrentPlan = hasActiveSubscription && String(plan.planCode || "").toUpperCase() === activePlanCode;
+                            return `
+                                <article class="subscription-plan-card ${isCurrentPlan ? "active" : ""}">
+                                    <span class="subscription-highlight-pill">${escapeHtml(plan.highlight || "Member plan")}</span>
+                                    <h4>${escapeHtml(plan.name)}</h4>
+                                    <p>${escapeHtml(plan.description || "")}</p>
+                                    <div class="subscription-plan-price">${formatCurrency(plan.monthlyPrice || 0)}<small>/month</small></div>
+                                    <div class="subscription-plan-meta">
+                                        <span>${formatNumber(plan.discountPercent || 0)}% off</span>
+                                        <span>Up to ${formatCurrency(plan.maxDiscountPerOrder || 0)} off/order</span>
+                                        <span>Free delivery above ${formatCurrency(plan.minOrderForFreeDelivery || 0)}</span>
+                                    </div>
+                                    <div class="subscription-plan-actions">
+                                        <button
+                                            class="${isCurrentPlan ? "secondary-button" : "primary-button"}"
+                                            type="button"
+                                            onclick="activateSubscription('${escapeAttribute(plan.planCode)}')"
+                                            ${(subscriptionLoading || isCurrentPlan) ? "disabled" : ""}
+                                        >
+                                            ${isCurrentPlan ? "Current plan" : "Activate plan"}
+                                        </button>
+                                    </div>
+                                </article>
+                            `;
+                        }).join("") : `
+                            <div class="account-placeholder-card">
+                                <strong>Plan catalog unavailable</strong>
+                                <p>Try refreshing this section in a moment.</p>
+                            </div>
+                        `}
+                    </div>
+                `}
             </div>
         `;
     }
@@ -2980,7 +3093,7 @@ async function verifyLoginSignupOtp(event) {
         saveCurrentUser(authResponse?.user || authResponse);
         otpAuthDraftIdentifier = "";
         otpAuthDraftName = "";
-        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
+        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods(), fetchSubscriptionData()]);
         renderAuthModal();
     } catch (error) {
         if (feedback) {
@@ -3039,7 +3152,7 @@ async function loginUser(event) {
 
         saveAuthToken(authResponse?.token || "");
         saveCurrentUser(authResponse?.user || authResponse);
-        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
+        await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods(), fetchSubscriptionData()]);
         renderAuthModal();
     } catch (error) {
         if (feedback) {
@@ -3083,6 +3196,9 @@ async function signupUser(event) {
         favoriteRestaurants = [];
         favoriteMenuItems = [];
         savedPaymentMethods = [];
+        subscriptionPlans = [];
+        currentSubscription = null;
+        subscriptionFeedback = { type: "", message: "" };
         checkoutPaymentChoice = "CASH";
         renderCart();
         renderOrders();
@@ -3179,6 +3295,9 @@ function logoutUser() {
     favoriteRestaurants = [];
     favoriteMenuItems = [];
     savedPaymentMethods = [];
+    subscriptionPlans = [];
+    currentSubscription = null;
+    subscriptionFeedback = { type: "", message: "" };
     checkoutPaymentChoice = "CASH";
     closeAuthModal();
     renderAddressBook();
@@ -3273,6 +3392,59 @@ async function deletePaymentMethod(paymentMethodId) {
         await fetchPaymentMethods();
     } catch (error) {
         alert(error.message || "Failed to remove payment method.");
+    }
+}
+
+async function activateSubscription(planCode) {
+    const normalizedPlanCode = String(planCode || "").trim();
+    if (!normalizedPlanCode || subscriptionLoading) {
+        return;
+    }
+
+    subscriptionFeedback = { type: "", message: "" };
+    subscriptionLoading = true;
+    renderAuthModal();
+    try {
+        await fetchJson(`${API_BASE_URL}/subscriptions/me/activate`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                planCode: normalizedPlanCode,
+                autoRenew: true
+            })
+        });
+        subscriptionFeedback = { type: "success", message: "Membership activated successfully." };
+    } catch (error) {
+        subscriptionFeedback = { type: "error", message: error.message || "Failed to activate plan." };
+    } finally {
+        await fetchSubscriptionData();
+    }
+}
+
+async function cancelSubscription() {
+    if (subscriptionLoading || !currentSubscription?.active) {
+        return;
+    }
+
+    const shouldCancel = window.confirm("Cancel your active membership?");
+    if (!shouldCancel) {
+        return;
+    }
+
+    subscriptionFeedback = { type: "", message: "" };
+    subscriptionLoading = true;
+    renderAuthModal();
+    try {
+        await fetchJson(`${API_BASE_URL}/subscriptions/me/cancel`, {
+            method: "PATCH"
+        });
+        subscriptionFeedback = { type: "success", message: "Membership cancelled. You can reactivate anytime." };
+    } catch (error) {
+        subscriptionFeedback = { type: "error", message: error.message || "Failed to cancel membership." };
+    } finally {
+        await fetchSubscriptionData();
     }
 }
 
@@ -3589,7 +3761,9 @@ async function submitOrder(event) {
 
     try {
         const placedItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-        const deliveryFee = getDeliveryFee();
+        const subtotal = getCartSubtotal();
+        const deliveryFee = getDeliveryFee(subtotal);
+        const discount = getSubscriptionDiscount(subtotal);
         const response = await fetchJson(`${API_BASE_URL}/orders/checkout`, {
             method: "POST",
             headers: {
@@ -3602,7 +3776,7 @@ async function submitOrder(event) {
                 specialInstructions: notes,
                 paymentMethod,
                 deliveryFee,
-                discount: 0,
+                discount,
                 items: cart.items.map((item) => ({
                     itemId: item.itemId,
                     name: item.name,
@@ -3650,8 +3824,33 @@ function getCartSubtotal() {
     return roundAmount(cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0));
 }
 
-function getDeliveryFee() {
-    return cart.items.length ? 40 : 0;
+function getDeliveryFee(subtotal = getCartSubtotal()) {
+    if (!cart.items.length || subtotal <= 0) {
+        return 0;
+    }
+    if (currentSubscription?.active) {
+        const minOrder = Number(currentSubscription.minOrderForFreeDelivery || 0);
+        if (subtotal >= minOrder) {
+            return 0;
+        }
+    }
+    return 40;
+}
+
+function getSubscriptionDiscount(subtotal = getCartSubtotal()) {
+    if (!currentSubscription?.active || subtotal <= 0) {
+        return 0;
+    }
+    const discountPercent = Math.max(0, Number(currentSubscription.discountPercent || 0));
+    if (!discountPercent) {
+        return 0;
+    }
+    const maxDiscount = Math.max(0, Number(currentSubscription.maxDiscountPerOrder || 0));
+    const rawDiscount = subtotal * (discountPercent / 100);
+    if (!maxDiscount) {
+        return roundAmount(rawDiscount);
+    }
+    return roundAmount(Math.min(rawDiscount, maxDiscount));
 }
 
 function closeMenu() {
@@ -3849,7 +4048,16 @@ async function initializeApp() {
         if (currentUser?.id) {
             await refreshCurrentUser();
         }
-        await Promise.all([fetchCategories(), fetchRestaurants(), fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods()]);
+        await Promise.all([
+            fetchCategories(),
+            fetchRestaurants(),
+            fetchAddresses(),
+            fetchOrders(),
+            fetchFavoriteRestaurants(),
+            fetchFavoriteMenuItems(),
+            fetchPaymentMethods(),
+            fetchSubscriptionData()
+        ]);
         updateCartCount();
         renderCart();
         const deepLinkRestaurant = window.location.hash.replace("#", "");
