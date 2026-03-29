@@ -151,6 +151,31 @@ const NETBANKING_ALL_BANKS = [
     "UCO Bank",
     "Yes Bank"
 ];
+const WALLET_PROVIDERS = [
+    "PhonePe",
+    "Paytm",
+    "Amazon Pay",
+    "Mobikwik",
+    "Freecharge",
+    "Airtel Payments Bank",
+    "JioMoney",
+    "Ola Money",
+    "PayZapp",
+    "Samsung Wallet"
+];
+const UPI_APPS = [
+    "PhonePe",
+    "Google Pay",
+    "Paytm UPI",
+    "Amazon Pay UPI",
+    "BHIM",
+    "CRED",
+    "Slice UPI",
+    "Jio UPI",
+    "Airtel UPI",
+    "WhatsApp Pay",
+    "Samsung Wallet UPI"
+];
 
 let categories = [];
 let restaurants = [];
@@ -184,6 +209,8 @@ let paymentOffersOpen = false;
 let paymentChoiceTouched = false;
 let noContactDelivery = false;
 let netbankingBankChoice = "";
+let walletProviderChoice = "";
+let upiAppChoice = "";
 let appliedCouponCode = "";
 let couponFeedback = { type: "", message: "" };
 let latestOrderSuccess = null;
@@ -830,10 +857,10 @@ function getCheckoutPaymentSelection() {
         };
     }
     if (checkoutPaymentChoice === "UPI") {
-        return { type: "UPI", label: "UPI" };
+        return { type: "UPI", label: upiAppChoice ? `UPI - ${upiAppChoice}` : "UPI" };
     }
     if (checkoutPaymentChoice === "WALLET") {
-        return { type: "WALLET", label: "Wallet" };
+        return { type: "WALLET", label: walletProviderChoice ? `Wallet - ${walletProviderChoice}` : "Wallet" };
     }
     if (checkoutPaymentChoice === "NETBANKING") {
         return { type: "NETBANKING", label: netbankingBankChoice ? `Netbanking - ${netbankingBankChoice}` : "Netbanking" };
@@ -2586,6 +2613,22 @@ function openNetbankingPage(event) {
     renderCart();
 }
 
+function openWalletsPage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "wallets";
+    renderCart();
+}
+
+function openUpiPage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "upi";
+    renderCart();
+}
+
 function backToPaymentPage(event) {
     if (event) {
         event.preventDefault();
@@ -2622,6 +2665,22 @@ function toggleNoContactDelivery(event) {
 function selectNetbankingBank(bankName) {
     netbankingBankChoice = bankName;
     checkoutPaymentChoice = "NETBANKING";
+    paymentChoiceTouched = true;
+    checkoutView = "payment";
+    renderCart();
+}
+
+function selectWalletProvider(providerName) {
+    walletProviderChoice = providerName;
+    checkoutPaymentChoice = "WALLET";
+    paymentChoiceTouched = true;
+    checkoutView = "payment";
+    renderCart();
+}
+
+function selectUpiApp(appName) {
+    upiAppChoice = appName;
+    checkoutPaymentChoice = "UPI";
     paymentChoiceTouched = true;
     checkoutView = "payment";
     renderCart();
@@ -3666,6 +3725,8 @@ function renderCart() {
     const showNoContact = !(checkoutPaymentChoice === "CASH" && paymentChoiceTouched);
 
     if (checkoutView === "netbanking") {
+        const popularSet = new Set(NETBANKING_POPULAR_BANKS);
+        const remainingBanks = NETBANKING_ALL_BANKS.filter((bank) => !popularSet.has(bank));
         content.innerHTML = `
             <div class="cart-shell payment-shell netbanking-shell">
                 <div class="payment-header">
@@ -3677,8 +3738,8 @@ function renderCart() {
                     </div>
                 </div>
                 <div class="netbanking-section">
-                    <h4>Popular banks</h4>
-                    <div class="netbanking-list">
+                    <div class="netbanking-list merged">
+                        <div class="netbanking-section-title">Popular banks</div>
                         ${NETBANKING_POPULAR_BANKS.map((bank) => `
                             <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
                                 <span class="netbanking-icon">${escapeHtml(bank.split(" ")[0].slice(0, 2).toUpperCase())}</span>
@@ -3686,12 +3747,60 @@ function renderCart() {
                                 <span class="netbanking-arrow">›</span>
                             </button>
                         `).join("")}
-                    </div>
-                    <h4>All banks</h4>
-                    <div class="netbanking-list">
-                        ${NETBANKING_ALL_BANKS.map((bank) => `
+                        <div class="netbanking-section-title">All banks</div>
+                        ${remainingBanks.map((bank) => `
                             <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
                                 <span class="netbanking-name">${escapeHtml(bank)}</span>
+                                <span class="netbanking-arrow">›</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                </div>
+            </div>`;
+        return;
+    }
+
+    if (checkoutView === "wallets") {
+        content.innerHTML = `
+            <div class="cart-shell payment-shell netbanking-shell">
+                <div class="payment-header">
+                    <button class="text-button payment-back" type="button" onclick="backToPaymentPage(event)">&#8592;</button>
+                    <div>
+                        <p class="menu-eyebrow">Payment</p>
+                        <h2>Wallets</h2>
+                        <p class="payment-summary-line">Choose a wallet to continue.</p>
+                    </div>
+                </div>
+                <div class="netbanking-section">
+                    <div class="netbanking-list merged">
+                        ${WALLET_PROVIDERS.map((provider) => `
+                            <button class="netbanking-row ${walletProviderChoice === provider ? "selected" : ""}" type="button" onclick="selectWalletProvider('${escapeAttribute(provider)}')">
+                                <span class="netbanking-name">${escapeHtml(provider)}</span>
+                                <span class="netbanking-arrow">›</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                </div>
+            </div>`;
+        return;
+    }
+
+    if (checkoutView === "upi") {
+        content.innerHTML = `
+            <div class="cart-shell payment-shell netbanking-shell">
+                <div class="payment-header">
+                    <button class="text-button payment-back" type="button" onclick="backToPaymentPage(event)">&#8592;</button>
+                    <div>
+                        <p class="menu-eyebrow">Payment</p>
+                        <h2>UPI</h2>
+                        <p class="payment-summary-line">Choose a UPI app to continue.</p>
+                    </div>
+                </div>
+                <div class="netbanking-section">
+                    <div class="netbanking-list merged">
+                        ${UPI_APPS.map((app) => `
+                            <button class="netbanking-row ${upiAppChoice === app ? "selected" : ""}" type="button" onclick="selectUpiApp('${escapeAttribute(app)}')">
+                                <span class="netbanking-name">${escapeHtml(app)}</span>
                                 <span class="netbanking-arrow">›</span>
                             </button>
                         `).join("")}
@@ -3705,9 +3814,6 @@ function renderCart() {
         const summaryLine = `${itemCount} item${itemCount === 1 ? "" : "s"} • Total ${formatCurrency(finalAmount)}${savingsAmount > 0 ? ` • Savings of ${formatCurrency(savingsAmount)}` : ""}`;
         const paymentOffers = PAYMENT_OFFERS.filter((offer) => ["CARD", "UPI"].includes(offer.type) && offer.category === "BANK");
         const cardMethods = savedPaymentMethods.filter((method) => method.methodType === "CARD");
-        const otherMethods = savedPaymentMethods.filter((method) => method.methodType !== "CARD");
-        const hasUpiSaved = otherMethods.some((method) => method.methodType === "UPI");
-        const hasWalletSaved = otherMethods.some((method) => method.methodType === "WALLET");
         content.innerHTML = `
             <div class="cart-shell payment-shell">
                 <div class="payment-header">
@@ -3788,22 +3894,6 @@ function renderCart() {
                     <div class="payment-section">
                         <h3>More payment options</h3>
                         <div class="payment-method-list">
-                            ${otherMethods.map((method) => `
-                                <label class="checkout-payment-card ${checkoutPaymentChoice === `saved:${method.id}` ? "selected" : ""}">
-                                    <input
-                                        type="radio"
-                                        name="checkoutPaymentChoice"
-                                        value="saved:${method.id}"
-                                        ${checkoutPaymentChoice === `saved:${method.id}` ? "checked" : ""}
-                                        onchange="setCheckoutPaymentChoice(this.value)"
-                                    >
-                                    <div>
-                                        <strong>${escapeHtml(formatPaymentMethodLabel(method))}</strong>
-                                        <p>${escapeHtml(formatPaymentMethodSubtitle(method))}</p>
-                                    </div>
-                                        <span class="payment-type-pill">${escapeHtml(formatPaymentMethodType(method.methodType))}</span>
-                                    </label>
-                            `).join("")}
                             <label class="checkout-payment-card ${checkoutPaymentChoice === "PLUXEE" ? "selected" : ""}">
                                 <input
                                     type="radio"
@@ -3818,38 +3908,22 @@ function renderCart() {
                                 </div>
                                 <span class="payment-type-pill">Meal</span>
                             </label>
-                            ${hasUpiSaved ? "" : `
-                                <label class="checkout-payment-card ${checkoutPaymentChoice === "UPI" ? "selected" : ""}">
-                                    <input
-                                        type="radio"
-                                        name="checkoutPaymentChoice"
-                                        value="UPI"
-                                        ${checkoutPaymentChoice === "UPI" ? "checked" : ""}
-                                        onchange="setCheckoutPaymentChoice(this.value)"
-                                    >
-                                    <div>
-                                        <strong>UPI</strong>
-                                        <p>Pay using any UPI app.</p>
-                                    </div>
-                                    <span class="payment-type-pill">UPI</span>
-                                </label>
-                            `}
-                            ${hasWalletSaved ? "" : `
-                                <label class="checkout-payment-card ${checkoutPaymentChoice === "WALLET" ? "selected" : ""}">
-                                    <input
-                                        type="radio"
-                                        name="checkoutPaymentChoice"
-                                        value="WALLET"
-                                        ${checkoutPaymentChoice === "WALLET" ? "checked" : ""}
-                                        onchange="setCheckoutPaymentChoice(this.value)"
-                                    >
-                                    <div>
-                                        <strong>Wallets</strong>
-                                        <p>PhonePe, Paytm, Amazon Pay &amp; more.</p>
-                                    </div>
-                                    <span class="payment-type-pill">Wallet</span>
-                                </label>
-                            `}
+                            <button class="payment-option-row" type="button" onclick="openWalletsPage(event)">
+                                <div>
+                                    <strong>Wallets</strong>
+                                    <p>PhonePe, Paytm, Amazon Pay &amp; more${walletProviderChoice ? ` • ${escapeHtml(walletProviderChoice)}` : ""}.</p>
+                                </div>
+                                <span class="payment-type-pill">Wallet</span>
+                                <span class="payment-offer-arrow">›</span>
+                            </button>
+                            <button class="payment-option-row" type="button" onclick="openUpiPage(event)">
+                                <div>
+                                    <strong>UPI</strong>
+                                    <p>All UPI apps supported${upiAppChoice ? ` • ${escapeHtml(upiAppChoice)}` : ""}.</p>
+                                </div>
+                                <span class="payment-type-pill">UPI</span>
+                                <span class="payment-offer-arrow">›</span>
+                            </button>
                             <button class="payment-option-row" type="button" onclick="openNetbankingPage(event)">
                                 <div>
                                     <strong>Netbanking</strong>
