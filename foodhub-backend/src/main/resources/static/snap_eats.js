@@ -3097,7 +3097,6 @@ function renderLocationPicker(query = "") {
 
     content.innerHTML = `
         <div class="location-picker-shell">
-            <button class="close-btn-inline" type="button" onclick="closeLocationPicker()">&times;</button>
             <div class="location-search-box">
                 <input
                     class="location-search-input"
