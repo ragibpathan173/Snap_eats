@@ -1,9 +1,11 @@
-﻿const API_BASE_URL = "/api";
+const API_BASE_URL = "/api";
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";
 const LOCATION_STORAGE_KEY = "snap_eats_selected_location";
 const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
+const OWNER_NAME = "Ragib Ali Khan";
+const OWNER_EMAIL = "ragibpathan173@gmail.com";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 const RESTAURANT_PAGE_SIZE = 12;
@@ -13,7 +15,7 @@ const PLATFORM_COUPONS = [
     {
         code: "WELCOME50",
         title: "Flat Rs 50 off",
-        description: "New users only Â· valid on orders above Rs 199.",
+        description: "New users only - valid on orders above Rs 199.",
         discountType: "FLAT",
         discountValue: 50,
         minOrder: 199,
@@ -79,6 +81,8 @@ let otpAuthStep = "form";
 let otpAuthLastSentIdentifier = "";
 let otpAuthCooldownUntil = 0;
 let otpAuthCooldownTimer = null;
+let corporateStoryTab = "mission";
+let corporatePeopleTab = "management";
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
@@ -93,6 +97,24 @@ const pincodeLookupCache = new Map();
 
 function isAuthenticatedSession() {
     return Boolean(currentUser?.id && authToken);
+}
+
+function normalizeCurrentUserIdentity(user) {
+    if (!user || typeof user !== "object") {
+        return user;
+    }
+
+    const normalizedUser = { ...user };
+    const normalizedName = String(normalizedUser.name || "").trim().toLowerCase();
+    const normalizedEmail = String(normalizedUser.email || "").trim().toLowerCase();
+    const ownerEmailAliases = new Set(["ragibyx@gmail.com", OWNER_EMAIL.toLowerCase()]);
+
+    if (ownerEmailAliases.has(normalizedEmail) || normalizedName === "ragib" || normalizedName === "ragib ali khan") {
+        normalizedUser.name = OWNER_NAME;
+        normalizedUser.email = OWNER_EMAIL;
+    }
+
+    return normalizedUser;
 }
 
 function normalizeCouponCode(value) {
@@ -373,7 +395,16 @@ async function fetchJson(url, options = {}) {
 function loadCurrentUser() {
     try {
         const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) {
+            return null;
+        }
+
+        const parsedUser = JSON.parse(raw);
+        const normalizedUser = normalizeCurrentUserIdentity(parsedUser);
+        if (JSON.stringify(parsedUser) !== JSON.stringify(normalizedUser)) {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(normalizedUser));
+        }
+        return normalizedUser;
     } catch {
         return null;
     }
@@ -429,7 +460,7 @@ function saveCart() {
 }
 
 function saveCurrentUser(user) {
-    currentUser = user || null;
+    currentUser = normalizeCurrentUserIdentity(user || null);
     if (currentUser) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
     } else {
@@ -760,9 +791,9 @@ function renderDiscoveryFilters() {
                 <span>Price for two</span>
                 <select id="filterMaxPriceForTwo" onchange="updateDiscoveryFilters()">
                     <option value="0" ${discoveryFilters.maxPriceForTwo === 0 ? "selected" : ""}>Any</option>
-                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under â‚¹400</option>
-                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under â‚¹600</option>
-                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under â‚¹800</option>
+                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under Rs 400</option>
+                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under Rs 600</option>
+                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under Rs 800</option>
                 </select>
             </label>
             <label class="discovery-toggle">
@@ -1151,7 +1182,7 @@ function renderRestaurants() {
                     onclick="toggleRestaurantFavorite(event, '${escapeAttribute(restaurant.restaurantId)}')"
                     aria-label="${isRestaurantFavorite(restaurant.restaurantId) ? "Remove from favorites" : "Add to favorites"}"
                 >
-                    ${isRestaurantFavorite(restaurant.restaurantId) ? "â™¥" : "â™¡"}
+                    ${isRestaurantFavorite(restaurant.restaurantId) ? "&#9829;" : "&#9825;"}
                 </button>
             </div>
             <div class="restaurant-info">
@@ -1166,7 +1197,7 @@ function renderRestaurants() {
                     </div>
                 ` : ""}
                 <div class="restaurant-meta">
-                    <div class="rating">â˜… ${formatNumber(restaurant.rating)}</div>
+                    <div class="rating">&#9733; ${formatNumber(restaurant.rating)}</div>
                     <div class="delivery-time">${escapeHtml(restaurant.time || "")}</div>
                 </div>
             </div>
@@ -1283,7 +1314,7 @@ function renderMenuModal(filter = "all") {
                 <h2>${escapeHtml(activeRestaurant.name)}</h2>
                 <p class="menu-cuisine">${escapeHtml(activeRestaurant.cuisine || "")}</p>
                 <div class="menu-stats">
-                    <span>â˜… ${formatNumber(activeRestaurant.rating)}</span>
+                    <span>&#9733; ${formatNumber(activeRestaurant.rating)}</span>
                     <span>${escapeHtml(activeRestaurant.time || "Fast delivery")}</span>
                     <span>${activeRestaurant.discount ? escapeHtml(activeRestaurant.discount) : "Fresh daily offers"}</span>
                 </div>
@@ -1319,7 +1350,7 @@ function renderMenuModal(filter = "all") {
                                 onclick="toggleMenuItemFavorite(event, '${escapeAttribute(item.itemId)}')"
                                 aria-label="${isMenuItemFavorite(item.itemId) ? "Remove from favorites" : "Add to favorites"}"
                             >
-                                ${isMenuItemFavorite(item.itemId) ? "â™¥" : "â™¡"}
+                                ${isMenuItemFavorite(item.itemId) ? "&#9829;" : "&#9825;"}
                             </button>
                         </div>
                         <h3>${escapeHtml(item.name)}</h3>
@@ -1677,6 +1708,35 @@ function openAuthModal(event) {
     renderAuthModal();
 }
 
+function goHome(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    closeMenu();
+    closeCart();
+    closeAddressBook();
+    closeOrders();
+    closeAuthModal();
+    closeLocationPicker();
+    closeOffers();
+    closeCorporatePage();
+    closeSearchBar();
+
+    if (window.location.hash) {
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    const currentPath = String(window.location.pathname || "").toLowerCase();
+    if (currentPath === "/" || currentPath.endsWith("/snap_eats.html")) {
+        window.location.reload();
+        return;
+    }
+
+    window.location.assign("snap_eats.html");
+}
+
 function openLocationPicker(event) {
     if (event) {
         event.preventDefault();
@@ -1706,6 +1766,21 @@ function openOffers(event) {
     modal.classList.add("open");
     document.body.classList.add("modal-open");
     renderOffersModal();
+}
+
+function openCorporatePage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    const modal = document.getElementById("corporateModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderCorporatePage();
 }
 
 function closeCart() {
@@ -1782,6 +1857,18 @@ function closeOffers() {
     }
 }
 
+function closeCorporatePage() {
+    const modal = document.getElementById("corporateModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
 function setLocationGpsStatus(type, message) {
     locationGpsStatus = { type, message };
     const status = document.getElementById("locationGpsStatus");
@@ -1817,7 +1904,7 @@ function renderLocationPicker(query = "") {
 
             <section class="location-panel">
                 <div class="location-action-card" onclick="useCurrentLocation()">
-                    <span class="location-action-icon">â—Ž</span>
+                    <span class="location-action-icon">&#9906;</span>
                     <div>
                         <strong>Get current location</strong>
                         <p>Using GPS</p>
@@ -1837,7 +1924,7 @@ function renderLocationPicker(query = "") {
                 <p class="location-panel-title">Recent searches</p>
                 ${suggestions.length ? suggestions.map((location) => `
                     <div class="location-history-card" onclick="applyLocationSelection({ label: '${escapeAttribute(location.label)}', subtitle: '${escapeAttribute(location.subtitle)}' })">
-                        <span class="location-history-icon">â—”</span>
+                        <span class="location-history-icon">&#9716;</span>
                         <div>
                             <strong>${escapeHtml(location.label)}</strong>
                             <p>${escapeHtml(location.subtitle)}</p>
@@ -1846,7 +1933,7 @@ function renderLocationPicker(query = "") {
                     </div>
                 `).join("") : `
                     <div class="location-history-card">
-                        <span class="location-history-icon">â—”</span>
+                        <span class="location-history-icon">&#9716;</span>
                         <div>
                             <strong>No matching places</strong>
                             <p class="location-empty-note">Try a different area name or add it manually.</p>
@@ -1900,7 +1987,7 @@ function renderOffersModal() {
                     <strong>${escapeHtml(restaurant.name)}</strong>
                     <span class="restaurant-offer-discount">${escapeHtml(restaurant.discount)}</span>
                 </div>
-                <p>${escapeHtml(restaurant.cuisine || "Multiple cuisines")} Â· ${escapeHtml(restaurant.time || "Fast delivery")}</p>
+                <p>${escapeHtml(restaurant.cuisine || "Multiple cuisines")} - ${escapeHtml(restaurant.time || "Fast delivery")}</p>
                 <small>Auto-applied on menu items. No coupon code needed.</small>
             </article>
         `).join("") : `
@@ -1939,6 +2026,248 @@ function renderOffersModal() {
                 </div>
                 <div class="restaurant-offers-grid">
                     ${restaurantOffersMarkup}
+                </div>
+            </section>
+        </div>
+    `;
+}
+
+function setCorporateStoryTab(tab) {
+    const allowedTabs = new Set(["mission", "vision", "values"]);
+    corporateStoryTab = allowedTabs.has(tab) ? tab : "mission";
+    renderCorporatePage();
+}
+
+function setCorporatePeopleTab(tab) {
+    const allowedTabs = new Set(["management", "board"]);
+    corporatePeopleTab = allowedTabs.has(tab) ? tab : "management";
+    renderCorporatePage();
+}
+
+function renderCorporatePage() {
+    const content = document.getElementById("corporateModalContent");
+    if (!content) {
+        return;
+    }
+
+    const creatorName = escapeHtml(currentUser?.name || OWNER_NAME);
+    const creatorEmail = currentUser?.email ? escapeHtml(currentUser.email) : OWNER_EMAIL;
+    const currentYear = new Date().getFullYear();
+
+    const restaurantCount = restaurants.length || 0;
+    const categoryCount = categories.length || 0;
+    const fulfilledOrders = orderHistory.filter((order) => String(order.status || "").toUpperCase() === "DELIVERED").length;
+    const paymentMethodsCount = savedPaymentMethods.length || 0;
+
+    const storyTabs = {
+        mission: {
+            title: "Mission",
+            kicker: "Mission",
+            body: "SnapEats exists to make daily food ordering dependable, affordable, and frictionless. We focus on fast discovery, clear pricing, and a checkout journey that respects user time.",
+            image: "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1200&q=80"
+        },
+        vision: {
+            title: "Vision",
+            kicker: "Vision",
+            body: "Our vision is to become the most trusted hyperlocal meal platform for students, professionals, and families by combining strong engineering quality with neighborhood-level convenience.",
+            image: "https://images.unsplash.com/photo-1481833761820-0509d3217039?auto=format&fit=crop&w=1200&q=80"
+        },
+        values: {
+            title: "Values",
+            kicker: "Values",
+            body: "We build with user obsession, reliable systems, and transparent pricing. Every release in SnapEats is measured by one thing: does it make ordering simpler and more trustworthy?",
+            image: "https://images.unsplash.com/photo-1484981138541-3d074aa97716?auto=format&fit=crop&w=1200&q=80"
+        }
+    };
+    const activeStory = storyTabs[corporateStoryTab] || storyTabs.mission;
+
+    const timeline = [
+        { year: "2024", title: "Core platform foundation", copy: "Set up Spring Boot backend, catalog APIs, and menu flows." },
+        { year: "2025", title: "OTP-first identity", copy: "Implemented login and signup OTP workflows for phone and email." },
+        { year: "2025", title: "Commerce layer upgrade", copy: "Launched coupons, restaurant offers, and real checkout integration." },
+        { year: String(currentYear), title: "SnapEatPro expansion", copy: "Added subscription perks, delivery fee logic, and account controls." }
+    ];
+
+    const managementTeam = [
+        {
+            name: creatorName,
+            role: "Founder and Product Engineer",
+            copy: "Leads product direction, backend architecture, and frontend experience for SnapEats.",
+            image: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            name: "Platform Operations",
+            role: "Delivery and Reliability",
+            copy: "Focused on order lifecycle quality, issue handling, and fast support loops.",
+            image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            name: "Growth and Partnerships",
+            role: "Restaurant Success",
+            copy: "Drives partner onboarding strategy and campaign-led menu discovery growth.",
+            image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80"
+        }
+    ];
+
+    const boardTeam = [
+        {
+            name: "Technology Advisory",
+            role: "Architecture Governance",
+            copy: "Supports long-term scalability decisions and API design maturity.",
+            image: "https://images.unsplash.com/photo-1573497491765-dccce02b29df?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            name: "Market Advisory",
+            role: "Business Strategy",
+            copy: "Guides expansion priorities for local markets and retention programs.",
+            image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=80"
+        },
+        {
+            name: "Finance Advisory",
+            role: "Revenue and Unit Economics",
+            copy: "Helps model sustainable pricing, discounts, and subscription economics.",
+            image: "https://images.unsplash.com/photo-1552581234-26160f608093?auto=format&fit=crop&w=900&q=80"
+        }
+    ];
+
+    const activePeople = corporatePeopleTab === "board" ? boardTeam : managementTeam;
+
+    content.innerHTML = `
+        <div class="corporate-shell">
+            <section class="corporate-section">
+                <h2 class="corporate-section-title"><span></span>GET TO KNOW US<span></span></h2>
+                <div class="corporate-story-layout">
+                    <div class="corporate-story-tabs">
+                        ${Object.keys(storyTabs).map((tab) => `
+                            <button
+                                class="corporate-story-tab ${corporateStoryTab === tab ? "active" : ""}"
+                                type="button"
+                                onclick="setCorporateStoryTab('${tab}')"
+                            >
+                                ${escapeHtml(storyTabs[tab].title)} ${corporateStoryTab === tab ? "->" : ""}
+                            </button>
+                        `).join("")}
+                    </div>
+                    <div class="corporate-story-copy">
+                        <p class="corporate-kicker">${escapeHtml(activeStory.kicker)}</p>
+                        <h3>${escapeHtml(activeStory.title)} at SnapEats</h3>
+                        <p>${escapeHtml(activeStory.body)}</p>
+                    </div>
+                    <div class="corporate-story-image-wrap">
+                        <img src="${activeStory.image}" alt="${escapeHtml(activeStory.title)} at SnapEats" class="corporate-story-image">
+                    </div>
+                </div>
+            </section>
+
+            <section class="corporate-section">
+                <h2 class="corporate-section-title"><span></span>INDUSTRY BUILDER<span></span></h2>
+                <div class="corporate-pioneer-layout">
+                    <div>
+                        <p>
+                            SnapEats is engineered as a practical hyperlocal commerce system. From onboarding restaurants
+                            to OTP identity and conversion-first checkout, each module is designed for reliability and speed.
+                        </p>
+                        <p>
+                            The platform keeps customer, restaurant, and operations flows connected with one unified data model,
+                            helping reduce friction from discovery to delivery.
+                        </p>
+                    </div>
+                    <div class="corporate-pioneer-image-wrap">
+                        <img
+                            src="https://images.unsplash.com/photo-1609526133531-e2200f3b4ef0?auto=format&fit=crop&w=1200&q=80"
+                            alt="SnapEats delivery operations"
+                            class="corporate-pioneer-image"
+                        >
+                    </div>
+                </div>
+                <div class="corporate-metric-grid">
+                    <article><strong>${restaurantCount}+</strong><span>restaurant partners</span></article>
+                    <article><strong>${categoryCount}+</strong><span>active categories</span></article>
+                    <article><strong>${fulfilledOrders}+</strong><span>orders delivered</span></article>
+                    <article><strong>${paymentMethodsCount}+</strong><span>saved payment methods</span></article>
+                </div>
+            </section>
+
+            <section class="corporate-journey-section">
+                <h2 class="corporate-journey-title"><span></span>THE SNAPEATS JOURNEY<span></span></h2>
+                <div class="corporate-journey-track">
+                    ${timeline.map((step) => `
+                        <article class="corporate-journey-card">
+                            <p class="corporate-journey-year">${escapeHtml(step.year)}</p>
+                            <h3>${escapeHtml(step.title)}</h3>
+                            <p>${escapeHtml(step.copy)}</p>
+                        </article>
+                    `).join("")}
+                </div>
+            </section>
+
+            <section class="corporate-section">
+                <div class="corporate-people-head">
+                    <h2>Details of Leadership</h2>
+                    <div class="corporate-people-tabs">
+                        <button class="corporate-people-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
+                        <button class="corporate-people-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board and Advisors</button>
+                    </div>
+                </div>
+                <div class="corporate-people-grid">
+                    ${activePeople.map((person) => `
+                        <article class="corporate-person-card">
+                            <img src="${person.image}" alt="${escapeHtml(person.name)}" class="corporate-person-image">
+                            <div class="corporate-person-copy">
+                                <h3>${escapeHtml(person.name)}</h3>
+                                <p class="corporate-person-role">${escapeHtml(person.role)}</p>
+                                <p>${escapeHtml(person.copy)}</p>
+                            </div>
+                        </article>
+                    `).join("")}
+                </div>
+            </section>
+
+            <section class="corporate-section">
+                <h2 class="corporate-section-title"><span></span>CAREERS AT SNAPEATS<span></span></h2>
+                <div class="corporate-careers-layout">
+                    <div>
+                        <p>
+                            We are building a product-first culture where ownership, speed, and quality matter. If you care
+                            about solving real customer problems in commerce and logistics, SnapEats is a strong place to grow.
+                        </p>
+                        <p>
+                            Current focus areas include backend engineering, frontend performance, partner operations, and
+                            growth analytics.
+                        </p>
+                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the journey</button>
+                    </div>
+                    <div class="corporate-careers-image-wrap">
+                        <img
+                            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
+                            alt="SnapEats team collaboration"
+                            class="corporate-careers-image"
+                        >
+                    </div>
+                </div>
+            </section>
+
+            <section class="corporate-section corporate-contact-section">
+                <h2 class="corporate-section-title"><span></span>GET IN TOUCH WITH US<span></span></h2>
+                <div class="corporate-contact-layout">
+                    <div class="corporate-contact-copy">
+                        <h3>Head office</h3>
+                        <p>SnapEats Product Lab</p>
+                        <p>Jamia Nagar, New Delhi, Delhi 110025</p>
+                        <h3>Project owner</h3>
+                        <p>${creatorName}</p>
+                        <p>${creatorEmail}</p>
+                        <h3>Support</h3>
+                        <p>support@snapeats.in</p>
+                    </div>
+                    <div class="corporate-contact-map">
+                        <iframe
+                            title="SnapEats office map"
+                            loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.google.com/maps?q=Jamia+Nagar,+New+Delhi&output=embed"
+                        ></iframe>
+                    </div>
                 </div>
             </section>
         </div>
@@ -2221,7 +2550,7 @@ function renderCart() {
                         </div>
                         ${appliedCoupon ? `
                             <div class="coupon-applied-row">
-                                <span><strong>${escapeHtml(appliedCoupon.code)}</strong> Â· ${escapeHtml(appliedCoupon.title)}</span>
+                                <span><strong>${escapeHtml(appliedCoupon.code)}</strong> - ${escapeHtml(appliedCoupon.title)}</span>
                                 <button class="text-button danger-button" type="button" onclick="removeAppliedCoupon()">Remove</button>
                             </div>
                         ` : ""}
@@ -2241,7 +2570,7 @@ function renderCart() {
                             </button>
                         </div>
                         ${defaultAddress ? `
-                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} Â· ${escapeHtml(defaultAddress.phoneNumber)}</p>
+                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} - ${escapeHtml(defaultAddress.phoneNumber)}</p>
                             <p class="address-line">${escapeHtml(formatAddressLine(defaultAddress))}</p>
                         ` : `
                             <p class="address-empty-note">Save at least one address and mark it as default before placing an order.</p>
@@ -2330,7 +2659,7 @@ function renderAddressBook() {
                             <div class="address-card-head">
                                 <div>
                                     <h3>${escapeHtml(address.label)}</h3>
-                                    <p>${escapeHtml(address.recipientName)} Â· ${escapeHtml(address.phoneNumber)}</p>
+                                    <p>${escapeHtml(address.recipientName)} - ${escapeHtml(address.phoneNumber)}</p>
                                 </div>
                                 ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
                             </div>
@@ -2661,7 +2990,7 @@ function renderAdminPanel() {
                                 <article class="admin-menu-item-card">
                                     <div>
                                         <strong>${escapeHtml(item.name)}</strong>
-                                        <p>${escapeHtml(item.category || "General")} Â· ${formatCurrency(item.price)}</p>
+                                        <p>${escapeHtml(item.category || "General")} - ${formatCurrency(item.price)}</p>
                                     </div>
                                     <div class="admin-menu-actions">
                                         <button class="secondary-button" type="button" onclick="startAdminMenuEdit(${item.id})">Edit</button>
@@ -2825,7 +3154,7 @@ function renderAccountPanel() {
                                     <h4>${escapeHtml(restaurant.name)}</h4>
                                     <p>${escapeHtml(restaurant.cuisine || "")}</p>
                                     <div class="favorite-restaurant-meta">
-                                        <span>â˜… ${formatNumber(restaurant.rating)}</span>
+                                        <span>&#9733; ${formatNumber(restaurant.rating)}</span>
                                         <span>${escapeHtml(restaurant.time || "")}</span>
                                     </div>
                                 </div>
@@ -2888,7 +3217,7 @@ function renderAccountPanel() {
                     </div>
                     <div class="account-card">
                         <span>Saved methods</span>
-                        <strong>${savedPaymentMethods.length} total Â· ${savedCardsCount} cards</strong>
+                        <strong>${savedPaymentMethods.length} total - ${savedCardsCount} cards</strong>
                     </div>
                 </div>
                 <div class="payment-management-grid">
@@ -2990,7 +3319,7 @@ function renderAccountPanel() {
                             <div class="address-card-head">
                                 <div>
                                     <h3>${escapeHtml(address.label)}</h3>
-                                    <p>${escapeHtml(address.recipientName)} Â· ${escapeHtml(address.phoneNumber)}</p>
+                                    <p>${escapeHtml(address.recipientName)} - ${escapeHtml(address.phoneNumber)}</p>
                                 </div>
                                 ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
                             </div>
@@ -3278,7 +3607,7 @@ function renderOrdersAccountPanel() {
                         <article class="account-order-card">
                             <div>
                                 <strong>${escapeHtml(order.restaurantName)}</strong>
-                                <p>${escapeHtml(order.orderNumber)} Â· ${formatDateTime(order.createdAt)}</p>
+                                <p>${escapeHtml(order.orderNumber)} - ${formatDateTime(order.createdAt)}</p>
                             </div>
                             <div class="account-order-meta">
                                 <span class="order-status-badge ${statusClassName(order.status)}">${formatStatus(order.status)}</span>
@@ -3794,7 +4123,7 @@ function renderOrders(isLoading = false) {
                                 ${order.restaurantImage ? `<img src="${order.restaurantImage}" alt="${escapeHtml(order.restaurantName)}" class="order-restaurant-image">` : ""}
                                 <div>
                                     <h3>${escapeHtml(order.restaurantName)}</h3>
-                                    <p>${escapeHtml(order.orderNumber)} Â· ${formatDateTime(order.createdAt)}</p>
+                                    <p>${escapeHtml(order.orderNumber)} - ${formatDateTime(order.createdAt)}</p>
                                 </div>
                             </div>
                             <span class="order-status-badge ${statusClassName(getTrackedOrderStage(order))}">${formatStatus(getTrackedOrderStage(order))}</span>
@@ -4181,7 +4510,7 @@ function closeMenu() {
 }
 
 function anyModalOpen() {
-    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal"].some((modalId) =>
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal"].some((modalId) =>
         document.getElementById(modalId)?.classList.contains("open")
     );
 }
@@ -4232,9 +4561,9 @@ function formatPaymentMethodLabel(method) {
         return `${method.cardBrand || "Card"} ending ${method.cardLast4 || "0000"}`;
     }
     if (method.methodType === "UPI") {
-        return `UPI Â· ${method.upiId || ""}`;
+        return `UPI - ${method.upiId || ""}`;
     }
-    return `Wallet Â· ${method.walletProvider || ""}`;
+    return `Wallet - ${method.walletProvider || ""}`;
 }
 
 function formatPaymentMethodSubtitle(method) {
@@ -4245,7 +4574,7 @@ function formatPaymentMethodSubtitle(method) {
         const expiry = method.expiryMonth && method.expiryYear
             ? `Expires ${method.expiryMonth}/${String(method.expiryYear).slice(-2)}`
             : "Card saved securely";
-        return [method.cardHolderName, expiry].filter(Boolean).join(" Â· ");
+        return [method.cardHolderName, expiry].filter(Boolean).join(" - ");
     }
     if (method.methodType === "UPI") {
         return "Fast UPI checkout";
@@ -4408,7 +4737,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal"].forEach((modalId) => {
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
@@ -4425,6 +4754,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         closeLocationPicker();
                     } else if (modalId === "offersModal") {
                         closeOffers();
+                    } else if (modalId === "corporateModal") {
+                        closeCorporatePage();
                     } else {
                         closeAuthModal();
                     }
@@ -4442,8 +4773,11 @@ document.addEventListener("DOMContentLoaded", () => {
             closeAuthModal();
             closeLocationPicker();
             closeOffers();
+            closeCorporatePage();
             closeSearchBar();
         }
     });
 });
+
+
 

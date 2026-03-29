@@ -10,10 +10,14 @@
     <header class="header">
         <div class="container">
             <div class="brand-block">
-                <a href="#" class="logo" aria-label="SnapEats home">
+                <a href="#" class="logo" aria-label="SnapEats home" onclick="goHome(event)">
                     <span class="logo-mark">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M11 2C7.13 2 4 5.13 4 9c0 4.76 5.28 11.07 7 13 1.72-1.93 7-8.24 7-13 0-3.87-3.13-7-7-7Zm0 9.5A2.5 2.5 0 1 1 11 6a2.5 2.5 0 0 1 0 5.5Z"/>
+                        <svg viewBox="0 0 64 64" aria-hidden="true">
+                            <path d="M30.9 11.7c0-1.1.9-2 2-2s2 .9 2 2v2.1h-4z" fill="currentColor"/>
+                            <path d="M13.4 33.4a18.6 18.6 0 0 1 37.2 0z" fill="currentColor"/>
+                            <path d="M20.6 27.5c1.8-4.2 4.3-7.1 7.4-8.3 2-.8 3.8 1.3 2.6 3-1.7 2.3-2.8 5-3.4 7.9h-6.6z" fill="#ffffff"/>
+                            <rect x="8.8" y="33.1" width="46.4" height="3.7" rx="1.85" fill="currentColor"/>
+                            <path d="M16.4 39.8h31.2a2.5 2.5 0 0 1 0 5H16.4a2.5 2.5 0 0 1 0-5z" fill="currentColor"/>
                         </svg>
                     </span>
                     <span class="logo-text">SnapEats</span>
@@ -24,7 +28,7 @@
                 </div>
             </div>
             <nav class="nav-links">
-                <a href="#" class="nav-link">
+                <a href="#" class="nav-link" onclick="openCorporatePage(event)">
                     <span class="nav-link-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M7 7.5A2.5 2.5 0 0 1 9.5 5h5A2.5 2.5 0 0 1 17 7.5V9h1.5A1.5 1.5 0 0 1 20 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9H7V7.5Zm2.5-1A1.5 1.5 0 0 0 8 8v1h8V8a1.5 1.5 0 0 0-1.5-1.5h-5Z"/></svg>
                     </span>
@@ -228,6 +232,13 @@
         <div class="modal-content offers-modal-content">
             <span class="close-btn" onclick="closeOffers()">&times;</span>
             <div id="offersModalContent"></div>
+        </div>
+    </div>
+
+    <div id="corporateModal" class="modal">
+        <div class="modal-content corporate-modal-content">
+            <span class="close-btn" onclick="closeCorporatePage()">&times;</span>
+            <div id="corporateModalContent"></div>
         </div>
     </div>
 

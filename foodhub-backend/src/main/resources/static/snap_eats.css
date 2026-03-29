@@ -51,18 +51,18 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 54px;
-    height: 54px;
-    border-radius: 18px;
-    background: #ff6b00;
-    color: #fff;
-    box-shadow: 0 12px 24px rgba(255, 107, 0, 0.2);
+    width: 56px;
+    height: 56px;
+    border-radius: 8px;
+    background: #cb202d;
+    border: 1px solid #a91924;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(203, 32, 45, 0.3);
 }
 
 .logo-mark svg {
-    width: 28px;
-    height: 28px;
-    fill: currentColor;
+    width: 37px;
+    height: 37px;
 }
 
 .logo-text {
@@ -1116,6 +1116,360 @@ body.modal-open {
 
 .offers-modal-content {
     width: min(1100px, 100%);
+}
+
+.corporate-modal-content {
+    width: min(1240px, 100%);
+}
+
+.corporate-shell {
+    padding: 34px;
+    background: linear-gradient(180deg, #f3f4f6 0%, #eef2f7 100%);
+    display: grid;
+    gap: 28px;
+}
+
+.corporate-section {
+    padding: 30px;
+    border: 1px solid #e5e7eb;
+    border-radius: 28px;
+    background: #fff;
+}
+
+.corporate-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    color: #3f454f;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 800;
+}
+
+.corporate-section-title span {
+    display: inline-block;
+    width: 70px;
+    height: 2px;
+    background: #ff6b00;
+}
+
+.corporate-story-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 440px;
+    gap: 26px;
+    align-items: stretch;
+}
+
+.corporate-story-tabs {
+    display: grid;
+    gap: 10px;
+    padding-right: 16px;
+    border-right: 1px solid #e5e7eb;
+}
+
+.corporate-story-tab {
+    border: none;
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: transparent;
+    color: #9aa0a8;
+    font: inherit;
+    text-align: left;
+    font-size: 19px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.corporate-story-tab.active {
+    color: #ff6b00;
+    background: #fff7f2;
+}
+
+.corporate-story-copy {
+    padding-top: 8px;
+}
+
+.corporate-kicker {
+    color: #ff6b00;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+
+.corporate-story-copy h3 {
+    margin-top: 10px;
+    color: #2b313b;
+    font-size: 30px;
+}
+
+.corporate-story-copy p {
+    margin-top: 12px;
+    color: #5f6775;
+    font-size: 19px;
+    line-height: 1.4;
+}
+
+.corporate-story-image-wrap,
+.corporate-pioneer-image-wrap,
+.corporate-careers-image-wrap {
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+}
+
+.corporate-story-image,
+.corporate-pioneer-image,
+.corporate-careers-image {
+    width: 100%;
+    height: 100%;
+    min-height: 320px;
+    object-fit: cover;
+}
+
+.corporate-pioneer-layout {
+    display: grid;
+    grid-template-columns: 1fr 0.9fr;
+    gap: 24px;
+    align-items: center;
+}
+
+.corporate-pioneer-layout p {
+    color: #5f6775;
+    font-size: 20px;
+    line-height: 1.45;
+}
+
+.corporate-pioneer-layout p + p {
+    margin-top: 12px;
+}
+
+.corporate-metric-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-top: 1px solid #e5e7eb;
+}
+
+.corporate-metric-grid article {
+    padding: 18px 14px 4px;
+    border-right: 1px solid #e5e7eb;
+}
+
+.corporate-metric-grid article:last-child {
+    border-right: none;
+}
+
+.corporate-metric-grid strong {
+    display: block;
+    color: #11a36a;
+    font-size: 48px;
+    line-height: 1;
+}
+
+.corporate-metric-grid span {
+    display: block;
+    margin-top: 8px;
+    color: #5f6775;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.corporate-journey-section {
+    border-radius: 28px;
+    padding: 30px;
+    background: linear-gradient(110deg, #0f172a 0%, #111827 58%, #0b1220 100%);
+    border: 1px solid #253245;
+}
+
+.corporate-journey-title {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    color: #ff6b00;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+}
+
+.corporate-journey-title span {
+    display: inline-block;
+    width: 76px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.corporate-journey-track {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.corporate-journey-card {
+    border: 1px solid #314965;
+    border-radius: 22px;
+    background: rgba(23, 33, 51, 0.82);
+    padding: 20px;
+    color: #f8fafc;
+}
+
+.corporate-journey-year {
+    color: #8aa1bf;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+.corporate-journey-card h3 {
+    margin-top: 6px;
+    font-size: 20px;
+}
+
+.corporate-journey-card p {
+    margin-top: 10px;
+    color: #c6d1de;
+    font-size: 16px;
+    line-height: 1.35;
+}
+
+.corporate-people-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.corporate-people-head h2 {
+    color: #2f3642;
+    font-size: 32px;
+}
+
+.corporate-people-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.corporate-people-tab {
+    border: 1px solid #d7dce2;
+    background: #fff;
+    color: #7f8793;
+    padding: 11px 20px;
+    border-radius: 999px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.corporate-people-tab.active {
+    background: #ff6b00;
+    border-color: #ff6b00;
+    color: #fff;
+}
+
+.corporate-people-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.corporate-person-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 22px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.corporate-person-image {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+}
+
+.corporate-person-copy {
+    padding: 16px;
+}
+
+.corporate-person-copy h3 {
+    font-size: 24px;
+    color: #2b313b;
+}
+
+.corporate-person-role {
+    margin-top: 4px !important;
+    color: #5f6775 !important;
+    font-weight: 700;
+    font-size: 16px !important;
+}
+
+.corporate-person-copy p {
+    margin-top: 10px;
+    color: #5f6775;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.corporate-careers-layout,
+.corporate-contact-layout {
+    display: grid;
+    grid-template-columns: 1fr 0.9fr;
+    gap: 24px;
+    align-items: center;
+}
+
+.corporate-careers-layout p {
+    color: #5f6775;
+    font-size: 20px;
+    line-height: 1.45;
+}
+
+.corporate-careers-layout p + p {
+    margin-top: 12px;
+}
+
+.corporate-careers-layout .primary-button {
+    margin-top: 16px;
+}
+
+.corporate-contact-section {
+    margin-bottom: 4px;
+}
+
+.corporate-contact-copy h3 {
+    margin-top: 18px;
+    color: #2f3642;
+    font-size: 28px;
+}
+
+.corporate-contact-copy h3:first-child {
+    margin-top: 0;
+}
+
+.corporate-contact-copy p {
+    margin-top: 8px;
+    color: #5f6775;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.corporate-contact-map {
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    min-height: 330px;
+}
+
+.corporate-contact-map iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-height: 330px;
+    border: 0;
 }
 
 .location-picker-shell {
@@ -3028,6 +3382,98 @@ body.modal-open {
     .offers-grid,
     .restaurant-offers-grid {
         grid-template-columns: 1fr;
+    }
+
+    .corporate-shell {
+        padding: 20px;
+    }
+
+    .corporate-section {
+        padding: 20px;
+    }
+
+    .corporate-section-title,
+    .corporate-journey-title {
+        font-size: 34px;
+    }
+
+    .corporate-section-title span,
+    .corporate-journey-title span {
+        width: 40px;
+    }
+
+    .corporate-story-layout,
+    .corporate-pioneer-layout,
+    .corporate-journey-track,
+    .corporate-people-grid,
+    .corporate-careers-layout,
+    .corporate-contact-layout,
+    .corporate-metric-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .corporate-story-tabs {
+        border-right: none;
+        padding-right: 0;
+    }
+
+    .corporate-story-tab {
+        font-size: 18px;
+        padding: 10px 12px;
+    }
+
+    .corporate-story-copy h3 {
+        font-size: 28px;
+    }
+
+    .corporate-story-copy p,
+    .corporate-pioneer-layout p,
+    .corporate-careers-layout p,
+    .corporate-contact-copy p {
+        font-size: 18px;
+    }
+
+    .corporate-metric-grid article {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .corporate-metric-grid article:last-child {
+        border-bottom: none;
+    }
+
+    .corporate-metric-grid strong {
+        font-size: 36px;
+    }
+
+    .corporate-metric-grid span {
+        font-size: 16px;
+    }
+
+    .corporate-journey-year {
+        font-size: 24px;
+    }
+
+    .corporate-journey-card h3,
+    .corporate-people-head h2 {
+        font-size: 24px;
+    }
+
+    .corporate-journey-card p,
+    .corporate-person-copy h3 {
+        font-size: 18px;
+    }
+
+    .corporate-person-role,
+    .corporate-person-copy p,
+    .corporate-people-tab {
+        font-size: 16px !important;
+    }
+
+    .corporate-people-head {
+        grid-template-columns: 1fr;
+        display: grid;
+        align-items: start;
     }
 
     .checkout-payment-card {
