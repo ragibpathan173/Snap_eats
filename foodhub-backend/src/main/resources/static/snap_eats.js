@@ -2578,6 +2578,22 @@ function openPaymentPage(event) {
     renderCart();
 }
 
+function openNetbankingPage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "netbanking";
+    renderCart();
+}
+
+function backToPaymentPage(event) {
+    if (event) {
+        event.preventDefault();
+    }
+    checkoutView = "payment";
+    renderCart();
+}
+
 function backToCart(event) {
     if (event) {
         event.preventDefault();
@@ -2607,6 +2623,7 @@ function selectNetbankingBank(bankName) {
     netbankingBankChoice = bankName;
     checkoutPaymentChoice = "NETBANKING";
     paymentChoiceTouched = true;
+    checkoutView = "payment";
     renderCart();
 }
 
@@ -3648,6 +3665,42 @@ function renderCart() {
     const savingsAmount = roundAmount(subscriptionDiscount + couponDiscount);
     const showNoContact = !(checkoutPaymentChoice === "CASH" && paymentChoiceTouched);
 
+    if (checkoutView === "netbanking") {
+        content.innerHTML = `
+            <div class="cart-shell payment-shell netbanking-shell">
+                <div class="payment-header">
+                    <button class="text-button payment-back" type="button" onclick="backToPaymentPage(event)">&#8592;</button>
+                    <div>
+                        <p class="menu-eyebrow">Payment</p>
+                        <h2>Netbanking</h2>
+                        <p class="payment-summary-line">Select your bank to continue.</p>
+                    </div>
+                </div>
+                <div class="netbanking-section">
+                    <h4>Popular banks</h4>
+                    <div class="netbanking-list">
+                        ${NETBANKING_POPULAR_BANKS.map((bank) => `
+                            <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
+                                <span class="netbanking-icon">${escapeHtml(bank.split(" ")[0].slice(0, 2).toUpperCase())}</span>
+                                <span class="netbanking-name">${escapeHtml(bank)}</span>
+                                <span class="netbanking-arrow">›</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                    <h4>All banks</h4>
+                    <div class="netbanking-list">
+                        ${NETBANKING_ALL_BANKS.map((bank) => `
+                            <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
+                                <span class="netbanking-name">${escapeHtml(bank)}</span>
+                                <span class="netbanking-arrow">›</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                </div>
+            </div>`;
+        return;
+    }
+
     if (checkoutView === "payment") {
         const summaryLine = `${itemCount} item${itemCount === 1 ? "" : "s"} • Total ${formatCurrency(finalAmount)}${savingsAmount > 0 ? ` • Savings of ${formatCurrency(savingsAmount)}` : ""}`;
         const paymentOffers = PAYMENT_OFFERS.filter((offer) => ["CARD", "UPI"].includes(offer.type) && offer.category === "BANK");
@@ -3797,44 +3850,15 @@ function renderCart() {
                                     <span class="payment-type-pill">Wallet</span>
                                 </label>
                             `}
-                            <label class="checkout-payment-card ${checkoutPaymentChoice === "NETBANKING" ? "selected" : ""}">
-                                <input
-                                    type="radio"
-                                    name="checkoutPaymentChoice"
-                                    value="NETBANKING"
-                                    ${checkoutPaymentChoice === "NETBANKING" ? "checked" : ""}
-                                    onchange="setCheckoutPaymentChoice(this.value)"
-                                >
+                            <button class="payment-option-row" type="button" onclick="openNetbankingPage(event)">
                                 <div>
                                     <strong>Netbanking</strong>
-                                    <p>Select from a list of banks.</p>
+                                    <p>Select from a list of banks${netbankingBankChoice ? ` • ${escapeHtml(netbankingBankChoice)}` : ""}.</p>
                                 </div>
                                 <span class="payment-type-pill">Bank</span>
-                            </label>
+                                <span class="payment-offer-arrow">›</span>
+                            </button>
                         </div>
-                        ${checkoutPaymentChoice === "NETBANKING" ? `
-                            <div class="netbanking-section">
-                                <h4>Popular banks</h4>
-                                <div class="netbanking-list">
-                                    ${NETBANKING_POPULAR_BANKS.map((bank) => `
-                                        <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
-                                            <span class="netbanking-icon">${escapeHtml(bank.split(" ")[0].slice(0, 2).toUpperCase())}</span>
-                                            <span class="netbanking-name">${escapeHtml(bank)}</span>
-                                            <span class="netbanking-arrow">›</span>
-                                        </button>
-                                    `).join("")}
-                                </div>
-                                <h4>All banks</h4>
-                                <div class="netbanking-list">
-                                    ${NETBANKING_ALL_BANKS.map((bank) => `
-                                        <button class="netbanking-row ${netbankingBankChoice === bank ? "selected" : ""}" type="button" onclick="selectNetbankingBank('${escapeAttribute(bank)}')">
-                                            <span class="netbanking-name">${escapeHtml(bank)}</span>
-                                            <span class="netbanking-arrow">›</span>
-                                        </button>
-                                    `).join("")}
-                                </div>
-                            </div>
-                        ` : ""}
                     </div>
 
                     <div class="payment-section">
