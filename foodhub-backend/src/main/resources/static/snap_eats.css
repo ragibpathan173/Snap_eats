@@ -2185,6 +2185,12 @@ body.modal-open {
     font-size: 18px;
 }
 
+.account-nav-icon svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
 .account-main {
     min-height: 620px;
     padding: 46px 44px;

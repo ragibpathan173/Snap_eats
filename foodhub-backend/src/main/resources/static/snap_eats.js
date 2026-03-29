@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api";
+﻿const API_BASE_URL = "/api";
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";
@@ -13,7 +13,7 @@ const PLATFORM_COUPONS = [
     {
         code: "WELCOME50",
         title: "Flat Rs 50 off",
-        description: "New users only · valid on orders above Rs 199.",
+        description: "New users only Â· valid on orders above Rs 199.",
         discountType: "FLAT",
         discountValue: 50,
         minOrder: 199,
@@ -760,9 +760,9 @@ function renderDiscoveryFilters() {
                 <span>Price for two</span>
                 <select id="filterMaxPriceForTwo" onchange="updateDiscoveryFilters()">
                     <option value="0" ${discoveryFilters.maxPriceForTwo === 0 ? "selected" : ""}>Any</option>
-                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under ₹400</option>
-                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under ₹600</option>
-                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under ₹800</option>
+                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under â‚¹400</option>
+                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under â‚¹600</option>
+                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under â‚¹800</option>
                 </select>
             </label>
             <label class="discovery-toggle">
@@ -1151,7 +1151,7 @@ function renderRestaurants() {
                     onclick="toggleRestaurantFavorite(event, '${escapeAttribute(restaurant.restaurantId)}')"
                     aria-label="${isRestaurantFavorite(restaurant.restaurantId) ? "Remove from favorites" : "Add to favorites"}"
                 >
-                    ${isRestaurantFavorite(restaurant.restaurantId) ? "♥" : "♡"}
+                    ${isRestaurantFavorite(restaurant.restaurantId) ? "â™¥" : "â™¡"}
                 </button>
             </div>
             <div class="restaurant-info">
@@ -1166,7 +1166,7 @@ function renderRestaurants() {
                     </div>
                 ` : ""}
                 <div class="restaurant-meta">
-                    <div class="rating">★ ${formatNumber(restaurant.rating)}</div>
+                    <div class="rating">â˜… ${formatNumber(restaurant.rating)}</div>
                     <div class="delivery-time">${escapeHtml(restaurant.time || "")}</div>
                 </div>
             </div>
@@ -1283,7 +1283,7 @@ function renderMenuModal(filter = "all") {
                 <h2>${escapeHtml(activeRestaurant.name)}</h2>
                 <p class="menu-cuisine">${escapeHtml(activeRestaurant.cuisine || "")}</p>
                 <div class="menu-stats">
-                    <span>★ ${formatNumber(activeRestaurant.rating)}</span>
+                    <span>â˜… ${formatNumber(activeRestaurant.rating)}</span>
                     <span>${escapeHtml(activeRestaurant.time || "Fast delivery")}</span>
                     <span>${activeRestaurant.discount ? escapeHtml(activeRestaurant.discount) : "Fresh daily offers"}</span>
                 </div>
@@ -1319,7 +1319,7 @@ function renderMenuModal(filter = "all") {
                                 onclick="toggleMenuItemFavorite(event, '${escapeAttribute(item.itemId)}')"
                                 aria-label="${isMenuItemFavorite(item.itemId) ? "Remove from favorites" : "Add to favorites"}"
                             >
-                                ${isMenuItemFavorite(item.itemId) ? "♥" : "♡"}
+                                ${isMenuItemFavorite(item.itemId) ? "â™¥" : "â™¡"}
                             </button>
                         </div>
                         <h3>${escapeHtml(item.name)}</h3>
@@ -1817,7 +1817,7 @@ function renderLocationPicker(query = "") {
 
             <section class="location-panel">
                 <div class="location-action-card" onclick="useCurrentLocation()">
-                    <span class="location-action-icon">◎</span>
+                    <span class="location-action-icon">â—Ž</span>
                     <div>
                         <strong>Get current location</strong>
                         <p>Using GPS</p>
@@ -1837,7 +1837,7 @@ function renderLocationPicker(query = "") {
                 <p class="location-panel-title">Recent searches</p>
                 ${suggestions.length ? suggestions.map((location) => `
                     <div class="location-history-card" onclick="applyLocationSelection({ label: '${escapeAttribute(location.label)}', subtitle: '${escapeAttribute(location.subtitle)}' })">
-                        <span class="location-history-icon">◔</span>
+                        <span class="location-history-icon">â—”</span>
                         <div>
                             <strong>${escapeHtml(location.label)}</strong>
                             <p>${escapeHtml(location.subtitle)}</p>
@@ -1846,7 +1846,7 @@ function renderLocationPicker(query = "") {
                     </div>
                 `).join("") : `
                     <div class="location-history-card">
-                        <span class="location-history-icon">◔</span>
+                        <span class="location-history-icon">â—”</span>
                         <div>
                             <strong>No matching places</strong>
                             <p class="location-empty-note">Try a different area name or add it manually.</p>
@@ -1900,7 +1900,7 @@ function renderOffersModal() {
                     <strong>${escapeHtml(restaurant.name)}</strong>
                     <span class="restaurant-offer-discount">${escapeHtml(restaurant.discount)}</span>
                 </div>
-                <p>${escapeHtml(restaurant.cuisine || "Multiple cuisines")} · ${escapeHtml(restaurant.time || "Fast delivery")}</p>
+                <p>${escapeHtml(restaurant.cuisine || "Multiple cuisines")} Â· ${escapeHtml(restaurant.time || "Fast delivery")}</p>
                 <small>Auto-applied on menu items. No coupon code needed.</small>
             </article>
         `).join("") : `
@@ -2221,7 +2221,7 @@ function renderCart() {
                         </div>
                         ${appliedCoupon ? `
                             <div class="coupon-applied-row">
-                                <span><strong>${escapeHtml(appliedCoupon.code)}</strong> · ${escapeHtml(appliedCoupon.title)}</span>
+                                <span><strong>${escapeHtml(appliedCoupon.code)}</strong> Â· ${escapeHtml(appliedCoupon.title)}</span>
                                 <button class="text-button danger-button" type="button" onclick="removeAppliedCoupon()">Remove</button>
                             </div>
                         ` : ""}
@@ -2241,7 +2241,7 @@ function renderCart() {
                             </button>
                         </div>
                         ${defaultAddress ? `
-                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} · ${escapeHtml(defaultAddress.phoneNumber)}</p>
+                            <p class="address-recipient">${escapeHtml(defaultAddress.recipientName)} Â· ${escapeHtml(defaultAddress.phoneNumber)}</p>
                             <p class="address-line">${escapeHtml(formatAddressLine(defaultAddress))}</p>
                         ` : `
                             <p class="address-empty-note">Save at least one address and mark it as default before placing an order.</p>
@@ -2330,7 +2330,7 @@ function renderAddressBook() {
                             <div class="address-card-head">
                                 <div>
                                     <h3>${escapeHtml(address.label)}</h3>
-                                    <p>${escapeHtml(address.recipientName)} · ${escapeHtml(address.phoneNumber)}</p>
+                                    <p>${escapeHtml(address.recipientName)} Â· ${escapeHtml(address.phoneNumber)}</p>
                                 </div>
                                 ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
                             </div>
@@ -2576,17 +2576,30 @@ function setAccountSection(section) {
     }
 }
 
+function getAccountNavIcon(sectionId) {
+    const icons = {
+        orders: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7.5A2.5 2.5 0 0 1 9.5 5h5A2.5 2.5 0 0 1 17 7.5V9h1.5A1.5 1.5 0 0 1 20 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9H7V7.5Zm2.5-1A1.5 1.5 0 0 0 8 8v1h8V8a1.5 1.5 0 0 0-1.5-1.5h-5Z"/></svg>`,
+        subscription: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 9.2 7.63 3 8.53l4.5 4.39-1.06 6.2L12 16.2l5.56 2.92-1.06-6.2L21 8.53l-6.2-.9L12 2Zm0 3.24 1.66 3.35.19.39.43.06 3.7.54-2.67 2.61-.31.3.07.43.63 3.69-3.31-1.74L12 14.7l-.39.21-3.31 1.74.63-3.69.07-.43-.31-.3-2.67-2.61 3.7-.54.43-.06.19-.39L12 5.24Z"/></svg>`,
+        favorites: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.27 2 8.5A4.5 4.5 0 0 1 6.5 4c1.74 0 3.41.81 4.5 2.09A6.03 6.03 0 0 1 15.5 4 4.5 4.5 0 0 1 20 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z"/></svg>`,
+        payments: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2H3V6Zm0 4h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8Zm4 5v2h4v-2H7Z"/></svg>`,
+        addresses: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C7.58 2 4 5.58 4 10c0 5.25 6.12 11.39 7.38 12.59a1 1 0 0 0 1.24 0C13.88 21.39 20 15.25 20 10c0-4.42-3.58-8-8-8Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg>`,
+        settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94a7.77 7.77 0 0 0 .05-.94c0-.32-.02-.63-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.46 7.46 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.03.31-.05.62-.05.94 0 .32.02.63.05.94L2.83 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.51.41 1.05.72 1.63.94l.36 2.54a.5.5 0 0 0 .49.42h3.8a.5.5 0 0 0 .49-.42l.36-2.54c.58-.23 1.12-.53 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/></svg>`,
+        admin: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5.25 3.4 10.15 8 11.85 4.6-1.7 8-6.6 8-11.85V5l-8-3Zm3.72 8.84-4.12 4.12a1 1 0 0 1-1.41 0l-1.91-1.91 1.41-1.41 1.2 1.2 3.42-3.42 1.41 1.42Z"/></svg>`
+    };
+    return icons[sectionId] || icons.orders;
+}
+
 function renderAccountSidebar() {
     const items = [
-        { id: "orders", label: "Orders", icon: "◔" },
-        { id: "subscription", label: "SnapSubscription", icon: "✦" },
-        { id: "favorites", label: "Favorites", icon: "♥" },
-        { id: "payments", label: "Payments", icon: "▣" },
-        { id: "addresses", label: "Addresses", icon: "⌖" },
-        { id: "settings", label: "Settings", icon: "⚙" }
+        { id: "orders", label: "Orders" },
+        { id: "subscription", label: "SnapEatPro" },
+        { id: "favorites", label: "Favorites" },
+        { id: "payments", label: "Payments" },
+        { id: "addresses", label: "Addresses" },
+        { id: "settings", label: "Settings" }
     ];
     if (isAdminUser()) {
-        items.splice(1, 0, { id: "admin", label: "Admin", icon: "⛨" });
+        items.splice(1, 0, { id: "admin", label: "Admin" });
     }
 
     return items.map((item) => `
@@ -2595,7 +2608,7 @@ function renderAccountSidebar() {
             type="button"
             onclick="setAccountSection('${item.id}')"
         >
-            <span class="account-nav-icon" aria-hidden="true">${item.icon}</span>
+            <span class="account-nav-icon" aria-hidden="true">${getAccountNavIcon(item.id)}</span>
             <span>${item.label}</span>
         </button>
     `).join("");
@@ -2648,7 +2661,7 @@ function renderAdminPanel() {
                                 <article class="admin-menu-item-card">
                                     <div>
                                         <strong>${escapeHtml(item.name)}</strong>
-                                        <p>${escapeHtml(item.category || "General")} · ${formatCurrency(item.price)}</p>
+                                        <p>${escapeHtml(item.category || "General")} Â· ${formatCurrency(item.price)}</p>
                                     </div>
                                     <div class="admin-menu-actions">
                                         <button class="secondary-button" type="button" onclick="startAdminMenuEdit(${item.id})">Edit</button>
@@ -2722,7 +2735,7 @@ function renderAccountPanel() {
         const activePlanCode = String(currentSubscription?.planCode || "").toUpperCase();
         return `
             <div class="account-panel">
-                <p class="menu-eyebrow">SnapSubscription</p>
+                <p class="menu-eyebrow">SnapEatPro</p>
                 <h3>Membership plans</h3>
                 <p class="account-panel-copy">Choose a plan and save more on every order with free delivery and member discounts.</p>
                 ${subscriptionFeedback.message ? `<div class="checkout-feedback ${subscriptionFeedback.type === "error" ? "error" : "success"}">${escapeHtml(subscriptionFeedback.message)}</div>` : ""}
@@ -2812,7 +2825,7 @@ function renderAccountPanel() {
                                     <h4>${escapeHtml(restaurant.name)}</h4>
                                     <p>${escapeHtml(restaurant.cuisine || "")}</p>
                                     <div class="favorite-restaurant-meta">
-                                        <span>★ ${formatNumber(restaurant.rating)}</span>
+                                        <span>â˜… ${formatNumber(restaurant.rating)}</span>
                                         <span>${escapeHtml(restaurant.time || "")}</span>
                                     </div>
                                 </div>
@@ -2875,7 +2888,7 @@ function renderAccountPanel() {
                     </div>
                     <div class="account-card">
                         <span>Saved methods</span>
-                        <strong>${savedPaymentMethods.length} total · ${savedCardsCount} cards</strong>
+                        <strong>${savedPaymentMethods.length} total Â· ${savedCardsCount} cards</strong>
                     </div>
                 </div>
                 <div class="payment-management-grid">
@@ -2977,7 +2990,7 @@ function renderAccountPanel() {
                             <div class="address-card-head">
                                 <div>
                                     <h3>${escapeHtml(address.label)}</h3>
-                                    <p>${escapeHtml(address.recipientName)} · ${escapeHtml(address.phoneNumber)}</p>
+                                    <p>${escapeHtml(address.recipientName)} Â· ${escapeHtml(address.phoneNumber)}</p>
                                 </div>
                                 ${address.defaultAddress ? '<span class="address-default-pill">Default</span>' : ""}
                             </div>
@@ -3265,7 +3278,7 @@ function renderOrdersAccountPanel() {
                         <article class="account-order-card">
                             <div>
                                 <strong>${escapeHtml(order.restaurantName)}</strong>
-                                <p>${escapeHtml(order.orderNumber)} · ${formatDateTime(order.createdAt)}</p>
+                                <p>${escapeHtml(order.orderNumber)} Â· ${formatDateTime(order.createdAt)}</p>
                             </div>
                             <div class="account-order-meta">
                                 <span class="order-status-badge ${statusClassName(order.status)}">${formatStatus(order.status)}</span>
@@ -3781,7 +3794,7 @@ function renderOrders(isLoading = false) {
                                 ${order.restaurantImage ? `<img src="${order.restaurantImage}" alt="${escapeHtml(order.restaurantName)}" class="order-restaurant-image">` : ""}
                                 <div>
                                     <h3>${escapeHtml(order.restaurantName)}</h3>
-                                    <p>${escapeHtml(order.orderNumber)} · ${formatDateTime(order.createdAt)}</p>
+                                    <p>${escapeHtml(order.orderNumber)} Â· ${formatDateTime(order.createdAt)}</p>
                                 </div>
                             </div>
                             <span class="order-status-badge ${statusClassName(getTrackedOrderStage(order))}">${formatStatus(getTrackedOrderStage(order))}</span>
@@ -4219,9 +4232,9 @@ function formatPaymentMethodLabel(method) {
         return `${method.cardBrand || "Card"} ending ${method.cardLast4 || "0000"}`;
     }
     if (method.methodType === "UPI") {
-        return `UPI · ${method.upiId || ""}`;
+        return `UPI Â· ${method.upiId || ""}`;
     }
-    return `Wallet · ${method.walletProvider || ""}`;
+    return `Wallet Â· ${method.walletProvider || ""}`;
 }
 
 function formatPaymentMethodSubtitle(method) {
@@ -4232,7 +4245,7 @@ function formatPaymentMethodSubtitle(method) {
         const expiry = method.expiryMonth && method.expiryYear
             ? `Expires ${method.expiryMonth}/${String(method.expiryYear).slice(-2)}`
             : "Card saved securely";
-        return [method.cardHolderName, expiry].filter(Boolean).join(" · ");
+        return [method.cardHolderName, expiry].filter(Boolean).join(" Â· ");
     }
     if (method.methodType === "UPI") {
         return "Fast UPI checkout";
@@ -4433,3 +4446,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
