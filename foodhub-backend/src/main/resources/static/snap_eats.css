@@ -1232,6 +1232,59 @@ body.modal-open {
     border: 1px solid #e5e7eb;
 }
 
+.corporate-visual-card {
+    height: 100%;
+    min-height: 320px;
+    padding: 26px;
+    display: grid;
+    align-content: center;
+    gap: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #1f2937, #27384f);
+}
+
+.corporate-visual-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 30px;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.corporate-visual-card strong {
+    font-size: 26px;
+    line-height: 1.15;
+}
+
+.corporate-visual-card p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+.corporate-story-visual.mission {
+    background: linear-gradient(135deg, #cb202d 0%, #831843 100%);
+}
+
+.corporate-story-visual.vision {
+    background: linear-gradient(135deg, #0f766e 0%, #0f3d67 100%);
+}
+
+.corporate-story-visual.values {
+    background: linear-gradient(135deg, #7c3aed 0%, #4338ca 100%);
+}
+
+.corporate-pioneer-visual {
+    background: linear-gradient(135deg, #3b0764 0%, #312e81 100%);
+}
+
+.corporate-careers-visual {
+    background: linear-gradient(135deg, #14532d 0%, #065f46 100%);
+}
+
 .corporate-story-image,
 .corporate-pioneer-image,
 .corporate-careers-image {
@@ -1396,10 +1449,57 @@ body.modal-open {
     background: #fff;
 }
 
-.corporate-person-image {
-    width: 100%;
-    height: 240px;
-    object-fit: cover;
+.corporate-person-visual {
+    min-height: 170px;
+    padding: 16px;
+    display: grid;
+    align-content: end;
+    gap: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #334155, #475569);
+}
+
+.corporate-person-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.16);
+}
+
+.corporate-person-visual small {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.corporate-person-visual.lead-founder {
+    background: linear-gradient(135deg, #cb202d, #be185d);
+}
+
+.corporate-person-visual.lead-ops {
+    background: linear-gradient(135deg, #0f766e, #2563eb);
+}
+
+.corporate-person-visual.lead-growth {
+    background: linear-gradient(135deg, #4c1d95, #7c3aed);
+}
+
+.corporate-person-visual.lead-tech {
+    background: linear-gradient(135deg, #1e293b, #334155);
+}
+
+.corporate-person-visual.lead-market {
+    background: linear-gradient(135deg, #064e3b, #0f766e);
+}
+
+.corporate-person-visual.lead-finance {
+    background: linear-gradient(135deg, #78350f, #b45309);
 }
 
 .corporate-person-copy {
@@ -3442,6 +3542,23 @@ body.modal-open {
     .corporate-careers-layout p,
     .corporate-contact-copy p {
         font-size: 18px;
+    }
+
+    .corporate-visual-card {
+        min-height: 220px;
+        padding: 18px;
+    }
+
+    .corporate-visual-card strong {
+        font-size: 22px;
+    }
+
+    .corporate-visual-card p {
+        font-size: 15px;
+    }
+
+    .corporate-person-visual {
+        min-height: 128px;
     }
 
     .corporate-metric-grid article {

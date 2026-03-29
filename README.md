@@ -1,68 +1,61 @@
 # SnapEats
 
-SnapEats is a food ordering web app built with a Spring Boot backend and a static HTML/CSS/JavaScript frontend. It includes restaurant discovery, menu browsing, cart and checkout flows, saved addresses, order history, and a richer Swiggy-inspired account experience.
+SnapEats is a Swiggy-inspired food ordering web application built with a Spring Boot backend and a static HTML/CSS/JavaScript frontend.
 
-## Highlights
+It includes restaurant discovery, OTP-first login/signup (email or phone), cart and checkout, addresses, offers/coupons, subscription perks, and a full account experience.
 
-- Restaurant browsing with category filters and search
-- Menu item browsing with images, badges, and cart-aware quantity controls
-- Cart flow with checkout, delivery address selection, and order placement
-- Saved address book with default address support
-- Header location picker with recent places, manual entry, and current location support
-- Full-page account dashboard with:
+## Core Features
+
+- OTP authentication for both login and signup
+- Email OTP and phone OTP delivery support (with dev fallback mode)
+- Restaurant listing, category filtering, and search
+- Menu browsing with cart-aware quantity controls
+- Cart checkout with address + payment selection
+- Coupon support in cart and offers module
+- Welcome coupon logic for new users
+- Restaurant offers and global offers
+- Subscription perks (e.g., free delivery rules)
+- Account modules:
   - Orders
-  - SnapSubscription
+  - SnapEatPro
   - Favorites
   - Payments
   - Addresses
   - Settings
+- Corporate modal/page sections with image-free visual fallbacks (no broken image placeholders)
+
+## Tech Stack
+
+- Java 17
+- Spring Boot 3
+- Spring Security
+- Spring Data JPA (Hibernate)
+- H2 database (dev)
+- Flyway migrations
+- Maven
+- Vanilla HTML, CSS, JavaScript
 
 ## Project Structure
 
 ```text
 Snap_eats/
-├── README.md
-├── foodhub-backend/
-│   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/foodhub/
-│       │   ├── config/
-│       │   ├── controller/
-│       │   ├── model/
-│       │   └── repository/
-│       └── resources/
-│           ├── application.properties
-│           ├── data/
-│           └── static/
-│               ├── snap_eats.html
-│               ├── snap_eats.css
-│               └── snap_eats.js
-└── LICENSE
+|-- README.md
+`-- foodhub-backend/
+    |-- pom.xml
+    |-- src/main/java/com/foodhub/
+    |   |-- config/
+    |   |-- controller/
+    |   |-- model/
+    |   |-- repository/
+    |   `-- service/
+    `-- src/main/resources/
+        |-- application.properties
+        `-- static/
+            |-- index.html
+            |-- snap_eats.html
+            |-- snap_eats.css
+            `-- snap_eats.js
 ```
-
-## Main UI Features
-
-### Header
-- Icon-based header navigation
-- Expandable search bar
-- Location picker from the `Other` chip
-- Profile and cart access from the top bar
-
-### Menu and Cart
-- Restaurant menu modal with category chips
-- `Add to cart` changes into quantity stepper when an item is already in cart
-- Cart count syncs with menu item controls
-
-### Address and Orders
-- Save multiple addresses
-- Choose a default delivery address
-- View order history
-- Cancel and reorder eligible orders
-
-### Account Page
-- Full-page account layout instead of a small popup
-- Sidebar navigation for account sections
-- Account hero section with user details
 
 ## Run Locally
 
@@ -71,95 +64,78 @@ Snap_eats/
 - Java 17+
 - Maven 3.6+
 
-### Start the app
+### Start backend + frontend
 
 ```bash
 cd foodhub-backend
 mvn spring-boot:run
 ```
 
-If port conflicts happen, use:
-
-```powershell
-cd foodhub-backend
-powershell -ExecutionPolicy Bypass -File .\start-dev.ps1
-```
-
 Open:
 
-```text
-http://localhost:8081/
+- `http://localhost:8081/`
+
+## OTP Delivery Configuration
+
+You can run in dev mode (returns OTP in API response) or configure real delivery.
+
+### Dev mode
+
+```properties
+security.otp.dev-return=true
+otp.delivery.email.enabled=false
+otp.delivery.sms.enabled=false
 ```
 
-Direct page:
+### Real email delivery (SMTP)
 
-```text
-http://localhost:8081/snap_eats.html
+```properties
+security.otp.dev-return=false
+otp.delivery.email.enabled=true
+otp.delivery.email.from=your-email@gmail.com
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
 ```
 
-## Build and Test
+### Real SMS delivery
+
+```properties
+otp.delivery.sms.enabled=true
+otp.delivery.sms.webhook-url=https://your-sms-provider-webhook
+otp.delivery.sms.auth-token=your-token
+```
+
+## API Snapshot
+
+Common APIs used by frontend:
+
+- `GET /api/categories/active`
+- `GET /api/restaurants/active`
+- `GET /api/restaurants/search?query=...`
+- `GET /api/menu-items/restaurant-code/{restaurantCode}`
+- `POST /api/users/login/request-otp`
+- `POST /api/users/login/verify-otp`
+- `POST /api/users/signup/request-otp`
+- `POST /api/users/signup/verify-otp`
+- `GET /api/users/me`
+- `POST /api/orders/checkout`
+- `GET /api/orders/mine`
+- `GET /api/addresses`
+- `POST /api/addresses`
+
+## Testing
 
 ```bash
 cd foodhub-backend
 mvn test
 ```
 
-Integration test suite includes:
-- OTP auth APIs (email and phone)
-- Location-based restaurant filtering
-- Admin RBAC for menu mutations
-- Payment method create/list flow
-- Order checkout and `my orders` retrieval
-
-Test profile config:
-- `foodhub-backend/src/test/resources/application-test.properties`
-- Uses isolated in-memory H2 DB for repeatable runs
-
-Frontend smoke checks (while backend is running):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\frontend_smoke_test.ps1
-```
-
-## API Overview
-
-Common endpoints used by the frontend:
-
-- `GET /api/categories/active`
-- `GET /api/restaurants/active`
-- `GET /api/restaurants/category/{category}`
-- `GET /api/restaurants/search?query=...`
-- `GET /api/menu-items/restaurant-code/{restaurantCode}`
-- `POST /api/orders/checkout`
-- `GET /api/orders/mine`
-- `PATCH /api/orders/mine/{id}/cancel`
-- `GET /api/addresses`
-- `POST /api/addresses`
-- `PUT /api/addresses/{id}`
-- `PATCH /api/addresses/{id}/default`
-- `DELETE /api/addresses/{id}`
-- `POST /api/users/register`
-- `POST /api/users/login`
-- `GET /api/users/me`
-
-## Recent UI Updates
-
-- Improved header to a more app-like layout
-- Added expandable header search interaction
-- Added location selection modal
-- Added cart quantity stepper on menu cards
-- Added full-page profile/account experience
-- Added account sidebar sections for orders, subscription, favorites, payments, addresses, and settings
-
 ## Notes
 
-- Current location uses browser geolocation
-- Location selection is stored in local storage on the frontend
-- Some account sections are UI-ready placeholders for future backend expansion
-
-## Backend Docs
-
-More backend-specific details are available in:
-
-- [foodhub-backend/README.md](/c:/Users/ragib/Snap_eats/foodhub-backend/README.md)
-- [foodhub-backend/MENU_FEATURE.md](/c:/Users/ragib/Snap_eats/foodhub-backend/MENU_FEATURE.md)
+- Current location and some UI preferences are stored in browser local storage.
+- Some account sections include live data while a few are UI-ready for further backend expansion.
+- The project is actively evolving with UI/UX improvements and reliability fixes.

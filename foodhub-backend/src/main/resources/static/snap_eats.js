@@ -2080,19 +2080,25 @@ function renderCorporatePage() {
             title: "Mission",
             kicker: "Mission",
             body: "SnapEats exists to make daily food ordering dependable, affordable, and frictionless. We focus on fast discovery, clear pricing, and a checkout journey that respects user time.",
-            image: "https://images.unsplash.com/photo-1526367790999-0150786686a2?auto=format&fit=crop&w=1200&q=80"
+            visualClass: "mission",
+            visualIcon: "&#128640;",
+            visualTitle: "Reliable every day delivery"
         },
         vision: {
             title: "Vision",
             kicker: "Vision",
             body: "Our vision is to become the most trusted hyperlocal meal platform for students, professionals, and families by combining strong engineering quality with neighborhood-level convenience.",
-            image: "https://images.unsplash.com/photo-1481833761820-0509d3217039?auto=format&fit=crop&w=1200&q=80"
+            visualClass: "vision",
+            visualIcon: "&#127919;",
+            visualTitle: "Build the most trusted local food network"
         },
         values: {
             title: "Values",
             kicker: "Values",
             body: "We build with user obsession, reliable systems, and transparent pricing. Every release in SnapEats is measured by one thing: does it make ordering simpler and more trustworthy?",
-            image: "https://images.unsplash.com/photo-1484981138541-3d074aa97716?auto=format&fit=crop&w=1200&q=80"
+            visualClass: "values",
+            visualIcon: "&#129309;",
+            visualTitle: "Customer-first, quality-first culture"
         }
     };
     const activeStory = storyTabs[corporateStoryTab] || storyTabs.mission;
@@ -2109,19 +2115,22 @@ function renderCorporatePage() {
             name: creatorName,
             role: "Founder and Product Engineer",
             copy: "Leads product direction, backend architecture, and frontend experience for SnapEats.",
-            image: "https://images.unsplash.com/photo-1556157382-97eda2d62296?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-founder",
+            visualIcon: "&#128187;"
         },
         {
             name: "Platform Operations",
             role: "Delivery and Reliability",
             copy: "Focused on order lifecycle quality, issue handling, and fast support loops.",
-            image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-ops",
+            visualIcon: "&#128666;"
         },
         {
             name: "Growth and Partnerships",
             role: "Restaurant Success",
             copy: "Drives partner onboarding strategy and campaign-led menu discovery growth.",
-            image: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-growth",
+            visualIcon: "&#128200;"
         }
     ];
 
@@ -2130,19 +2139,22 @@ function renderCorporatePage() {
             name: "Technology Advisory",
             role: "Architecture Governance",
             copy: "Supports long-term scalability decisions and API design maturity.",
-            image: "https://images.unsplash.com/photo-1573497491765-dccce02b29df?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-tech",
+            visualIcon: "&#9881;"
         },
         {
             name: "Market Advisory",
             role: "Business Strategy",
             copy: "Guides expansion priorities for local markets and retention programs.",
-            image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-market",
+            visualIcon: "&#128640;"
         },
         {
             name: "Finance Advisory",
             role: "Revenue and Unit Economics",
             copy: "Helps model sustainable pricing, discounts, and subscription economics.",
-            image: "https://images.unsplash.com/photo-1552581234-26160f608093?auto=format&fit=crop&w=900&q=80"
+            visualClass: "lead-finance",
+            visualIcon: "&#128176;"
         }
     ];
 
@@ -2170,7 +2182,11 @@ function renderCorporatePage() {
                         <p>${escapeHtml(activeStory.body)}</p>
                     </div>
                     <div class="corporate-story-image-wrap">
-                        <img src="${activeStory.image}" alt="${escapeHtml(activeStory.title)} at SnapEats" class="corporate-story-image">
+                        <div class="corporate-visual-card corporate-story-visual ${escapeAttribute(activeStory.visualClass)}">
+                            <span class="corporate-visual-icon">${activeStory.visualIcon}</span>
+                            <strong>${escapeHtml(activeStory.visualTitle)}</strong>
+                            <p>Always available, no broken media dependency.</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -2189,11 +2205,11 @@ function renderCorporatePage() {
                         </p>
                     </div>
                     <div class="corporate-pioneer-image-wrap">
-                        <img
-                            src="https://images.unsplash.com/photo-1609526133531-e2200f3b4ef0?auto=format&fit=crop&w=1200&q=80"
-                            alt="SnapEats delivery operations"
-                            class="corporate-pioneer-image"
-                        >
+                        <div class="corporate-visual-card corporate-pioneer-visual">
+                            <span class="corporate-visual-icon">&#9889;</span>
+                            <strong>Industry-scale operations engine</strong>
+                            <p>Restaurant onboarding, OTP trust, checkout reliability, and delivery control in one system.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="corporate-metric-grid">
@@ -2228,7 +2244,10 @@ function renderCorporatePage() {
                 <div class="corporate-people-grid">
                     ${activePeople.map((person) => `
                         <article class="corporate-person-card">
-                            <img src="${person.image}" alt="${escapeHtml(person.name)}" class="corporate-person-image">
+                            <div class="corporate-person-visual ${escapeAttribute(person.visualClass)}">
+                                <span class="corporate-person-icon">${person.visualIcon}</span>
+                                <small>${escapeHtml(person.role)}</small>
+                            </div>
                             <div class="corporate-person-copy">
                                 <h3>${escapeHtml(person.name)}</h3>
                                 <p class="corporate-person-role">${escapeHtml(person.role)}</p>
@@ -2254,11 +2273,11 @@ function renderCorporatePage() {
                         <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the journey</button>
                     </div>
                     <div class="corporate-careers-image-wrap">
-                        <img
-                            src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80"
-                            alt="SnapEats team collaboration"
-                            class="corporate-careers-image"
-                        >
+                        <div class="corporate-visual-card corporate-careers-visual">
+                            <span class="corporate-visual-icon">&#127919;</span>
+                            <strong>Careers with impact</strong>
+                            <p>Work on backend systems, frontend UX, growth, and partner operations with real product ownership.</p>
+                        </div>
                     </div>
                 </div>
             </section>
