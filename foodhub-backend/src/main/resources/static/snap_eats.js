@@ -176,6 +176,47 @@ const UPI_APPS = [
     "WhatsApp Pay",
     "Samsung Wallet UPI"
 ];
+const DISCOVERY_SORT_OPTIONS = [
+    { value: "POPULARITY", label: "Popularity" },
+    { value: "RATING_DESC", label: "Rating: High to Low" },
+    { value: "COST_ASC", label: "Cost: Low to High" },
+    { value: "COST_DESC", label: "Cost: High to Low" }
+];
+const DISCOVERY_RATING_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 3.5, label: "3.5+" },
+    { value: 4, label: "4.0+" },
+    { value: 4.5, label: "4.5+" },
+    { value: 5, label: "5.0" }
+];
+const DISCOVERY_ETA_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 20, label: "Under 20 min" },
+    { value: 30, label: "Under 30 min" },
+    { value: 40, label: "Under 40 min" },
+    { value: 50, label: "Under 50 min" }
+];
+const DISCOVERY_PRICE_FOR_TWO_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 400, label: "Under Rs 400" },
+    { value: 600, label: "Under Rs 600" },
+    { value: 800, label: "Under Rs 800" },
+    { value: 1000, label: "Under Rs 1000" }
+];
+const DISCOVERY_COST_PER_PERSON_OPTIONS = [
+    { value: 0, label: "Any" },
+    { value: 300, label: "Up to Rs 150" },
+    { value: 400, label: "Up to Rs 200" },
+    { value: 600, label: "Up to Rs 300" },
+    { value: 800, label: "Up to Rs 400" },
+    { value: 1000, label: "Up to Rs 500" }
+];
+const DISCOVERY_MODAL_SECTIONS = [
+    { key: "SORT", label: "Sort by" },
+    { key: "CUISINES", label: "Cuisines" },
+    { key: "RATING", label: "Rating" },
+    { key: "COST", label: "Cost per person" }
+];
 
 let categories = [];
 let restaurants = [];
@@ -235,8 +276,17 @@ let discoveryFilters = {
     minRating: 0,
     maxEta: 0,
     maxPriceForTwo: 0,
-    vegOnly: false
+    vegOnly: false,
+    sortBy: "POPULARITY",
+    cuisines: []
 };
+let discoveryFilterModalOpen = false;
+let discoveryFilterModalSection = "SORT";
+let discoveryFilterDraft = {
+    ...discoveryFilters,
+    cuisines: []
+};
+let discoveryCuisineSearchQuery = "";
 const pincodeLookupCache = new Map();
 let addressMap = null;
 let addressMapMarker = null;
@@ -800,6 +850,8 @@ function switchHeaderPanel(target) {
     if (target !== "search") {
         closeSearchBar();
     }
+
+    closeDiscoveryFilterModal();
 }
 
 function getDefaultAddress() {
@@ -1043,12 +1095,252 @@ function isVegFriendlyRestaurant(restaurant) {
     return ["veg", "vegetarian", "vegan", "salad", "healthy", "jain"].some((token) => searchable.includes(token));
 }
 
+function getDefaultDiscoveryFilters() {
+    return {
+        minRating: 0,
+        maxEta: 0,
+        maxPriceForTwo: 0,
+        vegOnly: false,
+        sortBy: "POPULARITY",
+        cuisines: []
+    };
+}
+
+function cloneDiscoveryFilterState(source = discoveryFilters) {
+    const defaults = getDefaultDiscoveryFilters();
+    const base = source && typeof source === "object" ? source : defaults;
+    const cuisines = Array.isArray(base.cuisines)
+        ? [...new Set(base.cuisines.map((value) => String(value || "").trim()).filter(Boolean))]
+        : [];
+
+    return {
+        ...defaults,
+        ...base,
+        cuisines
+    };
+}
+
+function getDiscoveryOptionLabel(options, value, fallback = "Any") {
+    const option = options.find((entry) => String(entry.value) === String(value));
+    return option?.label || fallback;
+}
+
+function getDiscoveryCuisineTokens(restaurant) {
+    const rawSource = [restaurant?.cuisine, restaurant?.category]
+        .filter(Boolean)
+        .join(", ");
+    if (!rawSource) {
+        return [];
+    }
+
+    const deduped = new Map();
+    rawSource
+        .split(/,|\/|\||&|\band\b/gi)
+        .map((token) => token.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .forEach((token) => {
+            const key = normalizeTextForMatching(token);
+            if (!deduped.has(key)) {
+                deduped.set(key, token);
+            }
+        });
+    return [...deduped.values()];
+}
+
+function getDiscoveryCuisineOptions() {
+    const cuisineMap = new Map();
+    restaurants.forEach((restaurant) => {
+        getDiscoveryCuisineTokens(restaurant).forEach((cuisine) => {
+            const key = normalizeTextForMatching(cuisine);
+            if (!key || cuisineMap.has(key)) {
+                return;
+            }
+            cuisineMap.set(key, cuisine);
+        });
+    });
+    return [...cuisineMap.values()].sort((left, right) => left.localeCompare(right));
+}
+
+function matchesSelectedDiscoveryCuisines(restaurant, selectedCuisines) {
+    if (!Array.isArray(selectedCuisines) || !selectedCuisines.length) {
+        return true;
+    }
+
+    const restaurantCuisines = getDiscoveryCuisineTokens(restaurant).map((value) => normalizeTextForMatching(value));
+    if (!restaurantCuisines.length) {
+        return false;
+    }
+
+    return selectedCuisines
+        .map((value) => normalizeTextForMatching(value))
+        .some((selectedKey) => restaurantCuisines.includes(selectedKey));
+}
+
+function buildDiscoverySelectOptions(options, selectedValue) {
+    return options
+        .map((option) => `<option value="${option.value}" ${String(option.value) === String(selectedValue) ? "selected" : ""}>${escapeHtml(option.label)}</option>`)
+        .join("");
+}
+
+function getDiscoveryCuisineChipLabel() {
+    const selectedCuisines = discoveryFilters.cuisines || [];
+    if (!selectedCuisines.length) {
+        return "Cuisines";
+    }
+    if (selectedCuisines.length === 1) {
+        const cuisine = selectedCuisines[0];
+        return cuisine.length > 20 ? `${cuisine.slice(0, 20)}...` : cuisine;
+    }
+    return `Cuisines (${selectedCuisines.length})`;
+}
+
+function getDiscoveryDraftSectionSummary(sectionKey) {
+    if (sectionKey === "SORT") {
+        return getDiscoveryOptionLabel(DISCOVERY_SORT_OPTIONS, discoveryFilterDraft.sortBy, "Popularity");
+    }
+    if (sectionKey === "CUISINES") {
+        const selectedCount = discoveryFilterDraft.cuisines?.length || 0;
+        if (!selectedCount) {
+            return "Any";
+        }
+        if (selectedCount === 1) {
+            return discoveryFilterDraft.cuisines[0];
+        }
+        return `${selectedCount} selected`;
+    }
+    if (sectionKey === "RATING") {
+        return getDiscoveryOptionLabel(DISCOVERY_RATING_OPTIONS, discoveryFilterDraft.minRating, "Any");
+    }
+    if (sectionKey === "COST") {
+        return getDiscoveryOptionLabel(DISCOVERY_COST_PER_PERSON_OPTIONS, discoveryFilterDraft.maxPriceForTwo, "Any");
+    }
+    return "Any";
+}
+
+function buildDiscoveryCuisineListMarkup() {
+    const searchQuery = normalizeTextForMatching(discoveryCuisineSearchQuery);
+    const selectedKeys = new Set((discoveryFilterDraft.cuisines || []).map((value) => normalizeTextForMatching(value)));
+    const cuisineOptions = getDiscoveryCuisineOptions().filter((cuisine) => !searchQuery || normalizeTextForMatching(cuisine).includes(searchQuery));
+
+    if (!cuisineOptions.length) {
+        return `<p class="discovery-modal-empty">No cuisines found for this search.</p>`;
+    }
+
+    return cuisineOptions.map((cuisine) => {
+        const selected = selectedKeys.has(normalizeTextForMatching(cuisine));
+        return `
+            <button
+                class="discovery-modal-choice ${selected ? "active" : ""}"
+                type="button"
+                onclick="toggleDiscoveryCuisineDraft('${escapeAttribute(cuisine)}')"
+            >
+                <span>${escapeHtml(cuisine)}</span>
+                <span class="discovery-modal-choice-check" aria-hidden="true">${selected ? "✓" : ""}</span>
+            </button>
+        `;
+    }).join("");
+}
+
+function renderDiscoveryCuisineDraftList() {
+    const cuisineList = document.getElementById("discoveryCuisineOptions");
+    if (!cuisineList) {
+        return;
+    }
+    cuisineList.innerHTML = buildDiscoveryCuisineListMarkup();
+}
+
+function renderDiscoveryModalSectionPanel() {
+    if (discoveryFilterModalSection === "SORT") {
+        return `
+            <div class="discovery-modal-pane-head">
+                <p class="discovery-modal-pane-title">Sort by</p>
+            </div>
+            <div class="discovery-modal-choice-list">
+                ${DISCOVERY_SORT_OPTIONS.map((option) => `
+                    <button
+                        class="discovery-modal-choice ${discoveryFilterDraft.sortBy === option.value ? "active" : ""}"
+                        type="button"
+                        onclick="setDiscoveryDraftSort('${escapeAttribute(option.value)}')"
+                    >
+                        <span>${escapeHtml(option.label)}</span>
+                        <span class="discovery-modal-choice-check" aria-hidden="true">${discoveryFilterDraft.sortBy === option.value ? "●" : "○"}</span>
+                    </button>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    if (discoveryFilterModalSection === "CUISINES") {
+        return `
+            <div class="discovery-modal-pane-head">
+                <p class="discovery-modal-pane-title">Cuisines</p>
+            </div>
+            <div class="discovery-cuisine-search-wrap">
+                <input
+                    id="discoveryCuisineSearch"
+                    type="text"
+                    placeholder="Search cuisines"
+                    value="${escapeHtml(discoveryCuisineSearchQuery)}"
+                    oninput="updateDiscoveryCuisineSearch(this.value)"
+                >
+                <button class="discovery-cuisine-search-clear" type="button" onclick="clearDiscoveryCuisineSearch()" aria-label="Clear cuisine search">
+                    &#10005;
+                </button>
+            </div>
+            <div class="discovery-modal-choice-list discovery-cuisine-list" id="discoveryCuisineOptions">
+                ${buildDiscoveryCuisineListMarkup()}
+            </div>
+        `;
+    }
+
+    if (discoveryFilterModalSection === "RATING") {
+        return `
+            <div class="discovery-modal-pane-head">
+                <p class="discovery-modal-pane-title">Rating</p>
+                <p class="discovery-modal-pane-subtitle">Show restaurants rated at least:</p>
+            </div>
+            <div class="discovery-rating-scale">
+                ${DISCOVERY_RATING_OPTIONS.map((option) => `
+                    <button
+                        class="discovery-rating-node ${Number(discoveryFilterDraft.minRating) === Number(option.value) ? "active" : ""}"
+                        type="button"
+                        onclick="setDiscoveryDraftRating(${Number(option.value)})"
+                    >
+                        ${escapeHtml(option.label)}
+                    </button>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    return `
+        <div class="discovery-modal-pane-head">
+            <p class="discovery-modal-pane-title">Cost per person</p>
+            <p class="discovery-modal-pane-subtitle">Approximate spend per person.</p>
+        </div>
+        <div class="discovery-modal-choice-list">
+            ${DISCOVERY_COST_PER_PERSON_OPTIONS.map((option) => `
+                <button
+                    class="discovery-modal-choice ${Number(discoveryFilterDraft.maxPriceForTwo) === Number(option.value) ? "active" : ""}"
+                    type="button"
+                    onclick="setDiscoveryDraftCost(${Number(option.value)})"
+                >
+                    <span>${escapeHtml(option.label)}</span>
+                    <span class="discovery-modal-choice-check" aria-hidden="true">${Number(discoveryFilterDraft.maxPriceForTwo) === Number(option.value) ? "●" : "○"}</span>
+                </button>
+            `).join("")}
+        </div>
+    `;
+}
+
 function countActiveDiscoveryFilters() {
     return [
-        discoveryFilters.minRating > 0,
-        discoveryFilters.maxEta > 0,
-        discoveryFilters.maxPriceForTwo > 0,
-        discoveryFilters.vegOnly
+        Number(discoveryFilters.minRating) > 0,
+        Number(discoveryFilters.maxEta) > 0,
+        Number(discoveryFilters.maxPriceForTwo) > 0,
+        discoveryFilters.vegOnly,
+        Array.isArray(discoveryFilters.cuisines) && discoveryFilters.cuisines.length > 0,
+        discoveryFilters.sortBy && discoveryFilters.sortBy !== "POPULARITY"
     ].filter(Boolean).length;
 }
 
@@ -1059,43 +1351,66 @@ function renderDiscoveryFilters() {
     }
 
     const activeCount = countActiveDiscoveryFilters();
+    const cuisinesChipLabel = getDiscoveryCuisineChipLabel();
+
     host.innerHTML = `
-        <div class="discovery-filter-row">
-            <label class="discovery-filter-control">
-                <span>Rating</span>
-                <select id="filterMinRating" onchange="updateDiscoveryFilters()">
-                    <option value="0" ${discoveryFilters.minRating === 0 ? "selected" : ""}>Any</option>
-                    <option value="4" ${discoveryFilters.minRating === 4 ? "selected" : ""}>4.0+</option>
-                    <option value="4.2" ${discoveryFilters.minRating === 4.2 ? "selected" : ""}>4.2+</option>
-                    <option value="4.5" ${discoveryFilters.minRating === 4.5 ? "selected" : ""}>4.5+</option>
-                </select>
-            </label>
-            <label class="discovery-filter-control">
-                <span>ETA</span>
-                <select id="filterMaxEta" onchange="updateDiscoveryFilters()">
-                    <option value="0" ${discoveryFilters.maxEta === 0 ? "selected" : ""}>Any</option>
-                    <option value="20" ${discoveryFilters.maxEta === 20 ? "selected" : ""}>Under 20 min</option>
-                    <option value="30" ${discoveryFilters.maxEta === 30 ? "selected" : ""}>Under 30 min</option>
-                    <option value="40" ${discoveryFilters.maxEta === 40 ? "selected" : ""}>Under 40 min</option>
-                </select>
-            </label>
-            <label class="discovery-filter-control">
-                <span>Price for two</span>
-                <select id="filterMaxPriceForTwo" onchange="updateDiscoveryFilters()">
-                    <option value="0" ${discoveryFilters.maxPriceForTwo === 0 ? "selected" : ""}>Any</option>
-                    <option value="400" ${discoveryFilters.maxPriceForTwo === 400 ? "selected" : ""}>Under Rs 400</option>
-                    <option value="600" ${discoveryFilters.maxPriceForTwo === 600 ? "selected" : ""}>Under Rs 600</option>
-                    <option value="800" ${discoveryFilters.maxPriceForTwo === 800 ? "selected" : ""}>Under Rs 800</option>
-                </select>
-            </label>
-            <label class="discovery-toggle">
-                <input id="filterVegOnly" type="checkbox" ${discoveryFilters.vegOnly ? "checked" : ""} onchange="updateDiscoveryFilters()">
-                <span>Veg-friendly only</span>
-            </label>
-            <button class="secondary-button discovery-reset-btn" type="button" onclick="clearDiscoveryFilters()" ${activeCount ? "" : "disabled"}>
-                Clear${activeCount ? ` (${activeCount})` : ""}
+        <div class="discovery-chip-row">
+            <button class="discovery-chip ${activeCount ? "active" : ""}" type="button" onclick="openDiscoveryFilterModal('SORT')">
+                <span class="discovery-chip-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M4 7.5h16M7.5 12h9M10.5 16.5h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                    </svg>
+                </span>
+                <span>Filters</span>
+                ${activeCount ? `<span class="discovery-chip-count">${activeCount}</span>` : ""}
+            </button>
+            <button class="discovery-chip ${discoveryFilters.vegOnly ? "active" : ""}" type="button" onclick="toggleDiscoveryVegOnly()">
+                Pure Veg
+                ${discoveryFilters.vegOnly ? '<span class="discovery-chip-remove" aria-hidden="true">&#10005;</span>' : ""}
+            </button>
+            <button class="discovery-chip ${discoveryFilters.cuisines?.length ? "active" : ""}" type="button" onclick="openDiscoveryFilterModal('CUISINES')">
+                ${escapeHtml(cuisinesChipLabel)}
+                <span class="discovery-chip-caret" aria-hidden="true">&#9662;</span>
             </button>
         </div>
+
+        ${discoveryFilterModalOpen ? `
+            <div class="discovery-filter-modal-overlay" onclick="closeDiscoveryFilterModal()">
+                <div class="discovery-filter-modal" role="dialog" aria-modal="true" aria-label="Filters" onclick="event.stopPropagation()">
+                    <div class="discovery-filter-modal-head">
+                        <h3>Filters</h3>
+                        <button class="discovery-filter-modal-close" type="button" onclick="closeDiscoveryFilterModal()" aria-label="Close filters">
+                            &#10005;
+                        </button>
+                    </div>
+                    <div class="discovery-filter-modal-body">
+                        <aside class="discovery-filter-modal-tabs">
+                            ${DISCOVERY_MODAL_SECTIONS.map((section) => `
+                                <button
+                                    class="discovery-filter-tab ${discoveryFilterModalSection === section.key ? "active" : ""}"
+                                    type="button"
+                                    onclick="setDiscoveryFilterModalSection('${escapeAttribute(section.key)}')"
+                                >
+                                    <span class="discovery-filter-tab-title">${escapeHtml(section.label)}</span>
+                                    <span class="discovery-filter-tab-meta">${escapeHtml(getDiscoveryDraftSectionSummary(section.key))}</span>
+                                </button>
+                            `).join("")}
+                        </aside>
+                        <section class="discovery-filter-modal-panel">
+                            ${renderDiscoveryModalSectionPanel()}
+                        </section>
+                    </div>
+                    <div class="discovery-filter-modal-foot">
+                        <button class="discovery-filter-clear-all" type="button" onclick="clearDiscoveryFilterDraft()">
+                            Clear all
+                        </button>
+                        <button class="discovery-filter-apply" type="button" onclick="applyDiscoveryFilterDraft()">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        ` : ""}
     `;
 }
 
@@ -1105,18 +1420,129 @@ function updateDiscoveryFilters() {
     const maxPriceForTwo = Number(document.getElementById("filterMaxPriceForTwo")?.value || 0);
     const vegOnly = Boolean(document.getElementById("filterVegOnly")?.checked);
 
-    discoveryFilters = { minRating, maxEta, maxPriceForTwo, vegOnly };
+    discoveryFilters = cloneDiscoveryFilterState({
+        ...discoveryFilters,
+        minRating,
+        maxEta,
+        maxPriceForTwo,
+        vegOnly
+    });
+    visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
+    renderRestaurants();
+}
+
+function toggleDiscoveryVegOnly() {
+    discoveryFilters = cloneDiscoveryFilterState({
+        ...discoveryFilters,
+        vegOnly: !discoveryFilters.vegOnly
+    });
+    visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
+    renderRestaurants();
+}
+
+function openDiscoveryFilterModal(section = "SORT") {
+    discoveryFilterModalOpen = true;
+    discoveryFilterModalSection = DISCOVERY_MODAL_SECTIONS.some((entry) => entry.key === section) ? section : "SORT";
+    discoveryFilterDraft = cloneDiscoveryFilterState(discoveryFilters);
+    discoveryCuisineSearchQuery = "";
+    renderDiscoveryFilters();
+}
+
+function closeDiscoveryFilterModal() {
+    if (!discoveryFilterModalOpen) {
+        return;
+    }
+    discoveryFilterModalOpen = false;
+    discoveryCuisineSearchQuery = "";
+    renderDiscoveryFilters();
+}
+
+function setDiscoveryFilterModalSection(section) {
+    if (!DISCOVERY_MODAL_SECTIONS.some((entry) => entry.key === section)) {
+        return;
+    }
+    discoveryFilterModalSection = section;
+    discoveryCuisineSearchQuery = "";
+    renderDiscoveryFilters();
+}
+
+function setDiscoveryDraftSort(sortBy) {
+    discoveryFilterDraft = cloneDiscoveryFilterState({
+        ...discoveryFilterDraft,
+        sortBy
+    });
+    renderDiscoveryFilters();
+}
+
+function setDiscoveryDraftRating(minRating) {
+    discoveryFilterDraft = cloneDiscoveryFilterState({
+        ...discoveryFilterDraft,
+        minRating: Number(minRating || 0)
+    });
+    renderDiscoveryFilters();
+}
+
+function setDiscoveryDraftCost(maxPriceForTwo) {
+    discoveryFilterDraft = cloneDiscoveryFilterState({
+        ...discoveryFilterDraft,
+        maxPriceForTwo: Number(maxPriceForTwo || 0)
+    });
+    renderDiscoveryFilters();
+}
+
+function toggleDiscoveryCuisineDraft(cuisine) {
+    const normalizedCuisine = String(cuisine || "").trim();
+    if (!normalizedCuisine) {
+        return;
+    }
+
+    const normalizedKey = normalizeTextForMatching(normalizedCuisine);
+    const nextCuisines = (discoveryFilterDraft.cuisines || []).filter((entry) => normalizeTextForMatching(entry) !== normalizedKey);
+    if (nextCuisines.length === (discoveryFilterDraft.cuisines || []).length) {
+        nextCuisines.push(normalizedCuisine);
+    }
+
+    discoveryFilterDraft = cloneDiscoveryFilterState({
+        ...discoveryFilterDraft,
+        cuisines: nextCuisines
+    });
+    renderDiscoveryFilters();
+}
+
+function updateDiscoveryCuisineSearch(query) {
+    discoveryCuisineSearchQuery = String(query || "");
+    renderDiscoveryCuisineDraftList();
+}
+
+function clearDiscoveryCuisineSearch() {
+    discoveryCuisineSearchQuery = "";
+    const searchInput = document.getElementById("discoveryCuisineSearch");
+    if (searchInput) {
+        searchInput.value = "";
+        searchInput.focus();
+    }
+    renderDiscoveryCuisineDraftList();
+}
+
+function clearDiscoveryFilterDraft() {
+    discoveryFilterDraft = getDefaultDiscoveryFilters();
+    discoveryCuisineSearchQuery = "";
+    renderDiscoveryFilters();
+}
+
+function applyDiscoveryFilterDraft() {
+    discoveryFilters = cloneDiscoveryFilterState(discoveryFilterDraft);
+    discoveryFilterModalOpen = false;
+    discoveryCuisineSearchQuery = "";
     visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
     renderRestaurants();
 }
 
 function clearDiscoveryFilters() {
-    discoveryFilters = {
-        minRating: 0,
-        maxEta: 0,
-        maxPriceForTwo: 0,
-        vegOnly: false
-    };
+    discoveryFilters = getDefaultDiscoveryFilters();
+    discoveryFilterDraft = cloneDiscoveryFilterState(discoveryFilters);
+    discoveryFilterModalOpen = false;
+    discoveryCuisineSearchQuery = "";
     visibleRestaurantCount = RESTAURANT_PAGE_SIZE;
     renderRestaurants();
 }
@@ -2216,6 +2642,52 @@ function renderCategories() {
     `).join("");
 }
 
+function compareRestaurantsByName(left, right) {
+    return String(left?.name || "").localeCompare(String(right?.name || ""));
+}
+
+function getRestaurantSortMetric(restaurant) {
+    const rating = Number(restaurant?.rating || 0);
+    const eta = parseDeliveryEtaMinutes(restaurant?.time);
+    const hasDiscount = restaurant?.discount ? 1 : 0;
+    return (rating * 100) + (hasDiscount * 8) - Math.min(eta, 90);
+}
+
+function sortRestaurantsByDiscoverySelection(restaurantList) {
+    const sortBy = String(discoveryFilters.sortBy || "POPULARITY");
+    return [...restaurantList].sort((left, right) => {
+        if (sortBy === "RATING_DESC") {
+            const ratingDiff = Number(right.rating || 0) - Number(left.rating || 0);
+            if (ratingDiff !== 0) {
+                return ratingDiff;
+            }
+            return compareRestaurantsByName(left, right);
+        }
+
+        if (sortBy === "COST_ASC") {
+            const priceDiff = estimateRestaurantPriceForTwo(left) - estimateRestaurantPriceForTwo(right);
+            if (priceDiff !== 0) {
+                return priceDiff;
+            }
+            return compareRestaurantsByName(left, right);
+        }
+
+        if (sortBy === "COST_DESC") {
+            const priceDiff = estimateRestaurantPriceForTwo(right) - estimateRestaurantPriceForTwo(left);
+            if (priceDiff !== 0) {
+                return priceDiff;
+            }
+            return compareRestaurantsByName(left, right);
+        }
+
+        const popularityDiff = getRestaurantSortMetric(right) - getRestaurantSortMetric(left);
+        if (popularityDiff !== 0) {
+            return popularityDiff;
+        }
+        return compareRestaurantsByName(left, right);
+    });
+}
+
 function renderRestaurants() {
     const grid = document.getElementById("restaurantsGrid");
     const footer = document.getElementById("restaurantsFooter");
@@ -2254,10 +2726,14 @@ function renderRestaurants() {
         if (discoveryFilters.vegOnly && !isVegFriendlyRestaurant(restaurant)) {
             return false;
         }
+        if (!matchesSelectedDiscoveryCuisines(restaurant, discoveryFilters.cuisines || [])) {
+            return false;
+        }
         return true;
     });
+    const sortedRestaurants = sortRestaurantsByDiscoverySelection(filteredRestaurants);
 
-    if (!filteredRestaurants.length) {
+    if (!sortedRestaurants.length) {
         grid.innerHTML = `<p class="empty-state">No restaurants match your selected filters.</p>`;
         if (footer) {
             footer.innerHTML = "";
@@ -2265,7 +2741,7 @@ function renderRestaurants() {
         return;
     }
 
-    const visibleRestaurants = filteredRestaurants.slice(0, visibleRestaurantCount);
+    const visibleRestaurants = sortedRestaurants.slice(0, visibleRestaurantCount);
     grid.innerHTML = `
         ${visibleRestaurants.map((restaurant) => `
         <article
@@ -2308,9 +2784,9 @@ function renderRestaurants() {
     `;
 
     if (footer) {
-        const hasMore = visibleRestaurantCount < filteredRestaurants.length;
+        const hasMore = visibleRestaurantCount < sortedRestaurants.length;
         footer.innerHTML = `
-            <p class="restaurants-count">Showing ${Math.min(visibleRestaurantCount, filteredRestaurants.length)} of ${filteredRestaurants.length} restaurants</p>
+            <p class="restaurants-count">Showing ${Math.min(visibleRestaurantCount, sortedRestaurants.length)} of ${sortedRestaurants.length} restaurants</p>
             ${hasMore ? `<button class="secondary-button restaurants-load-more" type="button" onclick="loadMoreRestaurants()">Load more</button>` : ""}
         `;
     }
@@ -3352,71 +3828,117 @@ function renderCorporatePage() {
     const activePeople = corporatePeopleTab === "board" ? boardTeam : managementTeam;
 
     content.innerHTML = `
-        <div class="corporate-shell">
-            <section class="corporate-section">
-                <h2 class="corporate-section-title"><span></span>GET TO KNOW US<span></span></h2>
-                <div class="corporate-story-layout">
-                    <div class="corporate-story-tabs">
+        <div class="corporate-shell corp-pro">
+            <section class="corp-pro-hero">
+                <div class="corp-pro-hero-copy">
+                    <p class="corp-pro-eyebrow">SnapEats Corporate</p>
+                    <h1>Built to make neighborhood food ordering reliable, fast, and trusted.</h1>
+                    <p>
+                        SnapEats is a product-led delivery platform focused on smooth discovery, transparent pricing, and a dependable checkout flow.
+                        We combine strong engineering with local market execution to deliver better everyday ordering experiences.
+                    </p>
+                    <div class="corp-pro-hero-actions">
+                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the team</button>
+                        <button class="secondary-button" type="button" onclick="document.getElementById('corpContactSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Contact us</button>
+                    </div>
+                </div>
+                <div class="corp-pro-hero-metrics">
+                    <article class="corp-pro-metric">
+                        <strong>${restaurantCount}+</strong>
+                        <span>Restaurant partners</span>
+                    </article>
+                    <article class="corp-pro-metric">
+                        <strong>${categoryCount}+</strong>
+                        <span>Active categories</span>
+                    </article>
+                    <article class="corp-pro-metric">
+                        <strong>${fulfilledOrders}+</strong>
+                        <span>Orders delivered</span>
+                    </article>
+                    <article class="corp-pro-metric">
+                        <strong>${paymentMethodsCount}+</strong>
+                        <span>Saved payment methods</span>
+                    </article>
+                </div>
+            </section>
+
+            <section class="corporate-section corp-pro-section">
+                <div class="corp-pro-section-head">
+                    <p class="corp-pro-kicker">${escapeHtml(activeStory.kicker)}</p>
+                    <h2>What Drives SnapEats</h2>
+                </div>
+                <div class="corp-pro-story-layout">
+                    <div class="corp-pro-story-tabs">
                         ${Object.keys(storyTabs).map((tab) => `
                             <button
-                                class="corporate-story-tab ${corporateStoryTab === tab ? "active" : ""}"
+                                class="corp-pro-story-tab ${corporateStoryTab === tab ? "active" : ""}"
                                 type="button"
                                 onclick="setCorporateStoryTab('${tab}')"
                             >
-                                ${escapeHtml(storyTabs[tab].title)} ${corporateStoryTab === tab ? "->" : ""}
+                                ${escapeHtml(storyTabs[tab].title)}
                             </button>
                         `).join("")}
                     </div>
-                    <div class="corporate-story-copy">
-                        <p class="corporate-kicker">${escapeHtml(activeStory.kicker)}</p>
+                    <div class="corp-pro-story-panel">
                         <h3>${escapeHtml(activeStory.title)} at SnapEats</h3>
                         <p>${escapeHtml(activeStory.body)}</p>
-                    </div>
-                    <div class="corporate-story-image-wrap">
-                        <div class="corporate-visual-card corporate-story-visual ${escapeAttribute(activeStory.visualClass)}">
-                            <span class="corporate-visual-icon">${activeStory.visualIcon}</span>
-                            <strong>${escapeHtml(activeStory.visualTitle)}</strong>
-                            <p>Always available, no broken media dependency.</p>
+                        <div class="corp-pro-story-highlight ${escapeAttribute(activeStory.visualClass)}">
+                            <span class="corp-pro-story-icon">${activeStory.visualIcon}</span>
+                            <div>
+                                <strong>${escapeHtml(activeStory.visualTitle)}</strong>
+                                <p>Consistent execution across product, engineering, and delivery operations.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section class="corporate-section">
-                <h2 class="corporate-section-title"><span></span>INDUSTRY BUILDER<span></span></h2>
-                <div class="corporate-pioneer-layout">
-                    <div>
-                        <p>
-                            SnapEats is engineered as a practical hyperlocal commerce system. From onboarding restaurants
-                            to OTP identity and conversion-first checkout, each module is designed for reliability and speed.
-                        </p>
-                        <p>
-                            The platform keeps customer, restaurant, and operations flows connected with one unified data model,
-                            helping reduce friction from discovery to delivery.
-                        </p>
-                    </div>
-                    <div class="corporate-pioneer-image-wrap">
-                        <div class="corporate-visual-card corporate-pioneer-visual">
-                            <span class="corporate-visual-icon">&#9889;</span>
-                            <strong>Industry-scale operations engine</strong>
-                            <p>Restaurant onboarding, OTP trust, checkout reliability, and delivery control in one system.</p>
-                        </div>
-                    </div>
+            <section class="corporate-section corp-pro-section">
+                <div class="corp-pro-section-head">
+                    <p class="corp-pro-kicker">Platform</p>
+                    <h2>Industry Builder</h2>
                 </div>
-                <div class="corporate-metric-grid">
-                    <article><strong>${restaurantCount}+</strong><span>restaurant partners</span></article>
-                    <article><strong>${categoryCount}+</strong><span>active categories</span></article>
-                    <article><strong>${fulfilledOrders}+</strong><span>orders delivered</span></article>
-                    <article><strong>${paymentMethodsCount}+</strong><span>saved payment methods</span></article>
+                <div class="corp-pro-two-col">
+                    <div class="corp-pro-copy">
+                        <p>
+                            SnapEats is engineered as a practical hyperlocal commerce system. From restaurant onboarding to OTP identity
+                            and conversion-first checkout, each module is designed for reliability, speed, and customer trust.
+                        </p>
+                        <p>
+                            The platform keeps customer, restaurant, and operations workflows connected with a unified data model,
+                            reducing friction from discovery to delivery.
+                        </p>
+                    </div>
+                    <div class="corp-pro-capability-grid">
+                        <article>
+                            <h3>Partner Engine</h3>
+                            <p>Restaurant onboarding, catalog quality, and offer controls in one flow.</p>
+                        </article>
+                        <article>
+                            <h3>Trust Layer</h3>
+                            <p>OTP-first identity and clean account controls for reliable access.</p>
+                        </article>
+                        <article>
+                            <h3>Commerce Flow</h3>
+                            <p>Optimized cart, coupons, and payment journey tuned for conversions.</p>
+                        </article>
+                        <article>
+                            <h3>Ops Visibility</h3>
+                            <p>Order lifecycle clarity from placement to successful delivery.</p>
+                        </article>
+                    </div>
                 </div>
             </section>
 
-            <section class="corporate-journey-section">
-                <h2 class="corporate-journey-title"><span></span>THE SNAPEATS JOURNEY<span></span></h2>
-                <div class="corporate-journey-track">
+            <section class="corporate-section corp-pro-section">
+                <div class="corp-pro-section-head">
+                    <p class="corp-pro-kicker">Journey</p>
+                    <h2>SnapEats Timeline</h2>
+                </div>
+                <div class="corp-pro-timeline">
                     ${timeline.map((step) => `
-                        <article class="corporate-journey-card">
-                            <p class="corporate-journey-year">${escapeHtml(step.year)}</p>
+                        <article class="corp-pro-timeline-card">
+                            <p class="corp-pro-timeline-year">${escapeHtml(step.year)}</p>
                             <h3>${escapeHtml(step.title)}</h3>
                             <p>${escapeHtml(step.copy)}</p>
                         </article>
@@ -3424,24 +3946,24 @@ function renderCorporatePage() {
                 </div>
             </section>
 
-            <section class="corporate-section">
-                <div class="corporate-people-head">
-                    <h2>Details of Leadership</h2>
-                    <div class="corporate-people-tabs">
-                        <button class="corporate-people-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
-                        <button class="corporate-people-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board and Advisors</button>
+            <section class="corporate-section corp-pro-section">
+                <div class="corp-pro-lead-head">
+                    <div>
+                        <p class="corp-pro-kicker">Leadership</p>
+                        <h2>People Behind SnapEats</h2>
+                    </div>
+                    <div class="corp-pro-people-tabs">
+                        <button class="corp-pro-people-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
+                        <button class="corp-pro-people-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board and Advisors</button>
                     </div>
                 </div>
-                <div class="corporate-people-grid">
+                <div class="corp-pro-people-grid">
                     ${activePeople.map((person) => `
-                        <article class="corporate-person-card">
-                            <div class="corporate-person-visual ${escapeAttribute(person.visualClass)}">
-                                <span class="corporate-person-icon">${person.visualIcon}</span>
-                                <small>${escapeHtml(person.role)}</small>
-                            </div>
-                            <div class="corporate-person-copy">
+                        <article class="corp-pro-person-card">
+                            <div class="corp-pro-person-badge ${escapeAttribute(person.visualClass)}">${person.visualIcon}</div>
+                            <div class="corp-pro-person-copy">
                                 <h3>${escapeHtml(person.name)}</h3>
-                                <p class="corporate-person-role">${escapeHtml(person.role)}</p>
+                                <p class="corp-pro-person-role">${escapeHtml(person.role)}</p>
                                 <p>${escapeHtml(person.copy)}</p>
                             </div>
                         </article>
@@ -3449,44 +3971,46 @@ function renderCorporatePage() {
                 </div>
             </section>
 
-            <section class="corporate-section">
-                <h2 class="corporate-section-title"><span></span>CAREERS AT SNAPEATS<span></span></h2>
-                <div class="corporate-careers-layout">
-                    <div>
+            <section class="corporate-section corp-pro-section">
+                <div class="corp-pro-section-head">
+                    <p class="corp-pro-kicker">Careers</p>
+                    <h2>Careers With Real Product Ownership</h2>
+                </div>
+                <div class="corp-pro-careers">
+                    <div class="corp-pro-copy">
                         <p>
-                            We are building a product-first culture where ownership, speed, and quality matter. If you care
-                            about solving real customer problems in commerce and logistics, SnapEats is a strong place to grow.
+                            We are building a product-first culture where ownership, speed, and quality matter. If you care about solving
+                            real customer problems in commerce and logistics, SnapEats is a strong place to grow.
                         </p>
                         <p>
-                            Current focus areas include backend engineering, frontend performance, partner operations, and
-                            growth analytics.
+                            Current focus areas include backend engineering, frontend performance, partner operations, and growth analytics.
                         </p>
-                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the journey</button>
                     </div>
-                    <div class="corporate-careers-image-wrap">
-                        <div class="corporate-visual-card corporate-careers-visual">
-                            <span class="corporate-visual-icon">&#127919;</span>
-                            <strong>Careers with impact</strong>
-                            <p>Work on backend systems, frontend UX, growth, and partner operations with real product ownership.</p>
-                        </div>
+                    <div class="corp-pro-careers-cta">
+                        <strong>Open Roles Across Engineering, Operations, and Growth</strong>
+                        <p>Build scalable features, improve conversion funnels, and shape customer trust at scale.</p>
+                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Apply now</button>
                     </div>
                 </div>
             </section>
 
-            <section class="corporate-section corporate-contact-section">
-                <h2 class="corporate-section-title"><span></span>GET IN TOUCH WITH US<span></span></h2>
-                <div class="corporate-contact-layout">
-                    <div class="corporate-contact-copy">
-                        <h3>Head office</h3>
+            <section class="corporate-section corp-pro-section" id="corpContactSection">
+                <div class="corp-pro-section-head">
+                    <p class="corp-pro-kicker">Contact</p>
+                    <h2>Get In Touch</h2>
+                </div>
+                <div class="corp-pro-contact">
+                    <div class="corp-pro-contact-card">
+                        <h3>Head Office</h3>
                         <p>SnapEats Product Lab</p>
                         <p>Jamia Nagar, New Delhi, Delhi 110025</p>
-                        <h3>Project owner</h3>
+                        <h3>Project Owner</h3>
                         <p>${creatorName}</p>
                         <p>${creatorEmail}</p>
                         <h3>Support</h3>
                         <p>support@snapeats.in</p>
                     </div>
-                    <div class="corporate-contact-map">
+                    <div class="corp-pro-contact-map">
                         <iframe
                             title="SnapEats office map"
                             loading="lazy"
@@ -3920,20 +4444,14 @@ function renderCart() {
                     <div class="payment-section">
                         <h3>Pay on delivery</h3>
                         <div class="payment-method-list">
-                            <label class="checkout-payment-card ${checkoutPaymentChoice === "CASH" ? "selected" : ""}">
-                                <input
-                                    type="radio"
-                                    name="checkoutPaymentChoice"
-                                    value="CASH"
-                                    ${checkoutPaymentChoice === "CASH" ? "checked" : ""}
-                                    onchange="setCheckoutPaymentChoice(this.value)"
-                                >
+                            <button class="payment-option-row ${checkoutPaymentChoice === "CASH" ? "selected" : ""}" type="button" onclick="setCheckoutPaymentChoice('CASH')">
                                 <div>
                                     <strong>Cash on delivery</strong>
                                     <p>Pay in cash or UPI when your order arrives.</p>
                                 </div>
                                 <span class="payment-type-pill">Cash</span>
-                            </label>
+                                <span class="payment-offer-arrow">&#8250;</span>
+                            </button>
                         </div>
                     </div>
 
@@ -4269,8 +4787,12 @@ function renderAddressBook() {
 
 function renderAuthModal(mode = "otp") {
     const content = document.getElementById("authModalContent");
+    const authModalShell = document.querySelector("#authModal .auth-modal-content");
     if (!content) {
         return;
+    }
+    if (authModalShell) {
+        authModalShell.classList.toggle("account-mode", Boolean(currentUser));
     }
 
     if (currentUser) {
@@ -4283,9 +4805,11 @@ function renderAuthModal(mode = "otp") {
                     <div class="account-hero-copy">
                         <p class="menu-eyebrow">My account</p>
                         <h2>${escapeHtml(currentUser.name || "SnapEats User")}</h2>
-                        <p class="account-hero-meta">${escapeHtml(currentUser.phoneNumber || "-")} <span>&bull;</span> ${escapeHtml(currentUser.email || "-")}</p>
+                        <div class="account-hero-meta-row">
+                            <p class="account-hero-meta">${escapeHtml(currentUser.phoneNumber || "-")} <span>&bull;</span> ${escapeHtml(currentUser.email || "-")}</p>
+                            <button class="account-edit-button" type="button" onclick="setAccountSection('settings')">Edit profile</button>
+                        </div>
                     </div>
-                    <button class="account-edit-button" type="button" onclick="setAccountSection('settings')">Edit profile</button>
                 </section>
 
                 <section class="account-layout">
@@ -6287,6 +6811,7 @@ document.addEventListener("DOMContentLoaded", () => {
             closeOffers();
             closeCorporatePage();
             closeSearchBar();
+            closeDiscoveryFilterModal();
         }
     });
 
