@@ -755,23 +755,62 @@ function updateAuthNav() {
     authNavLabel.textContent = currentUser?.name ? currentUser.name.split(" ")[0] : "Profile";
 }
 
+function formatLocationSubtitleForChip(subtitle) {
+    const raw = String(subtitle || "").trim();
+    if (!raw) {
+        return "";
+    }
+
+    const segments = raw
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+    let compact = raw;
+    if (segments.length >= 2) {
+        compact = `${segments[0]}, ${segments[1]}`;
+    } else if (segments.length === 1) {
+        compact = segments[0];
+    }
+
+    const maxChars = 38;
+    if (compact.length > maxChars) {
+        return `${compact.slice(0, maxChars).trimEnd()}...`;
+    }
+    return compact;
+}
+
 function updateLocationChip() {
     const locationChipLabel = document.getElementById("locationChipLabel");
+    const locationChipSubtitle = document.getElementById("locationChipSubtitle");
     if (!locationChipLabel) {
         return;
     }
-    locationChipLabel.textContent = selectedLocation?.label || "Other";
+
+    const label = String(selectedLocation?.label || "Other").trim() || "Other";
+    const subtitle = String(selectedLocation?.subtitle || "").trim();
+    const compactSubtitle = formatLocationSubtitleForChip(subtitle);
+
+    locationChipLabel.textContent = label;
+
+    if (locationChipSubtitle) {
+        if (compactSubtitle) {
+            locationChipSubtitle.textContent = compactSubtitle;
+            locationChipSubtitle.style.display = "inline";
+            locationChipSubtitle.title = compactSubtitle;
+        } else {
+            locationChipSubtitle.textContent = "";
+            locationChipSubtitle.style.display = "none";
+            locationChipSubtitle.removeAttribute("title");
+        }
+    }
 }
 
 function syncHeaderOffsetVar() {
     const header = document.querySelector(".header");
-    const searchStrip = document.getElementById("headerSearchStrip");
     const headerHeight = header ? header.getBoundingClientRect().height : 0;
-    const stripHeight = searchStrip && searchStrip.classList.contains("open")
-        ? searchStrip.getBoundingClientRect().height
-        : 0;
-    const totalOffset = Math.max(80, Math.round(headerHeight + stripHeight));
-    document.documentElement.style.setProperty("--app-header-offset", `${totalOffset}px`);
+    const headerOffset = Math.max(72, Math.round(headerHeight));
+    document.documentElement.style.setProperty("--app-header-offset", `${headerOffset}px`);
 }
 
 function openSearchBar() {
@@ -5611,7 +5650,7 @@ function renderOrdersAccountPanel() {
     const latestOrders = orderHistory.slice(0, 3);
 
     return `
-        <div class="account-panel">
+        <div class="account-panel account-panel-orders">
             <div class="account-panel-head">
                 <div>
                     <p class="menu-eyebrow">Orders</p>

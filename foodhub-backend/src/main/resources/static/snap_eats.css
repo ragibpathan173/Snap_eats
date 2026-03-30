@@ -5712,13 +5712,13 @@ body {
 /* Corporate Pro Redesign */
 .corporate-shell.corp-pro {
     padding: 24px;
-    border-radius: 24px;
-    border: 1px solid #dae1ed;
+    border-radius: 0;
+    border: 1px solid #cfd8e3;
     background:
-        radial-gradient(920px 360px at -180px -120px, rgba(255, 128, 48, 0.2) 0%, rgba(255, 128, 48, 0) 70%),
-        radial-gradient(840px 360px at 120% -80px, rgba(29, 78, 216, 0.16) 0%, rgba(29, 78, 216, 0) 72%),
-        linear-gradient(180deg, #f4f7fc 0%, #eef3fb 100%);
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+        radial-gradient(920px 360px at -180px -120px, rgba(37, 99, 235, 0.16) 0%, rgba(37, 99, 235, 0) 70%),
+        radial-gradient(840px 360px at 120% -80px, rgba(2, 132, 199, 0.12) 0%, rgba(2, 132, 199, 0) 72%),
+        linear-gradient(135deg, #eef3f9 0%, #e7eff8 46%, #e2ebf5 100%);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.14);
     display: grid;
     gap: 20px;
 }
@@ -5726,11 +5726,22 @@ body {
 .corporate-shell.corp-pro .corp-pro-eyebrow,
 .corporate-shell.corp-pro .corp-pro-kicker {
     margin: 0;
-    color: #0f467f;
+    color: #1d4ed8;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     font-size: 11px;
     font-weight: 800;
+}
+
+.corporate-shell.corp-pro .primary-button {
+    border: 1px solid #173a63;
+    background: linear-gradient(135deg, #1e3a5f 0%, #274b76 100%);
+    color: #f8fbff;
+}
+
+.corporate-shell.corp-pro .primary-button:hover {
+    background: linear-gradient(135deg, #183251 0%, #1f4267 100%);
+    border-color: #142b44;
 }
 
 .corporate-shell.corp-pro .corp-pro-hero {
@@ -5738,12 +5749,12 @@ body {
     grid-template-columns: 1.2fr 0.8fr;
     gap: 16px;
     padding: 26px;
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 0;
+    border: 1px solid rgba(160, 174, 195, 0.46);
     background:
-        linear-gradient(132deg, #0f172a 0%, #1e293b 50%, #172554 100%);
+        linear-gradient(132deg, #0f172a 0%, #1e293b 52%, #334155 100%);
     color: #f8fafc;
-    box-shadow: 0 20px 36px rgba(15, 23, 42, 0.24);
+    box-shadow: 0 20px 36px rgba(15, 23, 42, 0.28);
 }
 
 .corporate-shell.corp-pro .corp-pro-hero-copy h1 {
@@ -5758,7 +5769,7 @@ body {
 .corporate-shell.corp-pro .corp-pro-hero-copy p {
     margin: 0;
     max-width: 62ch;
-    color: rgba(248, 250, 252, 0.86);
+    color: rgba(226, 232, 240, 0.92);
     font-size: 15px;
     line-height: 1.7;
 }
@@ -5771,14 +5782,14 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-hero-actions .secondary-button {
-    border-color: rgba(226, 232, 240, 0.35);
+    border-color: rgba(226, 232, 240, 0.46);
     color: #e2e8f0;
-    background: rgba(15, 23, 42, 0.38);
+    background: rgba(30, 41, 59, 0.45);
 }
 
 .corporate-shell.corp-pro .corp-pro-hero-actions .secondary-button:hover {
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(226, 232, 240, 0.56);
+    background: rgba(30, 41, 59, 0.74);
+    border-color: rgba(226, 232, 240, 0.7);
 }
 
 .corporate-shell.corp-pro .corp-pro-hero-metrics {
@@ -5788,9 +5799,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-metric {
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.22);
-    background: rgba(15, 23, 42, 0.35);
+    border-radius: 0;
+    border: 1px solid rgba(148, 163, 184, 0.36);
+    background: rgba(15, 23, 42, 0.36);
     backdrop-filter: blur(2px);
     padding: 14px;
     display: grid;
@@ -5805,15 +5816,15 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-metric span {
-    color: rgba(226, 232, 240, 0.9);
+    color: rgba(226, 232, 240, 0.94);
     font-size: 12px;
     letter-spacing: 0.02em;
 }
 
 .corporate-shell.corp-pro .corp-pro-section {
-    border-radius: 20px;
-    border: 1px solid #dde4ef;
-    background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    border-radius: 0;
+    border: 1px solid #d4dce8;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fafe 100%);
     box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
     padding: 22px;
     display: grid;
@@ -5840,9 +5851,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-story-tab {
-    border: 1px solid #dbe3ef;
-    border-radius: 12px;
-    background: #fff;
+    border: 1px solid #d4deea;
+    border-radius: 0;
+    background: #f8fbff;
     color: #334155;
     font-weight: 700;
     text-align: left;
@@ -5852,10 +5863,10 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-story-tab.active {
-    border-color: #cb202d;
-    background: linear-gradient(120deg, rgba(203, 32, 45, 0.12), rgba(255, 122, 26, 0.14));
-    color: #9f172a;
-    box-shadow: 0 10px 20px rgba(203, 32, 45, 0.16);
+    border-color: #2563eb;
+    background: linear-gradient(120deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.18));
+    color: #1d4ed8;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.18);
 }
 
 .corporate-shell.corp-pro .corp-pro-story-panel h3 {
@@ -5867,15 +5878,15 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-story-panel > p {
     margin: 10px 0 0;
-    color: #4b5563;
+    color: #475569;
     line-height: 1.75;
     max-width: 74ch;
 }
 
 .corporate-shell.corp-pro .corp-pro-story-highlight {
     margin-top: 16px;
-    border-radius: 16px;
-    border: 1px solid #dce4ef;
+    border-radius: 0;
+    border: 1px solid #d6e0ec;
     background: #f8fbff;
     padding: 14px;
     display: grid;
@@ -5887,9 +5898,10 @@ body {
 .corporate-shell.corp-pro .corp-pro-story-highlight .corp-pro-story-icon {
     width: 40px;
     height: 40px;
-    border-radius: 10px;
+    border-radius: 0;
     background: #fff;
-    border: 1px solid #dbe3ef;
+    border: 1px solid #d0dbea;
+    background: #eef4fb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -5904,7 +5916,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-story-highlight p {
     margin: 4px 0 0;
-    color: #5b6472;
+    color: #475569;
 }
 
 .corporate-shell.corp-pro .corp-pro-two-col,
@@ -5917,7 +5929,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-copy p {
     margin: 0;
-    color: #4b5563;
+    color: #475569;
     line-height: 1.75;
 }
 
@@ -5932,9 +5944,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-capability-grid article {
-    border-radius: 14px;
-    border: 1px solid #dfe6f1;
-    background: #fff;
+    border-radius: 0;
+    border: 1px solid #d8e2ee;
+    background: #ffffff;
     padding: 12px;
 }
 
@@ -5946,7 +5958,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-capability-grid p {
     margin: 6px 0 0;
-    color: #5b6472;
+    color: #526173;
     font-size: 14px;
     line-height: 1.6;
 }
@@ -5958,15 +5970,15 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-timeline-card {
-    border-radius: 14px;
-    border: 1px solid #dfe6f1;
-    background: #fff;
+    border-radius: 0;
+    border: 1px solid #d8e2ee;
+    background: #ffffff;
     padding: 14px;
 }
 
 .corporate-shell.corp-pro .corp-pro-timeline-year {
     margin: 0;
-    color: #0f467f;
+    color: #1e40af;
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.08em;
@@ -5982,7 +5994,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-timeline-card p {
     margin: 8px 0 0;
-    color: #5b6472;
+    color: #526173;
     line-height: 1.6;
 }
 
@@ -6001,9 +6013,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-people-tab {
-    border: 1px solid #dbe3ef;
-    border-radius: 999px;
-    background: #fff;
+    border: 1px solid #d4deea;
+    border-radius: 0;
+    background: #f8fbff;
     color: #334155;
     padding: 9px 13px;
     font-weight: 700;
@@ -6011,9 +6023,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-people-tab.active {
-    border-color: #cb202d;
-    color: #9f172a;
-    background: rgba(203, 32, 45, 0.08);
+    border-color: #2563eb;
+    color: #1d4ed8;
+    background: rgba(37, 99, 235, 0.14);
 }
 
 .corporate-shell.corp-pro .corp-pro-people-grid {
@@ -6023,9 +6035,9 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-person-card {
-    border-radius: 14px;
-    border: 1px solid #dfe6f1;
-    background: #fff;
+    border-radius: 0;
+    border: 1px solid #d8e2ee;
+    background: #ffffff;
     padding: 14px;
     display: grid;
     gap: 12px;
@@ -6034,9 +6046,9 @@ body {
 .corporate-shell.corp-pro .corp-pro-person-badge {
     width: 46px;
     height: 46px;
-    border-radius: 12px;
-    border: 1px solid #dbe3ef;
-    background: #f9fbff;
+    border-radius: 0;
+    border: 1px solid #d0dbea;
+    background: #eef4fb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -6051,22 +6063,22 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-person-role {
     margin: 5px 0 0;
-    color: #0f467f;
+    color: #1e40af;
     font-weight: 700;
     font-size: 13px;
 }
 
 .corporate-shell.corp-pro .corp-pro-person-copy p {
     margin: 8px 0 0;
-    color: #5b6472;
+    color: #526173;
     line-height: 1.65;
 }
 
 .corporate-shell.corp-pro .corp-pro-careers-cta,
 .corporate-shell.corp-pro .corp-pro-contact-card {
-    border-radius: 14px;
-    border: 1px solid #dfe6f1;
-    background: #fff;
+    border-radius: 0;
+    border: 1px solid #d8e2ee;
+    background: #ffffff;
     padding: 14px;
 }
 
@@ -6079,7 +6091,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-careers-cta p {
     margin: 8px 0 12px;
-    color: #5b6472;
+    color: #526173;
     line-height: 1.65;
 }
 
@@ -6096,7 +6108,7 @@ body {
 
 .corporate-shell.corp-pro .corp-pro-contact-card p {
     margin: 0;
-    color: #5b6472;
+    color: #526173;
 }
 
 .corporate-shell.corp-pro .corp-pro-contact-card p + h3 {
@@ -6104,10 +6116,15 @@ body {
 }
 
 .corporate-shell.corp-pro .corp-pro-contact-map {
-    border-radius: 14px;
+    border-radius: 0;
     overflow: hidden;
-    border: 1px solid #dfe6f1;
+    border: 1px solid #d8e2ee;
     min-height: 280px;
+}
+
+.corporate-shell.corp-pro,
+.corporate-shell.corp-pro * {
+    border-radius: 0 !important;
 }
 
 .corporate-shell.corp-pro .corp-pro-contact-map iframe {
@@ -6138,13 +6155,13 @@ body {
     .corporate-shell.corp-pro {
         padding: 14px;
         gap: 14px;
-        border-radius: 16px;
+        border-radius: 0;
     }
 
     .corporate-shell.corp-pro .corp-pro-hero,
     .corporate-shell.corp-pro .corp-pro-section {
         padding: 14px;
-        border-radius: 14px;
+        border-radius: 0;
     }
 
     .corporate-shell.corp-pro .corp-pro-hero-copy h1 {
@@ -6313,4 +6330,1224 @@ body {
 .account-main .account-empty-state {
     border-color: #f1dfcf;
     box-shadow: 0 10px 20px rgba(158, 78, 21, 0.08);
+}
+
+/* Global side spacing (uniform left/right gutters like Swiggy) */
+:root {
+    --layout-side-gap: clamp(18px, 3.6vw, 56px);
+    --layout-content-max: 1380px;
+    --layout-shell-max: 1540px;
+}
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+body {
+    background: #f2f3f5 !important;
+}
+
+.container {
+    width: min(var(--layout-content-max), calc(100% - (var(--layout-side-gap) * 2)));
+    max-width: none;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.hero-banner,
+.section-divider {
+    width: min(var(--layout-content-max), calc(100% - (var(--layout-side-gap) * 2)));
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Remove boxed section look so spacing appears continuous between sections */
+.categories-section .container,
+.restaurants-section .container,
+.app-section .container {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.categories-section .container {
+    margin-top: 0 !important;
+    position: static !important;
+    z-index: auto !important;
+}
+
+.menu-hero,
+.menu-toolbar,
+.menu-grid,
+.cart-shell,
+.offers-shell,
+.orders-shell,
+.auth-shell,
+.location-picker-shell,
+.address-book-shell,
+.corporate-shell,
+.account-shell {
+    width: min(var(--layout-shell-max), calc(100% - (var(--layout-side-gap) * 2)));
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --layout-side-gap: clamp(14px, 4vw, 26px);
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --layout-side-gap: 12px;
+    }
+
+    .hero-banner,
+    .section-divider,
+    .menu-hero,
+    .menu-toolbar,
+    .menu-grid,
+    .cart-shell,
+    .offers-shell,
+    .orders-shell,
+    .auth-shell,
+    .location-picker-shell,
+    .address-book-shell,
+    .corporate-shell,
+    .account-shell {
+        width: calc(100% - 24px);
+    }
+}
+
+/* Rounded restore for key storefront UI (as in previous style) */
+.logo-mark {
+    border-radius: 12px !important;
+}
+
+.location-chip {
+    border-radius: 8px !important;
+}
+
+.category-card,
+.category-image {
+    border-radius: 16px !important;
+}
+
+.category-overlay {
+    border-radius: 0 0 16px 16px !important;
+}
+
+.scroll-btn,
+.favorite-toggle {
+    border-radius: 999px !important;
+}
+
+.discovery-chip,
+.discovery-quick-control select,
+.discovery-quick-toggle,
+.discovery-quick-clear {
+    border-radius: 10px !important;
+}
+
+.restaurant-card {
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+/* Profile layout refresh: Swiggy-style structure with orange brand accents */
+.auth-modal-content.account-mode {
+    background: #eef1f4;
+}
+
+.auth-modal-content.account-mode .account-shell {
+    background: linear-gradient(180deg, #3f7b98 0 232px, #eef1f4 232px 100%);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding-bottom: 0;
+}
+
+.auth-modal-content.account-mode .account-hero,
+.auth-modal-content.account-mode .account-layout {
+    width: min(1520px, calc(100% - 56px));
+}
+
+.auth-modal-content.account-mode .account-hero {
+    margin: 0 auto;
+    padding: 46px 32px 34px;
+    max-width: none;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: center;
+    color: #fff;
+}
+
+.auth-modal-content.account-mode .account-hero-copy {
+    max-width: none;
+}
+
+.auth-modal-content.account-mode .account-hero .menu-eyebrow {
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.88);
+    letter-spacing: 0.12em;
+}
+
+.auth-modal-content.account-mode .account-hero h2 {
+    margin: 0;
+    font-size: clamp(40px, 4.5vw, 56px);
+    line-height: 1.02;
+    color: #fff;
+}
+
+.auth-modal-content.account-mode .account-hero-meta-row {
+    margin-top: 10px;
+    gap: 10px 14px;
+}
+
+.auth-modal-content.account-mode .account-hero-meta {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.auth-modal-content.account-mode .account-hero-meta span {
+    margin: 0 8px;
+    opacity: 0.8;
+}
+
+.auth-modal-content.account-mode .account-edit-button {
+    border: 1px solid rgba(255, 255, 255, 0.62);
+    background: transparent;
+    color: #fff;
+    border-radius: 0;
+    padding: 12px 20px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    border: 1px solid #dbe2ea;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+    overflow: hidden;
+}
+
+.auth-modal-content.account-mode .account-sidebar {
+    padding: 28px 0;
+    background: #e8edf3;
+    border-right: 1px solid #d3dce6;
+}
+
+.auth-modal-content.account-mode .account-nav-item {
+    position: relative;
+    width: calc(100% - 32px);
+    margin-left: 16px;
+    border-radius: 0;
+    padding: 16px 18px;
+    gap: 14px;
+    color: #2f3a46;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.auth-modal-content.account-mode .account-nav-item:hover {
+    background: #f2f6fb;
+    transform: none;
+}
+
+.auth-modal-content.account-mode .account-nav-item.active {
+    background: #fff;
+    color: #111827;
+    box-shadow: none;
+}
+
+.auth-modal-content.account-mode .account-nav-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #ff7a18;
+}
+
+.auth-modal-content.account-mode .account-nav-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: #2f3b47;
+    color: #fff;
+}
+
+.auth-modal-content.account-mode .account-main {
+    min-height: 620px;
+    padding: 34px 34px 40px;
+    background: #fff;
+}
+
+.auth-modal-content.account-mode .account-panel-head {
+    border-bottom: 1px solid #e8edf3;
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+}
+
+.auth-modal-content.account-mode .menu-eyebrow,
+.auth-modal-content.account-mode .account-empty-note {
+    color: #ff7a18 !important;
+}
+
+.auth-modal-content.account-mode .account-panel-copy,
+.auth-modal-content.account-mode .account-panel-note {
+    color: #606a78;
+}
+
+.auth-modal-content.account-mode .account-shell .primary-button,
+.auth-modal-content.account-mode .account-shell .secondary-button,
+.auth-modal-content.account-mode .account-shell .text-button,
+.auth-modal-content.account-mode .account-form-field input,
+.auth-modal-content.account-mode .account-form-field textarea,
+.auth-modal-content.account-mode .payment-settings-form select {
+    border-radius: 0;
+}
+
+.auth-modal-content.account-mode .account-shell .primary-button {
+    background: linear-gradient(120deg, #ff7a18 0%, #f35c15 100%);
+    border-color: #d24d0f;
+    box-shadow: 0 10px 20px rgba(243, 92, 21, 0.25);
+}
+
+.auth-modal-content.account-mode .account-shell .secondary-button:hover {
+    background: #fff7f1;
+    border-color: #f1c7a9;
+}
+
+.auth-modal-content.account-mode .account-main .account-order-card,
+.auth-modal-content.account-mode .account-main .account-address-card,
+.auth-modal-content.account-mode .account-main .payment-method-card,
+.auth-modal-content.account-mode .account-main .payment-form-panel,
+.auth-modal-content.account-mode .account-main .subscription-plan-card,
+.auth-modal-content.account-mode .account-main .subscription-current-card,
+.auth-modal-content.account-mode .account-main .subscription-status-card,
+.auth-modal-content.account-mode .account-main .account-placeholder-card,
+.auth-modal-content.account-mode .account-main .account-empty-state,
+.auth-modal-content.account-mode .account-main .favorite-restaurant-card,
+.auth-modal-content.account-mode .account-main .favorite-dish-card,
+.auth-modal-content.account-mode .account-main .admin-menu-list-panel,
+.auth-modal-content.account-mode .account-main .admin-menu-form-panel,
+.auth-modal-content.account-mode .account-main .admin-menu-item-card,
+.auth-modal-content.account-mode .account-main .account-card {
+    border-radius: 0;
+    border-color: #e3e9f0;
+    box-shadow: none;
+}
+
+.auth-modal-content.account-mode .account-empty-state {
+    border: 1px solid #edf1f5;
+    min-height: 440px;
+    background: #fff;
+    gap: 10px;
+}
+
+.auth-modal-content.account-mode .account-empty-state::before {
+    content: "";
+    width: 136px;
+    height: 108px;
+    margin-bottom: 6px;
+    opacity: 0.58;
+    background:
+        radial-gradient(circle at 40px 36px, #9ca5b4 0 5px, transparent 6px),
+        radial-gradient(circle at 88px 36px, #9ca5b4 0 5px, transparent 6px),
+        radial-gradient(circle at 64px 72px, #aeb6c3 0 16px, transparent 17px),
+        linear-gradient(#c5ccd6, #c5ccd6);
+    background-size: 136px 108px;
+    background-repeat: no-repeat;
+}
+
+@media (max-width: 960px) {
+    .auth-modal-content.account-mode .account-shell {
+        background: linear-gradient(180deg, #3f7b98 0 202px, #eef1f4 202px 100%);
+        padding-bottom: 0;
+    }
+
+    .auth-modal-content.account-mode .account-hero,
+    .auth-modal-content.account-mode .account-layout {
+        width: calc(100% - 24px);
+    }
+
+    .auth-modal-content.account-mode .account-hero {
+        padding: 26px 18px 24px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .auth-modal-content.account-mode .account-hero h2 {
+        font-size: clamp(30px, 8.6vw, 42px);
+    }
+
+    .auth-modal-content.account-mode .account-edit-button {
+        justify-self: start;
+    }
+
+    .auth-modal-content.account-mode .account-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-modal-content.account-mode .account-sidebar {
+        padding: 14px;
+    }
+
+    .auth-modal-content.account-mode .account-nav-item {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .auth-modal-content.account-mode .account-main {
+        min-height: 0;
+        padding: 24px 16px 28px;
+    }
+}
+
+/* Global continuous layout: uniform side spacing + no boxed sections */
+:root {
+    --layout-side-gap: clamp(18px, 3.6vw, 56px);
+    --layout-content-max: 1380px;
+    --layout-shell-max: var(--layout-content-max);
+}
+
+.header .container,
+.header-search-strip .container,
+.hero-banner,
+.section-divider,
+.categories-section .container,
+.restaurants-section .container,
+.app-section .container,
+.auth-modal-content.account-mode .account-hero,
+.auth-modal-content.account-mode .account-layout,
+.menu-hero,
+.menu-toolbar,
+.menu-grid,
+.cart-shell,
+.offers-shell,
+.orders-shell,
+.auth-shell,
+.location-picker-shell,
+.address-book-shell,
+.corporate-shell,
+.account-shell,
+.footer .container {
+    width: min(var(--layout-content-max), calc(100% - (var(--layout-side-gap) * 2))) !important;
+    max-width: none !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.categories-section .container,
+.restaurants-section .container,
+.app-section .container,
+.menu-hero,
+.menu-toolbar,
+.menu-grid,
+.cart-shell,
+.offers-shell,
+.orders-shell,
+.auth-shell,
+.location-picker-shell,
+.address-book-shell,
+.corporate-shell,
+.corporate-section,
+.corporate-shell.corp-pro .corp-pro-hero,
+.corporate-shell.corp-pro .corp-pro-section {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.account-shell {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+.categories-section .container {
+    margin-top: 0 !important;
+    position: static !important;
+    z-index: auto !important;
+}
+
+.categories-section .container,
+.restaurants-section .container,
+.app-section .container {
+    padding: 0 !important;
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --layout-side-gap: clamp(14px, 4vw, 26px);
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --layout-side-gap: 12px;
+    }
+}
+
+/* Profile orange restore: keep orange theme + orange side spaces */
+.auth-modal-content.account-mode {
+    background:
+        radial-gradient(340px 300px at 6% 98%, rgba(255, 235, 213, 0.22) 0%, rgba(255, 235, 213, 0) 72%),
+        radial-gradient(420px 320px at 96% 4%, rgba(255, 209, 165, 0.28) 0%, rgba(255, 209, 165, 0) 74%),
+        linear-gradient(120deg, #cf2b24 0%, #ea4c22 52%, #ff8a1f 100%) !important;
+}
+
+.auth-modal-content.account-mode .account-shell {
+    background: transparent !important;
+}
+
+.auth-modal-content.account-mode #authModalContent {
+    background: transparent;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    background: #ffffff;
+}
+
+.auth-modal-content.account-mode .account-hero .menu-eyebrow {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.auth-modal-content.account-mode .account-main .menu-eyebrow,
+.auth-modal-content.account-mode .account-empty-note {
+    color: #ff7a18 !important;
+}
+
+/* Account profile scroll lock: remove full-page scroll */
+.auth-modal-content.account-mode {
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+}
+
+.auth-modal-content.account-mode #authModalContent {
+    height: 100% !important;
+    overflow: hidden !important;
+}
+
+.auth-modal-content.account-mode .account-shell {
+    height: 100% !important;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden !important;
+}
+
+.auth-modal-content.account-mode .account-sidebar {
+    min-height: 0;
+    overflow: hidden !important;
+}
+
+.auth-modal-content.account-mode .account-main {
+    min-height: 0;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+}
+
+.auth-modal-content.account-mode .account-panel {
+    position: relative;
+}
+
+.auth-modal-content.account-mode .account-panel.account-panel-orders {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.auth-modal-content.account-mode .account-panel.account-panel-orders .account-panel-head {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    background: transparent !important;
+    padding-top: 0 !important;
+}
+
+/* Header restore: fixed top navbar like previous versions */
+.header {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 2600 !important;
+}
+
+body {
+    padding-top: var(--app-header-offset) !important;
+}
+
+/* Profile visual tune: match app UI tone and typography on full-page scroll */
+.auth-modal-content.account-mode {
+    background:
+        radial-gradient(360px 280px at 8% 92%, rgba(191, 220, 235, 0.2) 0%, rgba(191, 220, 235, 0) 72%),
+        radial-gradient(420px 320px at 94% 8%, rgba(160, 200, 222, 0.24) 0%, rgba(160, 200, 222, 0) 74%),
+        linear-gradient(120deg, #3f7c98 0%, #376f8b 55%, #326680 100%) !important;
+}
+
+.auth-modal-content.account-mode .account-shell {
+    background: linear-gradient(180deg, #3f7c98 0 170px, #edf1f5 170px 100%) !important;
+}
+
+.auth-modal-content.account-mode .account-hero {
+    padding: 24px 32px 20px;
+    color: #f7fbff;
+}
+
+.auth-modal-content.account-mode .account-hero h2 {
+    font-family: "Space Grotesk", "Manrope", sans-serif;
+    font-size: clamp(46px, 4.6vw, 64px);
+    line-height: 1.03;
+}
+
+.auth-modal-content.account-mode .account-hero-meta {
+    color: rgba(247, 251, 255, 0.94);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.auth-modal-content.account-mode .account-edit-button {
+    border-color: rgba(230, 240, 246, 0.74);
+    color: #f7fbff;
+    letter-spacing: 0.01em;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    border: 1px solid #ccd6e2 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+}
+
+.auth-modal-content.account-mode .account-sidebar {
+    background: #eceff3 !important;
+    border-right: 1px solid #d7dee7;
+}
+
+.auth-modal-content.account-mode .account-nav-icon {
+    background: #2e3846;
+}
+
+.auth-modal-content.account-mode .account-panel h3 {
+    font-family: "Space Grotesk", "Manrope", sans-serif;
+    letter-spacing: -0.01em;
+}
+
+.auth-modal-content.account-mode .account-empty-note {
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+
+/* Header address selector: text style (no box), like reference */
+.location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    max-width: min(62vw, 680px);
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #1f2937;
+}
+
+.location-label {
+    display: inline-block;
+    padding-bottom: 3px;
+    border-bottom: 2px solid #1f2937;
+    color: #1f2937;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.15;
+    white-space: nowrap;
+}
+
+.location-subtitle {
+    min-width: 0;
+    max-width: min(44vw, 520px);
+    color: #4b5563;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.location-caret {
+    margin-left: 2px;
+    color: #ff6b00;
+    font-size: 14px;
+}
+
+@media (max-width: 960px) {
+    .location-chip {
+        max-width: 58vw;
+        gap: 8px;
+    }
+
+    .location-label {
+        font-size: 14px;
+    }
+
+    .location-subtitle {
+        max-width: 36vw;
+        font-size: 13px;
+    }
+}
+
+/* Typography update: Proxima Nova everywhere, except payment option layout */
+:root {
+    --font-global-main: "Proxima Nova", "ProximaNova", "Avenir Next", "Segoe UI", Arial, sans-serif;
+    --font-payment-default: "Manrope", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+}
+
+html,
+body,
+body * {
+    font-family: var(--font-global-main) !important;
+}
+
+.payment-shell,
+.payment-shell *,
+.payment-entry-card,
+.payment-entry-card *,
+.payment-options-form,
+.payment-options-form *,
+.payment-option-card,
+.payment-option-card *,
+.payment-option-row,
+.payment-option-row *,
+.checkout-payment-section,
+.checkout-payment-section *,
+.checkout-payment-list,
+.checkout-payment-list *,
+.checkout-payment-card,
+.checkout-payment-card *,
+.checkout-payment-head,
+.checkout-payment-head *,
+.netbanking-section,
+.netbanking-section *,
+.netbanking-list,
+.netbanking-list *,
+.netbanking-row,
+.netbanking-row * {
+    font-family: var(--font-payment-default) !important;
+}
+
+/* Profile final pass: uniform side spacing + continuous (non-boxed) sections */
+.auth-modal-content.account-mode .account-shell,
+.auth-modal-content.account-mode .account-hero,
+.auth-modal-content.account-mode .account-layout {
+    width: min(var(--layout-content-max), calc(100% - (var(--layout-side-gap) * 2))) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+.auth-modal-content.account-mode .account-layout {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+}
+
+.auth-modal-content.account-mode .account-sidebar {
+    background: #e6ebf1 !important;
+    border-right: 1px solid #d4dce6 !important;
+}
+
+.auth-modal-content.account-mode .account-main {
+    background: transparent !important;
+}
+
+.auth-modal-content.account-mode .account-panel {
+    background: transparent !important;
+}
+
+@media (max-width: 960px) {
+    .auth-modal-content.account-mode .account-shell,
+    .auth-modal-content.account-mode .account-hero,
+    .auth-modal-content.account-mode .account-layout {
+        width: calc(100% - 24px) !important;
+    }
+
+    .auth-modal-content.account-mode .account-layout {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Global font-size tune: reduce oversized text across the app */
+html {
+    font-size: 14px !important;
+}
+
+body {
+    font-size: 14px !important;
+}
+
+h1 {
+    font-size: clamp(28px, 3.4vw, 42px) !important;
+}
+
+h2 {
+    font-size: clamp(24px, 2.8vw, 34px) !important;
+}
+
+h3 {
+    font-size: clamp(20px, 2.2vw, 28px) !important;
+}
+
+h4 {
+    font-size: clamp(17px, 1.7vw, 22px) !important;
+}
+
+.hero-title {
+    font-size: clamp(30px, 3.6vw, 44px) !important;
+}
+
+.hero-subtitle {
+    font-size: clamp(16px, 1.8vw, 22px) !important;
+}
+
+.section-title {
+    font-size: clamp(24px, 2.5vw, 34px) !important;
+}
+
+.account-hero h2 {
+    font-size: clamp(28px, 3.1vw, 40px) !important;
+}
+
+.account-hero-meta {
+    font-size: 14px !important;
+}
+
+.account-nav-item {
+    font-size: 16px !important;
+}
+
+/* Corporate final redesign: polished professional visual system */
+.corporate-shell.corp-pro {
+    padding: 24px !important;
+    gap: 18px !important;
+    background:
+        radial-gradient(900px 320px at -160px -140px, rgba(56, 189, 248, 0.16) 0%, rgba(56, 189, 248, 0) 72%),
+        radial-gradient(900px 320px at 118% -120px, rgba(59, 130, 246, 0.12) 0%, rgba(59, 130, 246, 0) 74%),
+        linear-gradient(180deg, #eef3f8 0%, #e8eef5 100%) !important;
+    border: 1px solid #d1dbe6 !important;
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14) !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero {
+    display: grid !important;
+    grid-template-columns: 1.25fr 0.75fr !important;
+    gap: 20px !important;
+    padding: 26px !important;
+    background: linear-gradient(132deg, #0f172a 0%, #1e293b 54%, #304766 100%) !important;
+    border: 1px solid rgba(148, 163, 184, 0.36) !important;
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.3) !important;
+    color: #f8fafc !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-eyebrow,
+.corporate-shell.corp-pro .corp-pro-kicker {
+    color: #93c5fd !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.12em !important;
+    text-transform: uppercase !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-copy h1 {
+    font-size: clamp(30px, 2.7vw, 42px) !important;
+    line-height: 1.08 !important;
+    letter-spacing: -0.02em !important;
+    margin: 8px 0 12px !important;
+    color: #f8fafc !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-copy p {
+    color: rgba(226, 232, 240, 0.94) !important;
+    max-width: 64ch !important;
+    line-height: 1.7 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-actions {
+    margin-top: 16px !important;
+    display: flex !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+}
+
+.corporate-shell.corp-pro .primary-button {
+    background: linear-gradient(120deg, #f97316 0%, #ea580c 100%) !important;
+    border: 1px solid #c2410c !important;
+    color: #fff !important;
+    box-shadow: 0 10px 20px rgba(234, 88, 12, 0.32) !important;
+}
+
+.corporate-shell.corp-pro .primary-button:hover {
+    box-shadow: 0 12px 24px rgba(234, 88, 12, 0.38) !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-actions .secondary-button {
+    background: rgba(15, 23, 42, 0.34) !important;
+    border: 1px solid rgba(226, 232, 240, 0.46) !important;
+    color: #e2e8f0 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-actions .secondary-button:hover {
+    background: rgba(30, 41, 59, 0.74) !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-hero-metrics {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-metric {
+    border: 1px solid rgba(148, 163, 184, 0.34) !important;
+    background: rgba(15, 23, 42, 0.44) !important;
+    padding: 14px !important;
+    display: grid !important;
+    gap: 6px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-metric strong {
+    color: #fff !important;
+    font-size: clamp(30px, 2.6vw, 38px) !important;
+    line-height: 1 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-metric span {
+    color: rgba(226, 232, 240, 0.95) !important;
+    font-size: 13px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-section {
+    border: 1px solid #d5dee9 !important;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%) !important;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08) !important;
+    padding: 22px !important;
+    display: grid !important;
+    gap: 16px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-section-head h2,
+.corporate-shell.corp-pro .corp-pro-lead-head h2 {
+    font-size: clamp(24px, 2.2vw, 32px) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.01em !important;
+    color: #0f172a !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-layout,
+.corporate-shell.corp-pro .corp-pro-two-col,
+.corporate-shell.corp-pro .corp-pro-careers,
+.corporate-shell.corp-pro .corp-pro-contact {
+    display: grid !important;
+    grid-template-columns: 280px 1fr !important;
+    gap: 16px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-tabs {
+    display: grid !important;
+    gap: 8px !important;
+    align-content: start !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-tab {
+    border: 1px solid #d7e1eb !important;
+    background: #f8fbff !important;
+    color: #334155 !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    padding: 12px 13px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-tab.active {
+    border-color: #f97316 !important;
+    color: #9a3412 !important;
+    background: linear-gradient(120deg, rgba(249, 115, 22, 0.14), rgba(251, 146, 60, 0.18)) !important;
+    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.18) !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-panel h3 {
+    font-size: clamp(21px, 2vw, 28px) !important;
+    color: #111827 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-panel > p,
+.corporate-shell.corp-pro .corp-pro-copy p,
+.corporate-shell.corp-pro .corp-pro-capability-grid p,
+.corporate-shell.corp-pro .corp-pro-timeline-card p,
+.corporate-shell.corp-pro .corp-pro-person-copy p,
+.corporate-shell.corp-pro .corp-pro-careers-cta p,
+.corporate-shell.corp-pro .corp-pro-contact-card p {
+    color: #4b5563 !important;
+    line-height: 1.72 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-highlight,
+.corporate-shell.corp-pro .corp-pro-capability-grid article,
+.corporate-shell.corp-pro .corp-pro-timeline-card,
+.corporate-shell.corp-pro .corp-pro-person-card,
+.corporate-shell.corp-pro .corp-pro-careers-cta,
+.corporate-shell.corp-pro .corp-pro-contact-card {
+    border: 1px solid #dbe4ee !important;
+    background: #ffffff !important;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06) !important;
+    padding: 14px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-highlight {
+    display: grid !important;
+    grid-template-columns: auto 1fr !important;
+    gap: 12px !important;
+    align-items: start !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-story-highlight .corp-pro-story-icon,
+.corporate-shell.corp-pro .corp-pro-person-badge {
+    width: 42px !important;
+    height: 42px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid #d4deea !important;
+    background: #f4f8fc !important;
+    font-size: 18px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-capability-grid,
+.corporate-shell.corp-pro .corp-pro-timeline {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-timeline-year {
+    color: #1d4ed8 !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.08em !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-lead-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
+    gap: 14px !important;
+    flex-wrap: wrap !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-people-tabs {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-people-tab {
+    border: 1px solid #d7e1eb !important;
+    background: #f8fbff !important;
+    color: #334155 !important;
+    padding: 9px 12px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-people-tab.active {
+    border-color: #f97316 !important;
+    color: #9a3412 !important;
+    background: rgba(249, 115, 22, 0.14) !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-people-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-person-role {
+    color: #1e40af !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+}
+
+.corporate-shell.corp-pro .corp-pro-contact-map {
+    border: 1px solid #dbe4ee !important;
+    min-height: 300px !important;
+    overflow: hidden !important;
+}
+
+@media (max-width: 1080px) {
+    .corporate-shell.corp-pro .corp-pro-hero,
+    .corporate-shell.corp-pro .corp-pro-story-layout,
+    .corporate-shell.corp-pro .corp-pro-two-col,
+    .corporate-shell.corp-pro .corp-pro-careers,
+    .corporate-shell.corp-pro .corp-pro-contact {
+        grid-template-columns: 1fr !important;
+    }
+
+    .corporate-shell.corp-pro .corp-pro-hero-metrics,
+    .corporate-shell.corp-pro .corp-pro-capability-grid,
+    .corporate-shell.corp-pro .corp-pro-timeline,
+    .corporate-shell.corp-pro .corp-pro-people-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 700px) {
+    .corporate-shell.corp-pro {
+        padding: 14px !important;
+    }
+
+    .corporate-shell.corp-pro .corp-pro-hero,
+    .corporate-shell.corp-pro .corp-pro-section {
+        padding: 14px !important;
+    }
+
+    .corporate-shell.corp-pro .corp-pro-hero-metrics,
+    .corporate-shell.corp-pro .corp-pro-capability-grid,
+    .corporate-shell.corp-pro .corp-pro-timeline,
+    .corporate-shell.corp-pro .corp-pro-people-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Header hotfix: remove top gap, avoid full-address overflow, keep nav in one row */
+.header {
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08) !important;
+    border-bottom: 1px solid #e6ebf1 !important;
+    padding: 12px 0 !important;
+}
+
+body {
+    padding-top: var(--app-header-offset) !important;
+}
+
+.header .container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 20px !important;
+}
+
+.brand-block {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+
+.logo {
+    flex-shrink: 0 !important;
+}
+
+.location-chip {
+    min-width: 0 !important;
+    max-width: min(48vw, 520px) !important;
+    overflow: hidden !important;
+}
+
+.location-label {
+    flex: 0 1 auto;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.location-subtitle {
+    display: inline-block;
+    min-width: 0;
+    max-width: 280px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-links {
+    display: flex !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+}
+
+.nav-link {
+    white-space: nowrap;
+}
+
+.header-search-strip {
+    margin-top: 0 !important;
+}
+
+@media (max-width: 1360px) {
+    .location-subtitle {
+        max-width: 200px !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .location-subtitle {
+        display: none !important;
+    }
+
+    .location-chip {
+        max-width: 230px !important;
+        gap: 8px !important;
+    }
+}
+
+@media (max-width: 960px) {
+    .header .container {
+        flex-wrap: wrap !important;
+        row-gap: 10px !important;
+    }
+
+    .brand-block {
+        width: 100%;
+    }
+
+    .nav-links {
+        width: 100%;
+        justify-content: space-between;
+        overflow-x: auto;
+    }
 }
