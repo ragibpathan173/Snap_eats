@@ -24,18 +24,20 @@ public class MenuItemDataLoader {
 
     @EventListener(ApplicationReadyEvent.class)
     public void loadMenuItems() {
-        if (menuItemRepository.count() > 0) {
-            return;
-        }
-
-        List<Restaurant> restaurants = restaurantRepository.findAll();
+        List<Restaurant> restaurants = restaurantRepository.findByActiveTrue();
         if (restaurants.isEmpty()) {
             return;
         }
 
         List<MenuItem> menuItems = new ArrayList<>();
+        int restaurantCount = 0;
         for (Restaurant restaurant : restaurants) {
+            if (menuItemRepository.countByRestaurantId(restaurant.getId()) > 0) {
+                continue;
+            }
+
             List<MenuSeed> seeds = buildMenuForCategory(restaurant.getCategory());
+            restaurantCount++;
             for (int index = 0; index < seeds.size(); index++) {
                 MenuSeed seed = seeds.get(index);
 
@@ -70,8 +72,12 @@ public class MenuItemDataLoader {
             }
         }
 
+        if (menuItems.isEmpty()) {
+            return;
+        }
+
         menuItemRepository.saveAll(menuItems);
-        System.out.println("Loaded " + menuItems.size() + " menu items");
+        System.out.println("Loaded " + menuItems.size() + " menu items for " + restaurantCount + " restaurants");
     }
 
     private List<MenuSeed> buildMenuForCategory(String category) {

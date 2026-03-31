@@ -12,10 +12,14 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -23,14 +27,14 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*")
 public class RestaurantController {
     private static final List<Map<String, String>> LOCATION_FALLBACKS = List.of(
-            Map.of("city", "New Delhi", "locality", "Jamia Nagar"),
-            Map.of("city", "Bengaluru", "locality", "Koramangala"),
+            Map.of("city", "Delhi", "locality", "Jamia Nagar"),
+            Map.of("city", "Bangalore", "locality", "Koramangala"),
+            Map.of("city", "Gurgaon", "locality", "Sector 29"),
+            Map.of("city", "Hyderabad", "locality", "Jubilee Hills"),
             Map.of("city", "Mumbai", "locality", "Bandra West"),
-            Map.of("city", "Kolkata", "locality", "Salt Lake"),
-            Map.of("city", "Hyderabad", "locality", "Hitech City"),
-            Map.of("city", "Chennai", "locality", "Adyar"),
             Map.of("city", "Pune", "locality", "Baner"),
-            Map.of("city", "Ahmedabad", "locality", "Navrangpura")
+            Map.of("city", "Chennai", "locality", "Adyar"),
+            Map.of("city", "Kolkata", "locality", "Salt Lake")
     );
 
     @Autowired
@@ -40,21 +44,95 @@ public class RestaurantController {
 
     @PostConstruct
     public void loadInitialData() {
-        if (restaurantRepository.count() == 0) {
-            try {
-                InputStream inputStream = new ClassPathResource("data/restaurants.json").getInputStream();
-                List<Restaurant> restaurants = objectMapper.readValue(
-                        inputStream,
-                        new TypeReference<List<Restaurant>>() {}
-                );
-                restaurantRepository.saveAll(restaurants);
-                System.out.println("✅ Loaded " + restaurants.size() + " restaurants from JSON into database");
-            } catch (IOException e) {
-                System.err.println("❌ Error loading restaurants from JSON: " + e.getMessage());
-                e.printStackTrace();
-            }
+        try {
+            List<Restaurant> restaurants = readRestaurantsFromJson();
+            syncRestaurantsFromJson(restaurants);
+        } catch (IOException e) {
+            System.err.println("Failed to load restaurants from JSON: " + e.getMessage());
+            e.printStackTrace();
         }
         backfillRestaurantLocations();
+    }
+
+    private List<Restaurant> readRestaurantsFromJson() throws IOException {
+        try (InputStream inputStream = new ClassPathResource("data/restaurants.json").getInputStream()) {
+            return objectMapper.readValue(
+                    inputStream,
+                    new TypeReference<List<Restaurant>>() {}
+            );
+        }
+    }
+
+    private void syncRestaurantsFromJson(List<Restaurant> seededRestaurants) {
+        List<Restaurant> existingRestaurants = restaurantRepository.findAll();
+        Map<String, Restaurant> existingByRestaurantId = existingRestaurants.stream()
+                .filter(restaurant -> restaurant.getRestaurantId() != null && !restaurant.getRestaurantId().isBlank())
+                .collect(Collectors.toMap(
+                        Restaurant::getRestaurantId,
+                        restaurant -> restaurant,
+                        (left, right) -> left,
+                        HashMap::new
+                ));
+
+        List<Restaurant> restaurantsToSave = new ArrayList<>();
+        Set<String> activeRestaurantIds = new HashSet<>();
+        int createdCount = 0;
+        int updatedCount = 0;
+
+        for (Restaurant seededRestaurant : seededRestaurants) {
+            String restaurantId = Objects.toString(seededRestaurant.getRestaurantId(), "").trim();
+            if (restaurantId.isBlank()) {
+                continue;
+            }
+
+            Restaurant target = existingByRestaurantId.get(restaurantId);
+            if (target == null) {
+                target = new Restaurant();
+                target.setRestaurantId(restaurantId);
+                createdCount++;
+            } else {
+                updatedCount++;
+            }
+
+            copyRestaurantFields(target, seededRestaurant);
+            restaurantsToSave.add(target);
+            activeRestaurantIds.add(restaurantId);
+        }
+
+        List<Restaurant> restaurantsToDeactivate = existingRestaurants.stream()
+                .filter(restaurant -> restaurant.getRestaurantId() != null && !restaurant.getRestaurantId().isBlank())
+                .filter(restaurant -> !activeRestaurantIds.contains(restaurant.getRestaurantId()))
+                .filter(restaurant -> Boolean.TRUE.equals(restaurant.getActive()))
+                .peek(restaurant -> restaurant.setActive(false))
+                .collect(Collectors.toList());
+
+        if (!restaurantsToSave.isEmpty()) {
+            restaurantRepository.saveAll(restaurantsToSave);
+        }
+        if (!restaurantsToDeactivate.isEmpty()) {
+            restaurantRepository.saveAll(restaurantsToDeactivate);
+        }
+
+        System.out.println("Synced " + activeRestaurantIds.size() + " restaurants from JSON (" + createdCount + " new, " + updatedCount + " updated, " + restaurantsToDeactivate.size() + " deactivated)");
+    }
+
+    private void copyRestaurantFields(Restaurant target, Restaurant source) {
+        target.setRestaurantId(source.getRestaurantId());
+        target.setName(source.getName());
+        target.setCuisine(source.getCuisine());
+        target.setRating(source.getRating());
+        target.setReviewCount(source.getReviewCount() == null ? 0 : source.getReviewCount());
+        target.setTime(source.getTime());
+        target.setDiscount(source.getDiscount());
+        target.setImage(source.getImage());
+        target.setLogo(source.getLogo());
+        target.setCategory(source.getCategory());
+        target.setCity(source.getCity());
+        target.setLocality(source.getLocality());
+        target.setVerified(Boolean.TRUE.equals(source.getVerified()));
+        target.setActive(Boolean.TRUE.equals(source.getActive()));
+        target.setIsOpen(source.getIsOpen() == null ? Boolean.TRUE : source.getIsOpen());
+        target.setAcceptingOrders(source.getAcceptingOrders() == null ? Boolean.TRUE : source.getAcceptingOrders());
     }
 
     private void backfillRestaurantLocations() {

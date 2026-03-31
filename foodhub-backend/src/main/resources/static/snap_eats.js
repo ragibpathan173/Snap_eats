@@ -1171,8 +1171,12 @@ function getLocationSuggestions(query = "") {
     }));
     const curatedLocations = [
         { label: "Jamia Nagar", subtitle: "Okhla, New Delhi, Delhi, India" },
-        { label: "Koramangala", subtitle: "Bengaluru, Karnataka, India" },
+        { label: "Koramangala", subtitle: "Bangalore, Karnataka, India" },
+        { label: "Sector 29", subtitle: "Gurgaon, Haryana, India" },
+        { label: "Jubilee Hills", subtitle: "Hyderabad, Telangana, India" },
         { label: "Bandra West", subtitle: "Mumbai, Maharashtra, India" },
+        { label: "Baner", subtitle: "Pune, Maharashtra, India" },
+        { label: "Adyar", subtitle: "Chennai, Tamil Nadu, India" },
         { label: "Salt Lake", subtitle: "Kolkata, West Bengal, India" }
     ];
 
@@ -1798,14 +1802,14 @@ function getSelectedLocationFilters() {
 
     const normalizedSource = normalizeTextForMatching(`${label} ${subtitle}`);
     const cityAliases = [
-        { canonical: "New Delhi", patterns: ["new delhi", "delhi"] },
+        { canonical: "Delhi", patterns: ["new delhi", "delhi"] },
         { canonical: "Mumbai", patterns: ["mumbai", "bombay"] },
         { canonical: "Pune", patterns: ["pune"] },
-        { canonical: "Bengaluru", patterns: ["bengaluru", "bangalore"] },
+        { canonical: "Bangalore", patterns: ["bengaluru", "bangalore"] },
+        { canonical: "Gurgaon", patterns: ["gurgaon", "gurugram"] },
         { canonical: "Hyderabad", patterns: ["hyderabad"] },
         { canonical: "Kolkata", patterns: ["kolkata", "calcutta"] },
-        { canonical: "Chennai", patterns: ["chennai"] },
-        { canonical: "Ahmedabad", patterns: ["ahmedabad"] }
+        { canonical: "Chennai", patterns: ["chennai"] }
     ];
 
     let detectedCity = "";
@@ -1817,7 +1821,7 @@ function getSelectedLocationFilters() {
     }
 
     const genericLabels = new Set(["other", "current location"]);
-    const locality = genericLabels.has(label.toLowerCase()) ? "" : label;
+    const locality = detectedCity || genericLabels.has(label.toLowerCase()) ? "" : label;
     return {
         city: detectedCity,
         locality
