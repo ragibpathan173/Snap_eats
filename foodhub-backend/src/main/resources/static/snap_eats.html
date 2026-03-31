@@ -47,7 +47,7 @@
                     </span>
                     <span>Offers</span>
                 </a>
-                <a href="#" class="nav-link">
+                <a href="#" class="nav-link" onclick="openHelp(event)">
                     <span class="nav-link-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 8.96 8.96 0 0 0 2.29 6l-1.04 3.34 3.47-.94A9 9 0 1 0 12 3Zm0 1.5a7.5 7.5 0 1 1 0 15 7.44 7.44 0 0 1-3.71-.98l-.28-.16-1.95.53.6-1.92-.19-.29A7.46 7.46 0 0 1 4.5 12 7.5 7.5 0 0 1 12 4.5Zm-.75 3v5.19l4.11 2.37.75-1.3-3.36-1.94V7.5h-1.5Z"/></svg>
                     </span>
@@ -115,7 +115,7 @@
         <div class="container">
             <div class="app-content">
                 <div class="app-text">
-                    <h2>For a better experience, download the SnapEats app now</h2>
+                    <h2>For better experience, download the SnapEats app</h2>
                     <div class="app-badges">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" alt="App Store">
@@ -144,7 +144,10 @@
             <div class="footer-top">
                 <div class="footer-col">
                     <h3 class="footer-logo">SnapEats</h3>
-                    <p class="footer-desc">© 2026 SnapEats Limited</p>
+                    <p class="footer-desc">&copy; 2026 SnapEats Limited</p>
+                    <p class="footer-desc">Delivering fresh meals, fast and local.</p>
+                    <p class="footer-desc footer-meta">Support: support@snap-eats.com</p>
+                    <p class="footer-desc footer-meta">Call: +91 90000 12345</p>
                 </div>
                 <div class="footer-col">
                     <h4>Company</h4>
@@ -154,6 +157,8 @@
                         <li><a href="#">Team</a></li>
                         <li><a href="#">SnapEats One</a></li>
                         <li><a href="#">SnapEats Genie</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Press</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
@@ -162,46 +167,48 @@
                         <li><a href="#">Help & Support</a></li>
                         <li><a href="#">Partner with us</a></li>
                         <li><a href="#">Ride with us</a></li>
+                        <li><a href="#">Business inquiries</a></li>
+                        <li><a href="#">Report an issue</a></li>
                     </ul>
                     <h4 style="margin-top: 30px;">Legal</h4>
                     <ul>
                         <li><a href="#">Terms & Conditions</a></li>
                         <li><a href="#">Cookie Policy</a></li>
                         <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Refund Policy</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
                     <h4>We Deliver To</h4>
                     <ul>
-                        <li><a href="#">Bangalore</a></li>
-                        <li><a href="#">Gurgaon</a></li>
-                        <li><a href="#">Hyderabad</a></li>
-                        <li><a href="#">Delhi</a></li>
-                        <li><a href="#">Mumbai</a></li>
-                        <li><a href="#">Pune</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Bangalore', 'Bengaluru, Karnataka, India'); return false;">Bangalore</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Gurgaon', 'Gurgaon, Haryana, India'); return false;">Gurgaon</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Hyderabad', 'Hyderabad, Telangana, India'); return false;">Hyderabad</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Delhi', 'New Delhi, Delhi, India'); return false;">Delhi</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Mumbai', 'Mumbai, Maharashtra, India'); return false;">Mumbai</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Pune', 'Pune, Maharashtra, India'); return false;">Pune</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Chennai', 'Chennai, Tamil Nadu, India'); return false;">Chennai</a></li>
+                        <li><a href="#" onclick="applyFooterLocation('Kolkata', 'Kolkata, West Bengal, India'); return false;">Kolkata</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
                     <h4>Follow Us</h4>
                     <div class="social-icons">
-                        <a href="#" class="social-icon" aria-label="Facebook">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.5 21v-8.1h2.72l.43-3.15H13.5V7.73c0-.91.27-1.52 1.58-1.52h1.69V3.4c-.29-.04-1.29-.12-2.45-.12-2.42 0-4.08 1.44-4.08 4.1v2.36H7.5v3.15h2.74V21h3.26Z"/></svg>
+                        <a href="https://www.linkedin.com/in/ragib-ali-khan-24b2ab28a" class="social-icon" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.12 8.33A1.9 1.9 0 1 1 6.1 4.5a1.9 1.9 0 0 1 .02 3.83ZM4.6 20.3h3.05V9.8H4.6v10.5Zm5.03 0h3.04v-5.86c0-1.55.3-3.04 2.22-3.04 1.9 0 1.93 1.78 1.93 3.14v5.76h3.05v-6.4c0-3.14-.67-5.55-4.34-5.55-1.76 0-2.95.97-3.43 1.88h-.05V9.8H9.63v10.5Z"/></svg>
                         </a>
-                        <a href="#" class="social-icon" aria-label="Instagram">
+                        <a href="https://www.instagram.com/_ragibpathan_?igsh=cWp3bmxzNzhsN2Mz" class="social-icon" aria-label="Instagram" target="_blank" rel="noopener noreferrer">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.75 2h8.5A5.76 5.76 0 0 1 22 7.75v8.5A5.76 5.76 0 0 1 16.25 22h-8.5A5.76 5.76 0 0 1 2 16.25v-8.5A5.76 5.76 0 0 1 7.75 2Zm0 1.8A3.96 3.96 0 0 0 3.8 7.75v8.5a3.96 3.96 0 0 0 3.95 3.95h8.5a3.96 3.96 0 0 0 3.95-3.95v-8.5a3.96 3.96 0 0 0-3.95-3.95h-8.5Zm8.83 1.35a1.07 1.07 0 1 1 0 2.14 1.07 1.07 0 0 1 0-2.14ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8Z"/></svg>
                         </a>
-                        <a href="#" class="social-icon" aria-label="X">
+                        <a href="https://x.com/ragibpathan00" class="social-icon" aria-label="X" target="_blank" rel="noopener noreferrer">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.91 3H21l-6.86 7.84L22 21h-6.2l-4.85-6.37L5.37 21H3.27l7.34-8.39L2 3h6.36l4.38 5.79L18.91 3Zm-1.09 16.2h1.16L7.73 4.74H6.49L17.82 19.2Z"/></svg>
-                        </a>
-                        <a href="#" class="social-icon" aria-label="LinkedIn">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.12 8.33A1.9 1.9 0 1 1 6.1 4.5a1.9 1.9 0 0 1 .02 3.83ZM4.6 20.3h3.05V9.8H4.6v10.5Zm5.03 0h3.04v-5.86c0-1.55.3-3.04 2.22-3.04 1.9 0 1.93 1.78 1.93 3.14v5.76h3.05v-6.4c0-3.14-.67-5.55-4.34-5.55-1.76 0-2.95.97-3.43 1.88h-.05V9.8H9.63v10.5Z"/></svg>
                         </a>
                     </div>
                 </div>
             </div>
             <div class="footer-divider"></div>
             <div class="footer-bottom">
-                <p>By continuing past this page, you agree to our Terms of Service, Cookie Policy, Privacy Policy, and Content Policies. All trademarks are properties of their respective owners. 2026 © SnapEats Limited. All rights reserved.</p>
+                <p>By continuing past this page, you agree to our Terms of Service, Cookie Policy, Privacy Policy, and Content Policies. All trademarks are properties of their respective owners. 2026 &copy; SnapEats Limited. All rights reserved.</p>
             </div>
         </div>
     </footer>
@@ -254,6 +261,20 @@
         </div>
     </div>
 
+    <div id="helpModal" class="modal">
+        <div class="modal-content help-modal-content">
+            <div id="helpModalContent"></div>
+        </div>
+    </div>
+
     <script src="snap_eats.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+

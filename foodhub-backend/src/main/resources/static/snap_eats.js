@@ -262,12 +262,23 @@ let otpAuthDraftName = "";
 let otpAuthDraftEmail = "";
 let otpAuthDraftReferralCode = "";
 let otpAuthFlowMode = "login";
+let otpAuthForceSignup = false;
 let otpAuthStep = "form";
 let otpAuthLastSentIdentifier = "";
 let otpAuthCooldownUntil = 0;
 let otpAuthCooldownTimer = null;
+let deleteAccountChannel = "email";
+let deleteAccountOtpRequested = false;
+let deleteAccountPendingChannel = "";
+let deleteAccountOtpCooldownUntil = 0;
+let deleteAccountOtpCooldownTimer = null;
+let deleteAccountDevOtp = "";
+let deleteAccountPanelOpen = false;
+let helpActiveTopic = "orders";
 let corporateStoryTab = "mission";
 let corporatePeopleTab = "management";
+let corporateSectionTab = "overview";
+let offersActiveTab = "coupons";
 let selectedLocation = loadSelectedLocation();
 let recentLocations = loadRecentLocations();
 let cart = loadCart();
@@ -312,7 +323,7 @@ function normalizeCurrentUserIdentity(user) {
     const normalizedEmail = String(normalizedUser.email || "").trim().toLowerCase();
     const ownerEmailAliases = new Set(["ragibyx@gmail.com", OWNER_EMAIL.toLowerCase()]);
 
-    if (ownerEmailAliases.has(normalizedEmail) || normalizedName === "ragib" || normalizedName === "ragib ali khan") {
+    if (ownerEmailAliases.has(normalizedEmail)) {
         normalizedUser.name = OWNER_NAME;
         normalizedUser.email = OWNER_EMAIL;
     }
@@ -492,6 +503,7 @@ function updateOtpAuthIdentifier(value) {
     const nextValue = String(value || "").trim();
     if (otpAuthDraftIdentifier !== nextValue) {
         otpAuthDraftIdentifier = nextValue;
+        otpAuthForceSignup = false;
         if (otpAuthLastSentIdentifier && otpAuthLastSentIdentifier !== nextValue) {
             clearOtpAuthCooldown();
         }
@@ -510,6 +522,137 @@ function updateOtpAuthEmail(value) {
 
 function updateOtpAuthReferralCode(value) {
     otpAuthDraftReferralCode = String(value || "").trim();
+}
+
+function getDeleteAccountChannels() {
+    const channels = [];
+    const email = String(currentUser?.email || "").trim();
+    const phone = String(currentUser?.phoneNumber || "").trim();
+    const phoneDigits = phone.replace(/\D/g, "");
+
+    if (email) {
+        channels.push({ id: "email", label: `Email (${maskDeleteAccountEmail(email)})` });
+    }
+    if (phoneDigits.length >= 10) {
+        channels.push({ id: "phone", label: `Phone (${maskDeleteAccountPhone(phone)})` });
+    }
+
+    return channels;
+}
+
+function normalizeDeleteAccountChannel(channel) {
+    const channels = getDeleteAccountChannels();
+    if (!channels.length) {
+        return "";
+    }
+    if (channels.some((entry) => entry.id === channel)) {
+        return channel;
+    }
+    return channels[0].id;
+}
+
+function setDeleteAccountChannel(channel) {
+    deleteAccountChannel = normalizeDeleteAccountChannel(channel);
+    deleteAccountOtpRequested = false;
+    deleteAccountPendingChannel = "";
+    deleteAccountDevOtp = "";
+    clearDeleteAccountOtpCooldown();
+    const feedback = document.getElementById("deleteAccountFeedback");
+    if (feedback) {
+        feedback.textContent = "";
+        feedback.className = "checkout-feedback";
+    }
+    const otpInput = document.getElementById("deleteAccountOtpInput");
+    if (otpInput) {
+        otpInput.value = "";
+    }
+    renderAuthModal();
+}
+
+function openDeleteAccountPanel(event) {
+    if (event && typeof event.preventDefault === "function") {
+        event.preventDefault();
+    }
+    if (deleteAccountPanelOpen) {
+        return;
+    }
+    resetDeleteAccountFlow();
+    deleteAccountPanelOpen = true;
+    renderAuthModal();
+}
+
+function getDeleteAccountOtpCooldownSeconds() {
+    const remainingMs = deleteAccountOtpCooldownUntil - Date.now();
+    if (remainingMs <= 0) {
+        return 0;
+    }
+    return Math.ceil(remainingMs / 1000);
+}
+
+function syncDeleteAccountOtpButtonState() {
+    const button = document.getElementById("deleteAccountOtpRequestButton");
+    if (!button) {
+        return;
+    }
+    const remainingSeconds = getDeleteAccountOtpCooldownSeconds();
+    button.disabled = remainingSeconds > 0;
+    button.textContent = remainingSeconds > 0 ? `Resend in ${remainingSeconds}s` : "Send verification code";
+}
+
+function startDeleteAccountOtpCooldown(seconds = 30) {
+    deleteAccountOtpCooldownUntil = Date.now() + (seconds * 1000);
+    if (deleteAccountOtpCooldownTimer) {
+        window.clearInterval(deleteAccountOtpCooldownTimer);
+    }
+    syncDeleteAccountOtpButtonState();
+    deleteAccountOtpCooldownTimer = window.setInterval(() => {
+        syncDeleteAccountOtpButtonState();
+        if (getDeleteAccountOtpCooldownSeconds() <= 0) {
+            window.clearInterval(deleteAccountOtpCooldownTimer);
+            deleteAccountOtpCooldownTimer = null;
+        }
+    }, 1000);
+}
+
+function clearDeleteAccountOtpCooldown() {
+    deleteAccountOtpCooldownUntil = 0;
+    if (deleteAccountOtpCooldownTimer) {
+        window.clearInterval(deleteAccountOtpCooldownTimer);
+        deleteAccountOtpCooldownTimer = null;
+    }
+    syncDeleteAccountOtpButtonState();
+}
+
+function resetDeleteAccountFlow() {
+    deleteAccountOtpRequested = false;
+    deleteAccountPendingChannel = "";
+    deleteAccountDevOtp = "";
+    deleteAccountPanelOpen = false;
+    const normalizedChannel = normalizeDeleteAccountChannel(deleteAccountChannel);
+    deleteAccountChannel = normalizedChannel || "email";
+    clearDeleteAccountOtpCooldown();
+}
+
+function maskDeleteAccountEmail(email) {
+    const raw = String(email || "").trim();
+    if (!raw || !raw.includes("@")) {
+        return "hidden";
+    }
+    const [localPart, domainPart] = raw.split("@");
+    if (!localPart) {
+        return `***@${domainPart || ""}`;
+    }
+    const visiblePart = localPart.length <= 2 ? localPart.charAt(0) : localPart.slice(0, 2);
+    return `${visiblePart}***@${domainPart || ""}`;
+}
+
+function maskDeleteAccountPhone(phone) {
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (!digits) {
+        return "hidden";
+    }
+    const lastDigits = digits.slice(-4);
+    return `******${lastDigits}`;
 }
 
 function wait(ms) {
@@ -713,8 +856,10 @@ function saveCurrentUser(user) {
     currentUser = normalizeCurrentUserIdentity(user || null);
     if (currentUser) {
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(currentUser));
+        deleteAccountChannel = normalizeDeleteAccountChannel(deleteAccountChannel) || "email";
     } else {
         localStorage.removeItem(AUTH_STORAGE_KEY);
+        resetDeleteAccountFlow();
     }
     updateAuthNav();
 }
@@ -877,7 +1022,8 @@ function switchHeaderPanel(target) {
         auth: closeAuthModal,
         location: closeLocationPicker,
         offers: closeOffers,
-        corporate: closeCorporatePage
+        corporate: closeCorporatePage,
+        help: closeHelp
     };
 
     Object.entries(closeByKey).forEach(([key, closeFn]) => {
@@ -1021,6 +1167,23 @@ function applyLocationSelection(location) {
     pushRecentLocation(location);
     closeLocationPicker();
     fetchRestaurants(activeCategory, document.getElementById("searchInput")?.value || "").catch(() => {});
+}
+
+function applyFooterLocation(label, subtitle) {
+    const safeLabel = String(label || "").trim();
+    if (!safeLabel) {
+        return;
+    }
+    const safeSubtitle = String(subtitle || "").trim();
+    const location = { label: safeLabel, subtitle: safeSubtitle };
+    saveSelectedLocation(location);
+    pushRecentLocation(location);
+    if (document.getElementById("restaurantsGrid")) {
+        fetchRestaurants(activeCategory, document.getElementById("searchInput")?.value || "").catch(() => {});
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+    }
+    window.location.assign("snap_eats.html");
 }
 
 function handleLocationChipKeydown(event) {
@@ -3437,6 +3600,7 @@ function goHome(event) {
     closeLocationPicker();
     closeOffers();
     closeCorporatePage();
+    closeHelp();
     closeSearchBar();
 
     if (window.location.hash) {
@@ -3503,6 +3667,23 @@ function openCorporatePage(event) {
     modal.classList.add("open");
     document.body.classList.add("modal-open");
     renderCorporatePage();
+}
+
+function openHelp(event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    switchHeaderPanel("help");
+
+    const modal = document.getElementById("helpModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderHelpModal();
 }
 
 function closeCart() {
@@ -3582,6 +3763,18 @@ function closeOffers() {
 
 function closeCorporatePage() {
     const modal = document.getElementById("corporateModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeHelp() {
+    const modal = document.getElementById("helpModal");
     if (!modal) {
         return;
     }
@@ -3718,36 +3911,67 @@ function renderOffersModal() {
             </div>
         `;
 
+    const offersTabs = [
+        {
+            id: "coupons",
+            label: "Coupon codes",
+            meta: "Cart savings",
+            heading: "Coupon codes",
+            description: "Use these codes in cart for extra savings.",
+            body: `<div class="offers-grid">${platformOffersMarkup}</div>`
+        },
+        {
+            id: "restaurants",
+            label: "Restaurant offers",
+            meta: "Auto-applied",
+            heading: "Restaurant offers",
+            description: "Live deals from active restaurants near you.",
+            body: `<div class="restaurant-offers-grid">${restaurantOffersMarkup}</div>`
+        }
+    ];
+
+    const activeTab = offersTabs.find((tab) => tab.id === offersActiveTab) || offersTabs[0];
+
+    const navMarkup = offersTabs.map((tab) => `
+        <button
+            class="help-nav-item ${tab.id === activeTab.id ? "active" : ""}"
+            type="button"
+            onclick="setOffersTab('${tab.id}')"
+        >
+            <span>${escapeHtml(tab.label)}</span>
+            <small>${escapeHtml(tab.meta)}</small>
+        </button>
+    `).join("");
+
+    const feedbackMarkup = couponFeedback.message ? `
+        <div class="checkout-feedback ${couponFeedback.type === "error" ? "error" : "success"}">${escapeHtml(couponFeedback.message)}</div>
+    ` : "";
+
     content.innerHTML = `
-        <div class="offers-shell">
-            <div class="offers-header">
-                <div>
-                    <p class="menu-eyebrow">Offers</p>
-                    <h2>Coupons and restaurant deals</h2>
-                </div>
-                <button class="secondary-button" type="button" onclick="openCart()">Open cart</button>
-            </div>
-            ${couponFeedback.message ? `
-                <div class="checkout-feedback ${couponFeedback.type === "error" ? "error" : "success"}">${escapeHtml(couponFeedback.message)}</div>
-            ` : ""}
+        <div class="help-shell offers-help-shell">
+            <header class="help-hero">
+                <h1>Coupons and restaurant deals</h1>
+                <p class="help-hero-sub">Save more on every order with platform coupons and partner offers.</p>
+            </header>
 
-            <section class="offers-section">
-                <div class="offers-section-head">
-                    <h3>Coupon codes</h3>
-                    <p>Use these codes in cart for extra savings.</p>
-                </div>
-                <div class="offers-grid">
-                    ${platformOffersMarkup}
-                </div>
-            </section>
-
-            <section class="offers-section">
-                <div class="offers-section-head">
-                    <h3>Restaurant offers</h3>
-                    <p>Live deals from active restaurants near you.</p>
-                </div>
-                <div class="restaurant-offers-grid">
-                    ${restaurantOffersMarkup}
+            <section class="help-panel-shell offers-panel-shell">
+                <aside class="help-nav">
+                    <h2>Browse offers</h2>
+                    ${navMarkup}
+                </aside>
+                <div class="help-panel">
+                    <div class="help-panel-head">
+                        <div>
+                            <p class="help-topic-meta">${escapeHtml(activeTab.meta)}</p>
+                            <h3>${escapeHtml(activeTab.heading)}</h3>
+                            <p class="help-topic-copy">${escapeHtml(activeTab.description)}</p>
+                        </div>
+                        <div class="help-panel-actions">
+                            <button class="secondary-button" type="button" onclick="openCart()">Open cart</button>
+                        </div>
+                    </div>
+                    ${feedbackMarkup}
+                    ${activeTab.body}
                 </div>
             </section>
         </div>
@@ -3757,6 +3981,7 @@ function renderOffersModal() {
 function setCorporateStoryTab(tab) {
     const allowedTabs = new Set(["mission", "vision", "values"]);
     corporateStoryTab = allowedTabs.has(tab) ? tab : "mission";
+    corporateSectionTab = corporateStoryTab;
     renderCorporatePage();
 }
 
@@ -3764,6 +3989,26 @@ function setCorporatePeopleTab(tab) {
     const allowedTabs = new Set(["management", "board"]);
     corporatePeopleTab = allowedTabs.has(tab) ? tab : "management";
     renderCorporatePage();
+}
+
+function setCorporateSectionTab(tab) {
+    const allowedTabs = new Set(["overview", "mission", "vision", "values", "leadership", "careers", "contact"]);
+    corporateSectionTab = allowedTabs.has(tab) ? tab : "overview";
+    if (["mission", "vision", "values"].includes(corporateSectionTab)) {
+        corporateStoryTab = corporateSectionTab;
+    }
+    renderCorporatePage();
+}
+
+function setOffersTab(tab) {
+    const allowedTabs = new Set(["coupons", "restaurants"]);
+    offersActiveTab = allowedTabs.has(tab) ? tab : "coupons";
+    renderOffersModal();
+}
+
+function setHelpTopic(topic) {
+    helpActiveTopic = topic;
+    renderHelpModal();
 }
 
 function renderCorporatePage() {
@@ -3781,61 +4026,55 @@ function renderCorporatePage() {
     const fulfilledOrders = orderHistory.filter((order) => String(order.status || "").toUpperCase() === "DELIVERED").length;
     const paymentMethodsCount = savedPaymentMethods.length || 0;
 
-    const storyTabs = {
-        mission: {
+    const storyCards = [
+        {
             title: "Mission",
-            kicker: "Mission",
-            body: "SnapEats exists to make daily food ordering dependable, affordable, and frictionless. We focus on fast discovery, clear pricing, and a checkout journey that respects user time.",
-            visualClass: "mission",
-            visualIcon: "&#128640;",
-            visualTitle: "Reliable every day delivery"
+            icon: "&#128640;",
+            body: "Make daily food ordering dependable, affordable, and frictionless with clean discovery and clear pricing."
         },
-        vision: {
+        {
             title: "Vision",
-            kicker: "Vision",
-            body: "Our vision is to become the most trusted hyperlocal meal platform for students, professionals, and families by combining strong engineering quality with neighborhood-level convenience.",
-            visualClass: "vision",
-            visualIcon: "&#127919;",
-            visualTitle: "Build the most trusted local food network"
+            icon: "&#127919;",
+            body: "Become the most trusted hyperlocal meal platform for students, professionals, and families."
         },
-        values: {
+        {
             title: "Values",
-            kicker: "Values",
-            body: "We build with user obsession, reliable systems, and transparent pricing. Every release in SnapEats is measured by one thing: does it make ordering simpler and more trustworthy?",
-            visualClass: "values",
-            visualIcon: "&#129309;",
-            visualTitle: "Customer-first, quality-first culture"
+            icon: "&#129309;",
+            body: "User obsession, reliable systems, and transparent pricing in every release and every flow."
         }
-    };
-    const activeStory = storyTabs[corporateStoryTab] || storyTabs.mission;
+    ];
+
+    const capabilityCards = [
+        { title: "Partner Engine", copy: "Restaurant onboarding, catalog quality, and offer controls in one practical flow." },
+        { title: "Trust Layer", copy: "OTP-first identity, secure profiles, and support controls built for confidence." },
+        { title: "Commerce Flow", copy: "Optimized cart, coupons, and payment routing tuned for conversion." },
+        { title: "Ops Visibility", copy: "Order lifecycle clarity from placement to successful delivery and support." }
+    ];
 
     const timeline = [
-        { year: "2024", title: "Core platform foundation", copy: "Set up Spring Boot backend, catalog APIs, and menu flows." },
-        { year: "2025", title: "OTP-first identity", copy: "Implemented login and signup OTP workflows for phone and email." },
-        { year: "2025", title: "Commerce layer upgrade", copy: "Launched coupons, restaurant offers, and real checkout integration." },
-        { year: String(currentYear), title: "SnapEatPro expansion", copy: "Added subscription perks, delivery fee logic, and account controls." }
+        { year: "2024", title: "Core Platform Foundation", copy: "Spring Boot backend, catalog APIs, and menu flows established." },
+        { year: "2025", title: "OTP-first Identity", copy: "Phone and email OTP authentication launched across login and signup." },
+        { year: "2025", title: "Commerce Expansion", copy: "Coupons, restaurant offers, and checkout quality upgrades delivered." },
+        { year: String(currentYear), title: "SnapEatPro Growth", copy: "Subscription perks and account controls improved retention." }
     ];
 
     const managementTeam = [
         {
             name: creatorName,
             role: "Founder and Product Engineer",
-            copy: "Leads product direction, backend architecture, and frontend experience for SnapEats.",
-            visualClass: "lead-founder",
+            copy: "Leads product direction, backend architecture, and frontend quality for SnapEats.",
             visualIcon: "&#128187;"
         },
         {
             name: "Platform Operations",
             role: "Delivery and Reliability",
-            copy: "Focused on order lifecycle quality, issue handling, and fast support loops.",
-            visualClass: "lead-ops",
+            copy: "Focuses on order lifecycle quality, issue handling, and response speed.",
             visualIcon: "&#128666;"
         },
         {
             name: "Growth and Partnerships",
             role: "Restaurant Success",
-            copy: "Drives partner onboarding strategy and campaign-led menu discovery growth.",
-            visualClass: "lead-growth",
+            copy: "Drives partner onboarding strategy and menu-discovery growth.",
             visualIcon: "&#128200;"
         }
     ];
@@ -3844,204 +4083,167 @@ function renderCorporatePage() {
         {
             name: "Technology Advisory",
             role: "Architecture Governance",
-            copy: "Supports long-term scalability decisions and API design maturity.",
-            visualClass: "lead-tech",
+            copy: "Supports long-term scalability and API maturity decisions.",
             visualIcon: "&#9881;"
         },
         {
             name: "Market Advisory",
             role: "Business Strategy",
-            copy: "Guides expansion priorities for local markets and retention programs.",
-            visualClass: "lead-market",
+            copy: "Guides market expansion priorities and customer retention levers.",
             visualIcon: "&#128640;"
         },
         {
             name: "Finance Advisory",
             role: "Revenue and Unit Economics",
-            copy: "Helps model sustainable pricing, discounts, and subscription economics.",
-            visualClass: "lead-finance",
+            copy: "Helps shape sustainable pricing, discounts, and subscription models.",
             visualIcon: "&#128176;"
         }
     ];
 
     const activePeople = corporatePeopleTab === "board" ? boardTeam : managementTeam;
 
+    const metricsMarkup = [
+        { value: `${restaurantCount}+`, label: "Restaurant partners" },
+        { value: `${categoryCount}+`, label: "Active categories" },
+        { value: `${fulfilledOrders}+`, label: "Orders delivered" },
+        { value: `${paymentMethodsCount}+`, label: "Saved payment methods" }
+    ].map((metric) => `
+        <article class="corp-long-metric-card">
+            <strong>${escapeHtml(metric.value)}</strong>
+            <span>${escapeHtml(metric.label)}</span>
+        </article>
+    `).join("");
+
+    const storyCardsMarkup = storyCards.map((story) => `
+        <article class="corp-long-value-card">
+            <div class="corp-long-value-head">
+                <span class="corp-long-value-icon">${story.icon}</span>
+                <h3>${escapeHtml(story.title)}</h3>
+            </div>
+            <p>${escapeHtml(story.body)}</p>
+        </article>
+    `).join("");
+
+    const capabilityMarkup = capabilityCards.map((capability) => `
+        <article class="corp-long-cap-card">
+            <h3>${escapeHtml(capability.title)}</h3>
+            <p>${escapeHtml(capability.copy)}</p>
+        </article>
+    `).join("");
+
+    const timelineMarkup = timeline.map((step) => `
+        <article class="corp-long-timeline-card">
+            <p class="corp-long-year">${escapeHtml(step.year)}</p>
+            <h3>${escapeHtml(step.title)}</h3>
+            <p>${escapeHtml(step.copy)}</p>
+        </article>
+    `).join("");
+
+    const peopleMarkup = activePeople.map((person) => `
+        <article class="corp-long-person-card">
+            <span class="corp-long-person-icon">${person.visualIcon}</span>
+            <h3>${escapeHtml(person.name)}</h3>
+            <p class="corp-long-person-role">${escapeHtml(person.role)}</p>
+            <p>${escapeHtml(person.copy)}</p>
+        </article>
+    `).join("");
+
     content.innerHTML = `
-        <div class="corporate-shell corp-pro">
-            <section class="corp-pro-hero">
-                <div class="corp-pro-hero-copy">
-                    <p class="corp-pro-eyebrow">SnapEats Corporate</p>
+        <div class="corporate-shell corp-long">
+            <section class="corp-long-hero">
+                <div class="corp-long-hero-copy">
                     <h1>Built to make neighborhood food ordering reliable, fast, and trusted.</h1>
                     <p>
                         SnapEats is a product-led delivery platform focused on smooth discovery, transparent pricing, and a dependable checkout flow.
                         We combine strong engineering with local market execution to deliver better everyday ordering experiences.
                     </p>
-                    <div class="corp-pro-hero-actions">
+                    <div class="corp-long-actions">
                         <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the team</button>
-                        <button class="secondary-button" type="button" onclick="document.getElementById('corpContactSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Contact us</button>
+                        <button class="secondary-button" type="button" onclick="document.getElementById('corpLongContactSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Contact us</button>
                     </div>
                 </div>
-                <div class="corp-pro-hero-metrics">
-                    <article class="corp-pro-metric">
-                        <strong>${restaurantCount}+</strong>
-                        <span>Restaurant partners</span>
-                    </article>
-                    <article class="corp-pro-metric">
-                        <strong>${categoryCount}+</strong>
-                        <span>Active categories</span>
-                    </article>
-                    <article class="corp-pro-metric">
-                        <strong>${fulfilledOrders}+</strong>
-                        <span>Orders delivered</span>
-                    </article>
-                    <article class="corp-pro-metric">
-                        <strong>${paymentMethodsCount}+</strong>
-                        <span>Saved payment methods</span>
-                    </article>
+                <div class="corp-long-metrics-grid">
+                    ${metricsMarkup}
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section">
-                <div class="corp-pro-section-head">
-                    <p class="corp-pro-kicker">${escapeHtml(activeStory.kicker)}</p>
+            <section class="corp-long-section">
+                <div class="corp-long-section-head">
+                    <p>Mission, Vision, Values</p>
                     <h2>What Drives SnapEats</h2>
+                    <span>Our operating principles across product, engineering, and delivery execution.</span>
                 </div>
-                <div class="corp-pro-story-layout">
-                    <div class="corp-pro-story-tabs">
-                        ${Object.keys(storyTabs).map((tab) => `
-                            <button
-                                class="corp-pro-story-tab ${corporateStoryTab === tab ? "active" : ""}"
-                                type="button"
-                                onclick="setCorporateStoryTab('${tab}')"
-                            >
-                                ${escapeHtml(storyTabs[tab].title)}
-                            </button>
-                        `).join("")}
-                    </div>
-                    <div class="corp-pro-story-panel">
-                        <h3>${escapeHtml(activeStory.title)} at SnapEats</h3>
-                        <p>${escapeHtml(activeStory.body)}</p>
-                        <div class="corp-pro-story-highlight ${escapeAttribute(activeStory.visualClass)}">
-                            <span class="corp-pro-story-icon">${activeStory.visualIcon}</span>
-                            <div>
-                                <strong>${escapeHtml(activeStory.visualTitle)}</strong>
-                                <p>Consistent execution across product, engineering, and delivery operations.</p>
-                            </div>
-                        </div>
-                    </div>
+                <div class="corp-long-values-grid">
+                    ${storyCardsMarkup}
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section">
-                <div class="corp-pro-section-head">
-                    <p class="corp-pro-kicker">Platform</p>
-                    <h2>Industry Builder</h2>
+            <section class="corp-long-section">
+                <div class="corp-long-section-head">
+                    <p>Platform</p>
+                    <h2>How SnapEats Delivers</h2>
+                    <span>A practical stack for neighborhood food commerce with trust and speed.</span>
                 </div>
-                <div class="corp-pro-two-col">
-                    <div class="corp-pro-copy">
-                        <p>
-                            SnapEats is engineered as a practical hyperlocal commerce system. From restaurant onboarding to OTP identity
-                            and conversion-first checkout, each module is designed for reliability, speed, and customer trust.
-                        </p>
-                        <p>
-                            The platform keeps customer, restaurant, and operations workflows connected with a unified data model,
-                            reducing friction from discovery to delivery.
-                        </p>
-                    </div>
-                    <div class="corp-pro-capability-grid">
-                        <article>
-                            <h3>Partner Engine</h3>
-                            <p>Restaurant onboarding, catalog quality, and offer controls in one flow.</p>
-                        </article>
-                        <article>
-                            <h3>Trust Layer</h3>
-                            <p>OTP-first identity and clean account controls for reliable access.</p>
-                        </article>
-                        <article>
-                            <h3>Commerce Flow</h3>
-                            <p>Optimized cart, coupons, and payment journey tuned for conversions.</p>
-                        </article>
-                        <article>
-                            <h3>Ops Visibility</h3>
-                            <p>Order lifecycle clarity from placement to successful delivery.</p>
-                        </article>
-                    </div>
+                <div class="corp-long-cap-grid">
+                    ${capabilityMarkup}
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section">
-                <div class="corp-pro-section-head">
-                    <p class="corp-pro-kicker">Journey</p>
-                    <h2>SnapEats Timeline</h2>
+            <section class="corp-long-section">
+                <div class="corp-long-section-head">
+                    <p>Journey</p>
+                    <h2>Growth Timeline</h2>
+                    <span>Key milestones from foundation to present expansion.</span>
                 </div>
-                <div class="corp-pro-timeline">
-                    ${timeline.map((step) => `
-                        <article class="corp-pro-timeline-card">
-                            <p class="corp-pro-timeline-year">${escapeHtml(step.year)}</p>
-                            <h3>${escapeHtml(step.title)}</h3>
-                            <p>${escapeHtml(step.copy)}</p>
-                        </article>
-                    `).join("")}
+                <div class="corp-long-timeline-grid">
+                    ${timelineMarkup}
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section">
-                <div class="corp-pro-lead-head">
+            <section class="corp-long-section">
+                <div class="corp-long-section-head corp-long-section-head-row">
                     <div>
-                        <p class="corp-pro-kicker">Leadership</p>
+                        <p>Leadership</p>
                         <h2>People Behind SnapEats</h2>
+                        <span>Management and advisory team building the platform.</span>
                     </div>
-                    <div class="corp-pro-people-tabs">
-                        <button class="corp-pro-people-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
-                        <button class="corp-pro-people-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board and Advisors</button>
+                    <div class="corp-long-tabs">
+                        <button class="corp-long-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
+                        <button class="corp-long-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board & Advisors</button>
                     </div>
                 </div>
-                <div class="corp-pro-people-grid">
-                    ${activePeople.map((person) => `
-                        <article class="corp-pro-person-card">
-                            <div class="corp-pro-person-badge ${escapeAttribute(person.visualClass)}">${person.visualIcon}</div>
-                            <div class="corp-pro-person-copy">
-                                <h3>${escapeHtml(person.name)}</h3>
-                                <p class="corp-pro-person-role">${escapeHtml(person.role)}</p>
-                                <p>${escapeHtml(person.copy)}</p>
-                            </div>
-                        </article>
-                    `).join("")}
+                <div class="corp-long-people-grid">
+                    ${peopleMarkup}
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section">
-                <div class="corp-pro-section-head">
-                    <p class="corp-pro-kicker">Careers</p>
-                    <h2>Careers With Real Product Ownership</h2>
+            <section class="corp-long-section corp-long-section-careers">
+                <div class="corp-long-section-head">
+                    <p>Careers</p>
+                    <h2>Build With Real Ownership</h2>
+                    <span>Join engineering, operations, and growth teams shaping local delivery quality.</span>
                 </div>
-                <div class="corp-pro-careers">
-                    <div class="corp-pro-copy">
-                        <p>
-                            We are building a product-first culture where ownership, speed, and quality matter. If you care about solving
-                            real customer problems in commerce and logistics, SnapEats is a strong place to grow.
-                        </p>
-                        <p>
-                            Current focus areas include backend engineering, frontend performance, partner operations, and growth analytics.
-                        </p>
+                <div class="corp-long-careers-box">
+                    <div>
+                        <strong>Open roles across engineering, operations, and growth</strong>
+                        <p>Work on reliable user flows, conversion improvements, and partner outcomes at scale.</p>
                     </div>
-                    <div class="corp-pro-careers-cta">
-                        <strong>Open Roles Across Engineering, Operations, and Growth</strong>
-                        <p>Build scalable features, improve conversion funnels, and shape customer trust at scale.</p>
+                    <div class="corp-long-actions">
                         <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Apply now</button>
+                        <a class="secondary-button" href="mailto:careers@snap-eats.com?subject=SnapEats%20Careers" target="_blank" rel="noopener noreferrer">Email recruiting</a>
                     </div>
                 </div>
             </section>
 
-            <section class="corporate-section corp-pro-section" id="corpContactSection">
-                <div class="corp-pro-section-head">
-                    <p class="corp-pro-kicker">Contact</p>
-                    <h2>Get In Touch</h2>
+            <section class="corp-long-section" id="corpLongContactSection">
+                <div class="corp-long-section-head">
+                    <p>Contact</p>
+                    <h2>Get in touch</h2>
+                    <span>Reach the product and support team directly.</span>
                 </div>
-                <div class="corp-pro-contact">
-                    <div class="corp-pro-contact-card">
-                        <h3>Head Office</h3>
-                        <p>SnapEats Product Lab</p>
+                <div class="corp-long-contact-grid">
+                    <div class="corp-long-contact-card">
+                        <h3>Corporate Office</h3>
                         <p>Jamia Nagar, New Delhi, Delhi 110025</p>
                         <h3>Project Owner</h3>
                         <p>${creatorName}</p>
@@ -4049,13 +4251,222 @@ function renderCorporatePage() {
                         <h3>Support</h3>
                         <p>support@snapeats.in</p>
                     </div>
-                    <div class="corp-pro-contact-map">
+                    <div class="corp-long-map-card">
                         <iframe
                             title="SnapEats office map"
                             loading="lazy"
                             referrerpolicy="no-referrer-when-downgrade"
                             src="https://www.google.com/maps?q=Jamia+Nagar,+New+Delhi&output=embed"
                         ></iframe>
+                    </div>
+                </div>
+            </section>
+        </div>
+    `;
+}
+
+function renderHelpModal() {
+    const content = document.getElementById("helpModalContent");
+    if (!content) {
+        return;
+    }
+
+    const helpTopics = [
+        {
+            id: "orders",
+            label: "Help with orders",
+            meta: "Tracking, cancellations, refunds",
+            description: "Resolve order issues quickly with live status, refund tracking, and item support.",
+            actions: [
+                { label: "View orders", onClick: "closeHelp(); openOrders()" },
+                { label: "Email support", href: "mailto:support@snap-eats.com?subject=Order%20help" }
+            ],
+            faqs: [
+                { question: "Where is my order?", answer: "Open Orders to see live status, ETA, and rider details once assigned." },
+                { question: "I received a wrong or missing item", answer: "Report the issue within 30 minutes of delivery to get a quick resolution." },
+                { question: "Can I cancel my order?", answer: "Cancellation is available until the restaurant confirms preparation." },
+                { question: "When will I get a refund?", answer: "Refunds are typically processed within 3-5 business days." }
+            ],
+            tips: [
+                "Keep your phone reachable for the delivery OTP.",
+                "Use no-contact delivery for a safer handoff.",
+                "Add delivery notes to help the partner find you faster."
+            ]
+        },
+        {
+            id: "one",
+            label: "SnapEats One FAQs",
+            meta: "Membership, benefits, delivery savings",
+            description: "Everything about SnapEats One: free delivery, priority support, and member-only deals.",
+            actions: [
+                { label: "View membership", onClick: "closeHelp(); openAuthModal(); setAccountSection('subscription')" },
+                { label: "Membership terms", href: "#" }
+            ],
+            faqs: [
+                { question: "What are the benefits?", answer: "Members get free delivery on eligible orders and exclusive partner discounts." },
+                { question: "How do I renew?", answer: "Your plan auto-renews unless you cancel before the renewal date." },
+                { question: "Is there a trial?", answer: "We occasionally offer limited trials during seasonal campaigns." },
+                { question: "Can I cancel anytime?", answer: "Yes, you can cancel from the Account > SnapEatPro section." }
+            ],
+            tips: [
+                "Check the plan card for per-order discount caps.",
+                "Use member offers during peak hours to save more.",
+                "Keep your plan active for uninterrupted perks."
+            ]
+        },
+        {
+            id: "general",
+            label: "General issues",
+            meta: "Login, payments, coupons",
+            description: "Troubleshoot account access, payment failures, or coupon problems.",
+            actions: [
+                { label: "Account settings", onClick: "closeHelp(); openAuthModal(); setAccountSection('settings')" },
+                { label: "Payment methods", onClick: "closeHelp(); openAuthModal(); setAccountSection('payments')" }
+            ],
+            faqs: [
+                { question: "OTP not received", answer: "Wait 30 seconds and tap Resend OTP. Check spam for email OTPs." },
+                { question: "Payment failed but money deducted", answer: "Refunds are initiated automatically within 24 hours." },
+                { question: "Coupon not working", answer: "Verify the minimum order value and coupon validity." },
+                { question: "App feels slow", answer: "Clear browser cache or reopen the app for a fresh session." }
+            ],
+            tips: [
+                "Use UPI for faster payment confirmations.",
+                "Keep your profile info updated for smoother support.",
+                "Coupons apply only once per eligible order."
+            ]
+        },
+        {
+            id: "partner",
+            label: "Partner onboarding",
+            meta: "Restaurant partnerships",
+            description: "Interested in listing your restaurant? Start with menus, pricing, and training.",
+            actions: [
+                { label: "Partner with us", href: "mailto:partners@snap-eats.com?subject=Partner%20with%20SnapEats" },
+                { label: "Download checklist", href: "#" }
+            ],
+            faqs: [
+                { question: "What documents are required?", answer: "FSSAI license, GST details, and menu pricing are required." },
+                { question: "How long does onboarding take?", answer: "Typical onboarding completes within 3-5 business days." },
+                { question: "How do payouts work?", answer: "Payouts are settled weekly with a detailed statement." },
+                { question: "Who manages menu updates?", answer: "You can update menus through the partner dashboard anytime." }
+            ],
+            tips: [
+                "Upload high-quality menu images for better discovery.",
+                "Keep preparation times accurate to reduce delays.",
+                "Offer combo meals to improve order value."
+            ]
+        },
+        {
+            id: "safety",
+            label: "Report safety emergency",
+            meta: "Urgent help and guidelines",
+            description: "If you feel unsafe, contact us immediately and we will prioritize your request.",
+            actions: [
+                { label: "Emergency contact", href: "tel:+919000012345" },
+                { label: "Email safety", href: "mailto:safety@snap-eats.com?subject=Safety%20concern" }
+            ],
+            faqs: [
+                { question: "How to report an incident?", answer: "Use the emergency contact number or email safety@snap-eats.com." },
+                { question: "Will my report stay confidential?", answer: "Yes, all reports are handled confidentially." },
+                { question: "Can I block a delivery partner?", answer: "Report the issue and we will take immediate action." },
+                { question: "What happens next?", answer: "A dedicated agent will follow up within 2 hours." }
+            ],
+            tips: [
+                "Share clear details like time, order ID, and location.",
+                "Contact emergency services when needed.",
+                "Keep screenshots or call logs if available."
+            ]
+        },
+        {
+            id: "market",
+            label: "SnapEats Market onboarding",
+            meta: "Grocery & essentials",
+            description: "Learn about grocery partner onboarding, delivery SLAs, and inventory updates.",
+            actions: [
+                { label: "Start onboarding", href: "mailto:market@snap-eats.com?subject=Market%20onboarding" },
+                { label: "Delivery SLA guide", href: "#" }
+            ],
+            faqs: [
+                { question: "Which categories are supported?", answer: "Fresh produce, daily essentials, packaged goods, and beverages." },
+                { question: "How are stock updates handled?", answer: "Inventory can be synced daily or updated manually." },
+                { question: "What are delivery windows?", answer: "Standard delivery window is 45-60 minutes." },
+                { question: "How do substitutions work?", answer: "Customers can approve substitutions in the order notes." }
+            ],
+            tips: [
+                "Keep stock accurate to avoid cancellations.",
+                "Bundle fast-moving items for better visibility.",
+                "Use cold packaging for dairy and frozen items."
+            ]
+        }
+    ];
+
+    const activeTopic = helpTopics.find((topic) => topic.id === helpActiveTopic) || helpTopics[0];
+
+    const navMarkup = helpTopics.map((topic) => `
+        <button
+            class="help-nav-item ${topic.id === activeTopic.id ? "active" : ""}"
+            type="button"
+            onclick="setHelpTopic('${topic.id}')"
+        >
+            <span>${escapeHtml(topic.label)}</span>
+            <small>${escapeHtml(topic.meta)}</small>
+        </button>
+    `).join("");
+
+    const panelActionsBlock = "";
+
+    const faqMarkup = (activeTopic.faqs || []).map((faq) => `
+        <article class="help-faq-card">
+            <h3>${escapeHtml(faq.question)}</h3>
+            <p>${escapeHtml(faq.answer)}</p>
+        </article>
+    `).join("");
+
+    const tipsMarkup = (activeTopic.tips || []).map((tip) => `
+        <li>${escapeHtml(tip)}</li>
+    `).join("");
+
+    content.innerHTML = `
+        <div class="help-shell">
+            <header class="help-hero">
+                <h1>Help & Support</h1>
+                <p class="help-hero-sub">Let's take a step ahead and help you better.</p>
+            </header>
+
+            <section class="help-panel-shell">
+                <aside class="help-nav">
+                    <h2>Browse topics</h2>
+                    ${navMarkup}
+                </aside>
+                <div class="help-panel">
+                    <div class="help-panel-head">
+                        <div>
+                            <p class="help-topic-meta">${escapeHtml(activeTopic.meta)}</p>
+                            <h3>${escapeHtml(activeTopic.label)}</h3>
+                            <p class="help-topic-copy">${escapeHtml(activeTopic.description)}</p>
+                        </div>
+                        ${panelActionsBlock}
+                    </div>
+                    <div class="help-panel-grid">
+                        <div>
+                            <h4>Popular questions</h4>
+                            <div class="help-faq-grid">
+                                ${faqMarkup}
+                            </div>
+                        </div>
+                        <div>
+                            <h4>Quick tips</h4>
+                            <ul class="help-tip-list">
+                                ${tipsMarkup}
+                            </ul>
+                            <div class="help-contact-card">
+                                <span class="help-contact-icon">&#9993;</span>
+                                <div>
+                                    <strong>Need more help?</strong>
+                                    <p>Email us at <strong>support@snap-eats.com</strong> or call <strong>+91 90000 12345</strong>.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -4835,18 +5246,23 @@ function renderAuthModal(mode = "otp") {
     }
 
     if (currentUser) {
+        const previousAccountMain = content.querySelector(".account-main");
+        const previousScrollTop = previousAccountMain ? previousAccountMain.scrollTop : 0;
+        const previousScrollLeft = previousAccountMain ? previousAccountMain.scrollLeft : 0;
         if (activeAccountSection === "admin" && !isAdminUser()) {
             activeAccountSection = "orders";
         }
         content.innerHTML = `
             <div class="account-shell">
                 <section class="account-hero">
-                    <div class="account-hero-copy">
-                        <p class="menu-eyebrow">My account</p>
-                        <h2>${escapeHtml(currentUser.name || "SnapEats User")}</h2>
-                        <div class="account-hero-meta-row">
-                            <p class="account-hero-meta">${escapeHtml(currentUser.phoneNumber || "-")} <span>&bull;</span> ${escapeHtml(currentUser.email || "-")}</p>
-                            <button class="account-edit-button" type="button" onclick="setAccountSection('settings')">Edit profile</button>
+                    <div class="account-hero-inner">
+                        <div class="account-hero-copy">
+                            <p class="menu-eyebrow">My account</p>
+                            <h2>${escapeHtml(currentUser.name || "SnapEats User")}</h2>
+                            <div class="account-hero-meta-row">
+                                <p class="account-hero-meta">${escapeHtml(currentUser.phoneNumber || "-")} <span>&bull;</span> ${escapeHtml(currentUser.email || "-")}</p>
+                                <button class="account-edit-button" type="button" onclick="setAccountSection('settings')">Edit profile</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -4860,11 +5276,19 @@ function renderAuthModal(mode = "otp") {
                     </div>
                 </section>
             </div>`;
+        const nextAccountMain = content.querySelector(".account-main");
+        if (nextAccountMain && previousAccountMain) {
+            nextAccountMain.scrollTop = previousScrollTop;
+            nextAccountMain.scrollLeft = previousScrollLeft;
+        }
+        syncDeleteAccountOtpButtonState();
         return;
     }
 
     if (mode === "login" || mode === "signup") {
-        otpAuthFlowMode = mode;
+        if (!(otpAuthForceSignup && mode === "login")) {
+            otpAuthFlowMode = mode;
+        }
         otpAuthStep = "form";
     }
 
@@ -4873,15 +5297,58 @@ function renderAuthModal(mode = "otp") {
     const subtitle = "Enter your email or phone, verify OTP, and continue.";
 
     const otpFlowHeader = otpAuthFlowMode === "signup"
-        ? `<h3>Sign up</h3><p>or <button class="text-button" type="button" onclick="setOtpAuthFlowMode('login')">login to your account</button></p>`
+        ? (otpAuthForceSignup
+            ? `<h3>Sign up</h3>`
+            : `<h3>Sign up</h3><p>or <button class="text-button" type="button" onclick="setOtpAuthFlowMode('login')">login to your account</button></p>`)
         : `<h3>Login</h3><p>or <button class="text-button" type="button" onclick="setOtpAuthFlowMode('signup')">create an account</button></p>`;
 
+    const otpIdentifierIsEmail = otpAuthDraftIdentifier.includes("@");
     const otpFormMarkup = otpAuthStep === "verify" ? `
             <form class="auth-form" onsubmit="verifyLoginSignupOtp(event)">
                 <div class="otp-flow-block">
                     <p>OTP sent to <strong>${escapeHtml(otpAuthDraftIdentifier)}</strong></p>
                     <button class="text-button" type="button" onclick="resetOtpAuthStep()">Change number/email</button>
                 </div>
+                ${otpAuthForceSignup ? `
+                <div class="otp-signup-banner">
+                    Looks like a new account. Please complete signup details below.
+                </div>
+                ` : ""}
+                ${otpAuthFlowMode === "signup" ? `
+                <label>
+                    Name
+                    <input
+                        type="text"
+                        id="authOtpName"
+                        placeholder="Your full name"
+                        value="${escapeAttribute(otpAuthDraftName)}"
+                        oninput="updateOtpAuthName(this.value)"
+                        required
+                    >
+                </label>
+                ${otpIdentifierIsEmail ? "" : `
+                <label>
+                    Email (optional if phone used above)
+                    <input
+                        type="email"
+                        id="authOtpEmail"
+                        placeholder="you@example.com"
+                        value="${escapeAttribute(otpAuthDraftEmail)}"
+                        oninput="updateOtpAuthEmail(this.value)"
+                    >
+                </label>
+                `}
+                <label>
+                    Referral code (optional)
+                    <input
+                        type="text"
+                        id="authOtpReferralCode"
+                        placeholder="Enter referral code"
+                        value="${escapeAttribute(otpAuthDraftReferralCode)}"
+                        oninput="updateOtpAuthReferralCode(this.value)"
+                    >
+                </label>
+                ` : ""}
                 <label>
                     OTP
                     <input type="text" id="authOtpCode" placeholder="6-digit OTP" maxlength="6" required>
@@ -5393,6 +5860,13 @@ function renderAccountPanel() {
             </div>
         `;
     }
+    const deleteChannels = getDeleteAccountChannels();
+    deleteAccountChannel = normalizeDeleteAccountChannel(deleteAccountChannel) || "email";
+    const selectedDeleteChannel = deleteAccountChannel || (deleteChannels[0]?.id || "");
+    const canRequestDeleteOtp = deleteChannels.length > 0;
+    const activeDeleteChannel = deleteAccountOtpRequested
+        ? (deleteAccountPendingChannel || selectedDeleteChannel)
+        : selectedDeleteChannel;
 
     return `
         <div class="account-panel">
@@ -5416,33 +5890,58 @@ function renderAccountPanel() {
                         <span>Phone</span>
                         <input id="settingsPhone" type="tel" value="${escapeAttribute(currentUser.phoneNumber || "")}">
                     </label>
-                    <label class="account-form-field">
-                        <span>City</span>
-                        <input id="settingsCity" type="text" value="${escapeAttribute(currentUser.city || "")}">
-                    </label>
-                    <label class="account-form-field">
-                        <span>State</span>
-                        <input id="settingsState" type="text" value="${escapeAttribute(currentUser.state || "")}">
-                    </label>
-                    <label class="account-form-field">
-                        <span>Pincode</span>
-                        <input id="settingsPincode" type="text" value="${escapeAttribute(currentUser.pincode || "")}">
-                    </label>
                 </div>
-                <label class="account-form-field account-form-field-full">
-                    <span>Address</span>
-                    <textarea id="settingsAddress" rows="3" placeholder="House number, street, landmark">${escapeHtml(currentUser.address || "")}</textarea>
-                </label>
                 <div class="auth-actions">
                     <button class="primary-button" type="submit">Save profile</button>
-                    <button class="secondary-button" type="button" onclick="setAccountSection('addresses')">Manage addresses</button>
                     <button class="text-button danger-button" type="button" onclick="logoutUser()">Log out</button>
                 </div>
                 <div id="settingsFeedback" class="checkout-feedback"></div>
             </form>
-            <div class="auth-actions">
-                <button class="secondary-button" type="button" onclick="setAccountSection('orders')">View orders</button>
-            </div>
+            <section class="account-danger-zone">
+                <div class="account-panel-head account-panel-head-compact">
+                    <div>
+                        <h4>Delete account</h4>
+                        <p class="account-panel-note">This permanently removes your account and saved profile data.</p>
+                    </div>
+                </div>
+                <div class="auth-actions">
+                    <button class="primary-button danger-solid-button" type="button" onclick="openDeleteAccountPanel(event)">Delete account</button>
+                </div>
+                ${deleteAccountPanelOpen ? `
+                    ${canRequestDeleteOtp ? `
+                        <div class="delete-account-channel-group">
+                            ${deleteChannels.map((channel) => `
+                                <label class="delete-account-channel-option">
+                                    <input
+                                        type="radio"
+                                        name="deleteAccountChannel"
+                                        value="${channel.id}"
+                                        ${activeDeleteChannel === channel.id ? "checked" : ""}
+                                        onchange="setDeleteAccountChannel('${channel.id}')"
+                                    >
+                                    <span>${escapeHtml(channel.label)}</span>
+                                </label>
+                            `).join("")}
+                        </div>
+                        <div class="auth-actions">
+                            <button class="secondary-button" id="deleteAccountOtpRequestButton" type="button" onclick="requestDeleteAccountOtp(event)">Send verification code</button>
+                        </div>
+                        ${deleteAccountOtpRequested ? `
+                            <label class="account-form-field account-form-field-full">
+                                <span>Verification code</span>
+                                <input id="deleteAccountOtpInput" type="text" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit code" required>
+                            </label>
+                            ${deleteAccountDevOtp ? `<p class="account-panel-note">Dev OTP: <strong>${escapeHtml(deleteAccountDevOtp)}</strong></p>` : ""}
+                            <div class="auth-actions">
+                                <button class="primary-button danger-solid-button" type="button" onclick="confirmDeleteAccount(event)">Delete account permanently</button>
+                            </div>
+                        ` : ""}
+                    ` : `
+                        <p class="account-panel-note">Add a valid email or phone number in your profile first to enable secure account deletion.</p>
+                    `}
+                ` : ""}
+                <div id="deleteAccountFeedback" class="checkout-feedback"></div>
+            </section>
         </div>
     `;
 }
@@ -5606,14 +6105,18 @@ async function saveProfileSettings(event) {
     event.preventDefault();
 
     const feedback = document.getElementById("settingsFeedback");
+    const cityInput = document.getElementById("settingsCity");
+    const stateInput = document.getElementById("settingsState");
+    const pincodeInput = document.getElementById("settingsPincode");
+    const addressInput = document.getElementById("settingsAddress");
     const payload = {
-        name: document.getElementById("settingsName")?.value.trim(),
-        email: document.getElementById("settingsEmail")?.value.trim(),
-        phoneNumber: document.getElementById("settingsPhone")?.value.trim(),
-        city: document.getElementById("settingsCity")?.value.trim(),
-        state: document.getElementById("settingsState")?.value.trim(),
-        pincode: document.getElementById("settingsPincode")?.value.trim(),
-        address: document.getElementById("settingsAddress")?.value.trim()
+        name: document.getElementById("settingsName")?.value?.trim(),
+        email: document.getElementById("settingsEmail")?.value?.trim(),
+        phoneNumber: document.getElementById("settingsPhone")?.value?.trim(),
+        city: cityInput ? cityInput.value.trim() : (currentUser?.city || ""),
+        state: stateInput ? stateInput.value.trim() : (currentUser?.state || ""),
+        pincode: pincodeInput ? pincodeInput.value.trim() : (currentUser?.pincode || ""),
+        address: addressInput ? addressInput.value.trim() : (currentUser?.address || "")
     };
 
     if (feedback) {
@@ -5641,6 +6144,119 @@ async function saveProfileSettings(event) {
     } catch (error) {
         if (feedback) {
             feedback.textContent = error.message || "Failed to update profile.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function requestDeleteAccountOtp(event) {
+    if (event && typeof event.preventDefault === "function") {
+        event.preventDefault();
+    }
+
+    const feedback = document.getElementById("deleteAccountFeedback");
+    if (!isAuthenticatedSession()) {
+        if (feedback) {
+            feedback.textContent = "Please log in again to continue.";
+            feedback.className = "checkout-feedback error";
+        }
+        openAuthModal();
+        return;
+    }
+
+    const channel = normalizeDeleteAccountChannel(deleteAccountChannel);
+    if (!channel) {
+        if (feedback) {
+            feedback.textContent = "Add a valid email or phone number in your profile first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    if (feedback) {
+        feedback.textContent = `Sending verification code to your registered ${channel}...`;
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/users/me/delete/request-otp`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ channel })
+        });
+
+        deleteAccountChannel = channel;
+        deleteAccountPendingChannel = channel;
+        deleteAccountOtpRequested = true;
+        deleteAccountDevOtp = String(response?.devOtp || "");
+        startDeleteAccountOtpCooldown(30);
+        renderAuthModal();
+
+        const updatedFeedback = document.getElementById("deleteAccountFeedback");
+        if (updatedFeedback) {
+            updatedFeedback.textContent = response?.message || "Verification code sent.";
+            updatedFeedback.className = "checkout-feedback success";
+        }
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to send verification code.";
+            feedback.className = "checkout-feedback error";
+        }
+    }
+}
+
+async function confirmDeleteAccount(event) {
+    if (event && typeof event.preventDefault === "function") {
+        event.preventDefault();
+    }
+
+    const feedback = document.getElementById("deleteAccountFeedback");
+    const otp = document.getElementById("deleteAccountOtpInput")?.value.trim() || "";
+    const channel = normalizeDeleteAccountChannel(deleteAccountPendingChannel || deleteAccountChannel);
+
+    if (!channel) {
+        if (feedback) {
+            feedback.textContent = "Select a valid verification channel first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    if (!otp) {
+        if (feedback) {
+            feedback.textContent = "Enter the verification code first.";
+            feedback.className = "checkout-feedback error";
+        }
+        return;
+    }
+
+    const shouldDelete = window.confirm("This will permanently delete your SnapEats account and data. Continue?");
+    if (!shouldDelete) {
+        return;
+    }
+
+    if (feedback) {
+        feedback.textContent = "Verifying code and deleting account...";
+        feedback.className = "checkout-feedback";
+    }
+
+    try {
+        const response = await fetchJson(`${API_BASE_URL}/users/me/delete/confirm`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ channel, otp })
+        });
+
+        resetDeleteAccountFlow();
+        logoutUser();
+        alert(response?.message || "Your account has been deleted.");
+    } catch (error) {
+        if (feedback) {
+            feedback.textContent = error.message || "Failed to delete account.";
             feedback.className = "checkout-feedback error";
         }
     }
@@ -5728,6 +6344,12 @@ async function requestLoginSignupOtp(event) {
             body: JSON.stringify({ identifier })
         });
 
+        if (response?.existingUser === false) {
+            otpAuthFlowMode = "signup";
+            otpAuthForceSignup = true;
+        } else if (response?.existingUser === true) {
+            otpAuthForceSignup = false;
+        }
         otpAuthLastSentIdentifier = identifier;
         startOtpAuthCooldown(30);
         otpAuthStep = "verify";
@@ -5736,10 +6358,14 @@ async function requestLoginSignupOtp(event) {
         if (otpInput && response?.devOtp) {
             otpInput.value = response.devOtp;
         }
-        if (feedback) {
+        const updatedFeedback = document.getElementById("authFeedback");
+        if (updatedFeedback) {
             const devOtpText = response?.devOtp ? ` (Demo OTP: ${response.devOtp})` : "";
-            feedback.textContent = `${response?.message || "OTP sent."}${devOtpText}`;
-            feedback.className = "checkout-feedback success";
+            const baseMessage = response?.existingUser === false
+                ? "No account found. Please complete sign up details below."
+                : (response?.message || "OTP sent.");
+            updatedFeedback.textContent = `${baseMessage}${devOtpText}`;
+            updatedFeedback.className = "checkout-feedback success";
         }
     } catch (error) {
         if (feedback) {
@@ -5782,6 +6408,7 @@ async function verifyLoginSignupOtp(event) {
 
         saveAuthToken(authResponse?.token || "");
         saveCurrentUser(authResponse?.user || authResponse);
+        otpAuthForceSignup = false;
         otpAuthDraftIdentifier = "";
         otpAuthDraftName = "";
         await Promise.all([fetchAddresses(), fetchOrders(), fetchFavoriteRestaurants(), fetchFavoriteMenuItems(), fetchPaymentMethods(), fetchSubscriptionData()]);
@@ -5795,6 +6422,9 @@ async function verifyLoginSignupOtp(event) {
 }
 
 function setOtpAuthFlowMode(mode) {
+    if (otpAuthForceSignup && mode !== "signup") {
+        return;
+    }
     otpAuthFlowMode = mode === "signup" ? "signup" : "login";
     otpAuthStep = "form";
     clearOtpAuthCooldown();
@@ -5804,6 +6434,7 @@ function setOtpAuthFlowMode(mode) {
 
 function resetOtpAuthStep() {
     otpAuthStep = "form";
+    otpAuthForceSignup = false;
     clearOtpAuthCooldown();
     otpAuthLastSentIdentifier = "";
     renderAuthModal("otp");
@@ -5812,6 +6443,7 @@ function resetOtpAuthStep() {
 function resetOtpAuthFlow() {
     otpAuthStep = "form";
     otpAuthFlowMode = "login";
+    otpAuthForceSignup = false;
     otpAuthDraftIdentifier = "";
     otpAuthDraftName = "";
     otpAuthDraftEmail = "";
@@ -5982,6 +6614,7 @@ function logoutUser() {
     saveCurrentUser(null);
     saveAuthToken("");
     resetOtpAuthFlow();
+    resetDeleteAccountFlow();
     savedAddresses = [];
     orderHistory = [];
     favoriteRestaurants = [];
@@ -6584,7 +7217,7 @@ function closeMenu() {
 }
 
 function anyModalOpen() {
-    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal"].some((modalId) =>
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal"].some((modalId) =>
         document.getElementById(modalId)?.classList.contains("open")
     );
 }
@@ -6812,7 +7445,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal"].forEach((modalId) => {
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
@@ -6831,6 +7464,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         closeOffers();
                     } else if (modalId === "corporateModal") {
                         closeCorporatePage();
+                    } else if (modalId === "helpModal") {
+                        closeHelp();
                     } else {
                         closeAuthModal();
                     }
@@ -6849,6 +7484,7 @@ document.addEventListener("DOMContentLoaded", () => {
             closeLocationPicker();
             closeOffers();
             closeCorporatePage();
+            closeHelp();
             closeSearchBar();
             closeDiscoveryFilterModal();
         }
