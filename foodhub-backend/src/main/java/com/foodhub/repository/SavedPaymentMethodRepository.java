@@ -15,4 +15,6 @@ public interface SavedPaymentMethodRepository extends JpaRepository<SavedPayment
     Optional<SavedPaymentMethod> findByIdAndUserIdAndActiveTrue(Long id, Long userId);
 
     Optional<SavedPaymentMethod> findByUserIdAndDefaultMethodTrueAndActiveTrue(Long userId);
+
+    void deleteByUserId(Long userId);
 }

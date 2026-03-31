@@ -15,4 +15,6 @@ public interface FavoriteMenuItemRepository extends JpaRepository<FavoriteMenuIt
     Optional<FavoriteMenuItem> findByUserIdAndMenuItemId(Long userId, Long menuItemId);
 
     Optional<FavoriteMenuItem> findByUserIdAndMenuItemIdAndActiveTrue(Long userId, Long menuItemId);
+
+    void deleteByUserId(Long userId);
 }

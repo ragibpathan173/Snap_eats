@@ -15,4 +15,6 @@ public interface UserAddressRepository extends JpaRepository<UserAddress, Long> 
     Optional<UserAddress> findByIdAndUserIdAndActiveTrue(Long id, Long userId);
 
     Optional<UserAddress> findByUserIdAndDefaultAddressTrueAndActiveTrue(Long userId);
+
+    void deleteByUserId(Long userId);
 }

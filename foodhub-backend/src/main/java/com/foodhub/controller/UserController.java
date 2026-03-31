@@ -2,11 +2,19 @@ package com.foodhub.controller;
 
 import com.foodhub.config.DemoUserDataLoader;
 import com.foodhub.model.AuthOtp;
+import com.foodhub.model.Order;
 import com.foodhub.model.PasswordResetOtp;
 import com.foodhub.model.User;
 import com.foodhub.repository.AuthOtpRepository;
+import com.foodhub.repository.FavoriteMenuItemRepository;
+import com.foodhub.repository.FavoriteRestaurantRepository;
+import com.foodhub.repository.OrderItemRepository;
+import com.foodhub.repository.OrderRepository;
 import com.foodhub.repository.PasswordResetOtpRepository;
+import com.foodhub.repository.SavedPaymentMethodRepository;
+import com.foodhub.repository.UserAddressRepository;
 import com.foodhub.repository.UserRepository;
+import com.foodhub.repository.UserSubscriptionRepository;
 import com.foodhub.security.JwtService;
 import com.foodhub.service.OtpDeliveryService;
 import jakarta.validation.Valid;
@@ -17,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -37,6 +46,7 @@ public class UserController {
     private static final Logger log = LoggerFactory.getLogger(UserController.class);
     private static final int OTP_EXPIRY_MINUTES = 10;
     private static final int MAX_OTP_ATTEMPTS = 5;
+    private static final String DELETE_ACCOUNT_OTP_KEY_PREFIX = "delete-account:user:";
 
     @Autowired
     private UserRepository userRepository;
@@ -46,6 +56,27 @@ public class UserController {
 
     @Autowired
     private PasswordResetOtpRepository passwordResetOtpRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
+
+    @Autowired
+    private UserAddressRepository userAddressRepository;
+
+    @Autowired
+    private SavedPaymentMethodRepository savedPaymentMethodRepository;
+
+    @Autowired
+    private UserSubscriptionRepository userSubscriptionRepository;
+
+    @Autowired
+    private FavoriteRestaurantRepository favoriteRestaurantRepository;
+
+    @Autowired
+    private FavoriteMenuItemRepository favoriteMenuItemRepository;
 
     @Autowired(required = false)
     private PasswordEncoder passwordEncoder;
@@ -188,6 +219,7 @@ public class UserController {
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Enter a valid email or phone number"));
             }
+            boolean userExists = findUserByIdentifier(parsedIdentifier).isPresent();
 
             String otp = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
             List<AuthOtp> activeOtps = authOtpRepository.findByIdentifierKeyAndConsumedFalse(parsedIdentifier.key());
@@ -215,7 +247,8 @@ public class UserController {
                 return ResponseEntity.ok(Map.of(
                         "message", "OTP generated for sign in (dev mode).",
                         "devOtp", otp,
-                        "expiresInMinutes", OTP_EXPIRY_MINUTES
+                        "expiresInMinutes", OTP_EXPIRY_MINUTES,
+                        "existingUser", userExists
                 ));
             }
 
@@ -225,7 +258,8 @@ public class UserController {
             }
 
             return ResponseEntity.ok(Map.of(
-                    "message", parsedIdentifier.email() ? "OTP sent to your email." : "OTP sent to your phone."
+                    "message", parsedIdentifier.email() ? "OTP sent to your email." : "OTP sent to your phone.",
+                    "existingUser", userExists
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -271,8 +305,17 @@ public class UserController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Invalid OTP"));
             }
 
-            User user = findUserByIdentifier(parsedIdentifier)
-                    .orElseGet(() -> createOtpUser(parsedIdentifier, request.name, request.email, request.referralCode));
+            Optional<User> existingUser = findUserByIdentifier(parsedIdentifier);
+            User user;
+            if (existingUser.isPresent()) {
+                user = existingUser.get();
+            } else {
+                if (request.name == null || request.name.isBlank()) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Name is required to create a new account."));
+                }
+                user = createOtpUser(parsedIdentifier, request.name, request.email, request.referralCode);
+            }
 
             otpRecord.setConsumed(true);
             authOtpRepository.save(otpRecord);
@@ -341,6 +384,141 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to reset password: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/me/delete/request-otp")
+    public ResponseEntity<?> requestDeleteAccountOtp(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                                     @RequestBody(required = false) DeleteAccountOtpRequest request) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Please login to delete your account"));
+            }
+            if (passwordEncoder == null) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", "OTP verification is temporarily unavailable"));
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalStateException("User not found"));
+            DeleteAccountOtpTarget otpTarget = resolveDeleteAccountOtpTarget(user, request == null ? null : request.channel);
+
+            String otp = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
+            String deleteOtpKey = buildDeleteAccountOtpKey(user.getId(), otpTarget.identifier().key());
+
+            List<AuthOtp> activeOtps = authOtpRepository.findByIdentifierKeyAndConsumedFalse(deleteOtpKey);
+            for (AuthOtp oldOtp : activeOtps) {
+                oldOtp.setConsumed(true);
+            }
+            if (!activeOtps.isEmpty()) {
+                authOtpRepository.saveAll(activeOtps);
+            }
+
+            AuthOtp authOtp = new AuthOtp();
+            authOtp.setIdentifierKey(deleteOtpKey);
+            authOtp.setOtpHash(passwordEncoder.encode(otp));
+            authOtp.setExpiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES));
+            authOtp.setConsumed(false);
+            authOtp.setAttemptCount(0);
+            authOtpRepository.save(authOtp);
+
+            OtpDeliveryService.DeliveryResult deliveryResult = otpDeliveryService.sendDeleteAccountOtp(
+                    otpTarget.identifier().value(),
+                    otpTarget.identifier().email(),
+                    otp
+            );
+            if (!deliveryResult.delivered() && otpDevReturn) {
+                return ResponseEntity.ok(Map.of(
+                        "message", "Delete account OTP generated (dev mode).",
+                        "channel", otpTarget.channel(),
+                        "devOtp", otp,
+                        "expiresInMinutes", OTP_EXPIRY_MINUTES
+                ));
+            }
+
+            if (!deliveryResult.delivered()) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", deliveryResult.reason()));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Verification code sent to your registered " + otpTarget.channel() + ".",
+                    "channel", otpTarget.channel(),
+                    "expiresInMinutes", OTP_EXPIRY_MINUTES
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to send delete account OTP: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/me/delete/confirm")
+    @Transactional
+    public ResponseEntity<?> confirmDeleteAccount(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                                  @RequestBody DeleteAccountConfirmRequest request) {
+        try {
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Please login to delete your account"));
+            }
+            if (passwordEncoder == null) {
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(Map.of("error", "OTP verification is temporarily unavailable"));
+            }
+            if (request == null || request.otp == null || request.otp.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "OTP is required"));
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalStateException("User not found"));
+            DeleteAccountOtpTarget otpTarget = resolveDeleteAccountOtpTarget(user, request.channel);
+            String deleteOtpKey = buildDeleteAccountOtpKey(user.getId(), otpTarget.identifier().key());
+
+            Optional<AuthOtp> otpOptional = authOtpRepository
+                    .findTopByIdentifierKeyAndConsumedFalseOrderByCreatedAtDesc(deleteOtpKey);
+            if (otpOptional.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Verification code not found or already used"));
+            }
+
+            AuthOtp otpRecord = otpOptional.get();
+            if (LocalDateTime.now().isAfter(otpRecord.getExpiresAt())) {
+                otpRecord.setConsumed(true);
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Verification code expired. Please request a new one."));
+            }
+
+            if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                otpRecord.setConsumed(true);
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Too many attempts. Request a new verification code."));
+            }
+
+            boolean otpMatches = passwordEncoder.matches(request.otp.trim(), otpRecord.getOtpHash());
+            if (!otpMatches) {
+                otpRecord.setAttemptCount(otpRecord.getAttemptCount() + 1);
+                if (otpRecord.getAttemptCount() >= MAX_OTP_ATTEMPTS) {
+                    otpRecord.setConsumed(true);
+                }
+                authOtpRepository.save(otpRecord);
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid verification code"));
+            }
+
+            otpRecord.setConsumed(true);
+            authOtpRepository.save(otpRecord);
+
+            deleteUserAccountData(user);
+            return ResponseEntity.ok(Map.of("message", "Your account has been deleted successfully"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to delete account: " + e.getMessage()));
         }
     }
 
@@ -752,7 +930,73 @@ public class UserController {
         return new ArrayList<>(variants);
     }
 
+    private DeleteAccountOtpTarget resolveDeleteAccountOtpTarget(User user, String requestedChannel) {
+        String normalizedEmail = user.getEmail() == null ? "" : user.getEmail().trim().toLowerCase();
+        String normalizedPhoneRaw = user.getPhoneNumber() == null ? "" : user.getPhoneNumber().trim();
+
+        ParsedIdentifier emailIdentifier = normalizedEmail.isBlank() ? null : parseIdentifier(normalizedEmail);
+        ParsedIdentifier phoneIdentifier = normalizedPhoneRaw.isBlank() ? null : parseIdentifier(normalizedPhoneRaw);
+
+        String normalizedChannel = requestedChannel == null ? "" : requestedChannel.trim().toLowerCase();
+        if ("sms".equals(normalizedChannel)) {
+            normalizedChannel = "phone";
+        }
+
+        if ("email".equals(normalizedChannel)) {
+            if (emailIdentifier == null || !emailIdentifier.email()) {
+                throw new IllegalStateException("No registered email found for this account");
+            }
+            return new DeleteAccountOtpTarget("email", emailIdentifier);
+        }
+
+        if ("phone".equals(normalizedChannel)) {
+            if (phoneIdentifier == null || phoneIdentifier.email()) {
+                throw new IllegalStateException("No valid registered phone number found for this account");
+            }
+            return new DeleteAccountOtpTarget("phone", phoneIdentifier);
+        }
+
+        if (emailIdentifier != null && emailIdentifier.email()) {
+            return new DeleteAccountOtpTarget("email", emailIdentifier);
+        }
+        if (phoneIdentifier != null && !phoneIdentifier.email()) {
+            return new DeleteAccountOtpTarget("phone", phoneIdentifier);
+        }
+
+        throw new IllegalStateException("No registered email or phone number found for this account");
+    }
+
+    private String buildDeleteAccountOtpKey(Long userId, String identifierKey) {
+        return DELETE_ACCOUNT_OTP_KEY_PREFIX + userId + ":" + identifierKey;
+    }
+
+    private void deleteUserAccountData(User user) {
+        Long userId = user.getId();
+        String userEmail = user.getEmail() == null ? "" : user.getEmail().trim().toLowerCase();
+
+        List<Order> userOrders = orderRepository.findByUserId(userId);
+        for (Order order : userOrders) {
+            orderItemRepository.deleteByOrderId(order.getId());
+        }
+        orderRepository.deleteByUserId(userId);
+
+        favoriteRestaurantRepository.deleteByUserId(userId);
+        favoriteMenuItemRepository.deleteByUserId(userId);
+        userAddressRepository.deleteByUserId(userId);
+        savedPaymentMethodRepository.deleteByUserId(userId);
+        userSubscriptionRepository.deleteByUserId(userId);
+
+        authOtpRepository.deleteByIdentifierKeyStartingWith(DELETE_ACCOUNT_OTP_KEY_PREFIX + userId + ":");
+        if (!userEmail.isBlank()) {
+            passwordResetOtpRepository.deleteByEmail(userEmail);
+        }
+
+        userRepository.deleteById(userId);
+    }
+
     private record ParsedIdentifier(String key, String value, String raw, boolean email) {}
+
+    private record DeleteAccountOtpTarget(String channel, ParsedIdentifier identifier) {}
 
     public static class LoginRequest {
         public String email;
@@ -779,5 +1023,14 @@ public class UserController {
         public String email;
         public String otp;
         public String newPassword;
+    }
+
+    public static class DeleteAccountOtpRequest {
+        public String channel;
+    }
+
+    public static class DeleteAccountConfirmRequest {
+        public String channel;
+        public String otp;
     }
 }

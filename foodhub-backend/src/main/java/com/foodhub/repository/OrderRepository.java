@@ -52,12 +52,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     @Query("SELECT COUNT(o) FROM Order o WHERE o.restaurantId = :restaurantId")
     Long countRestaurantOrders(@Param("restaurantId") Long restaurantId);
-    
+
     @Query("SELECT SUM(o.finalAmount) FROM Order o WHERE o.restaurantId = :restaurantId AND o.status = 'DELIVERED'")
     Double calculateRestaurantRevenue(@Param("restaurantId") Long restaurantId);
     
     @Query("SELECT SUM(o.finalAmount) FROM Order o WHERE o.userId = :userId AND o.status = 'DELIVERED'")
     Double calculateUserTotalSpent(@Param("userId") Long userId);
-    
+
     boolean existsByOrderNumber(String orderNumber);
+
+    void deleteByUserId(Long userId);
 }

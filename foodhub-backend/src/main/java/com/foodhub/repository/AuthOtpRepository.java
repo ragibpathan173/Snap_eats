@@ -11,5 +11,6 @@ public interface AuthOtpRepository extends JpaRepository<AuthOtp, Long> {
     Optional<AuthOtp> findTopByIdentifierKeyAndConsumedFalseOrderByCreatedAtDesc(String identifierKey);
 
     List<AuthOtp> findByIdentifierKeyAndConsumedFalse(String identifierKey);
-}
 
+    void deleteByIdentifierKeyStartingWith(String prefix);
+}

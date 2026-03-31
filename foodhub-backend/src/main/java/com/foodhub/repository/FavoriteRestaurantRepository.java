@@ -15,4 +15,6 @@ public interface FavoriteRestaurantRepository extends JpaRepository<FavoriteRest
     Optional<FavoriteRestaurant> findByUserIdAndRestaurantId(Long userId, Long restaurantId);
 
     Optional<FavoriteRestaurant> findByUserIdAndRestaurantIdAndActiveTrue(Long userId, Long restaurantId);
+
+    void deleteByUserId(Long userId);
 }

@@ -52,6 +52,11 @@ public class OtpDeliveryService {
         return sendEmail(email, "SnapEats Password Reset OTP", message);
     }
 
+    public DeliveryResult sendDeleteAccountOtp(String destination, boolean email, String otp) {
+        String message = "Your SnapEats account deletion OTP is " + otp + ". It expires in 10 minutes.";
+        return email ? sendEmail(destination, "SnapEats Delete Account OTP", message) : sendSms(destination, message);
+    }
+
     private DeliveryResult sendEmail(String to, String subject, String body) {
         if (!emailDeliveryEnabled) {
             return DeliveryResult.notDelivered("Email OTP delivery is disabled");
@@ -102,4 +107,3 @@ public class OtpDeliveryService {
         }
     }
 }
-
