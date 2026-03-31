@@ -1083,6 +1083,76 @@ function getDefaultAddress() {
     return savedAddresses.find((address) => address.defaultAddress) || null;
 }
 
+function deriveLocationLabelFromAddress(address) {
+    if (!address) {
+        return "Other";
+    }
+
+    const landmark = String(address.landmark || "").trim();
+    if (landmark) {
+        return landmark;
+    }
+
+    const city = String(address.city || "").trim();
+    if (city) {
+        return city;
+    }
+
+    const label = String(address.label || "").trim();
+    if (label) {
+        return label;
+    }
+
+    const addressLine = String(address.addressLine || "").split(",").map((part) => part.trim()).filter(Boolean);
+    return addressLine[0] || "Other";
+}
+
+function buildLocationSelectionFromAddress(address) {
+    if (!address) {
+        return null;
+    }
+
+    const label = deriveLocationLabelFromAddress(address);
+    const city = String(address.city || "").trim();
+    const state = String(address.state || "").trim();
+    const subtitle = [city, state].filter(Boolean).join(", ");
+    const hasArea = Boolean(String(address.landmark || "").trim());
+
+    return createLocationSelection({
+        label,
+        subtitle,
+        scope: hasArea ? "area" : "city",
+        latitude: address.latitude,
+        longitude: address.longitude,
+        source: "default-address",
+        addressId: address.id
+    }, hasArea ? "area" : "city");
+}
+
+function isSameLocationSelection(left, right) {
+    return String(left?.label || "").trim() === String(right?.label || "").trim()
+        && String(left?.subtitle || "").trim() === String(right?.subtitle || "").trim()
+        && normalizeLocationScope(left || {}) === normalizeLocationScope(right || {})
+        && String(left?.addressId || "") === String(right?.addressId || "");
+}
+
+function syncSelectedLocationWithDefaultAddress({ refreshRestaurants = false } = {}) {
+    const defaultAddress = getDefaultAddress();
+    const nextLocation = buildLocationSelectionFromAddress(defaultAddress);
+    if (!nextLocation || isSameLocationSelection(selectedLocation, nextLocation)) {
+        return false;
+    }
+
+    saveSelectedLocation(nextLocation);
+    pushRecentLocation(nextLocation);
+
+    if (refreshRestaurants && document.getElementById("restaurantsGrid")) {
+        fetchRestaurants(activeCategory, document.getElementById("searchInput")?.value || "").catch(() => {});
+    }
+
+    return true;
+}
+
 function getDefaultSavedPaymentMethod() {
     return savedPaymentMethods.find((method) => method.defaultMethod) || savedPaymentMethods[0] || null;
 }
@@ -1221,6 +1291,7 @@ function normalizeLocationScope(location) {
 
 function createLocationSelection(location, fallbackScope = "area") {
     return {
+        ...location,
         label: String(location?.label || "").trim(),
         subtitle: String(location?.subtitle || "").trim(),
         scope: normalizeLocationScope({ ...location, scope: location?.scope || fallbackScope })
@@ -2797,6 +2868,7 @@ async function fetchAddresses() {
     } catch {
         savedAddresses = [];
     }
+    syncSelectedLocationWithDefaultAddress({ refreshRestaurants: true });
     renderCart();
     renderAddressBook();
 }
