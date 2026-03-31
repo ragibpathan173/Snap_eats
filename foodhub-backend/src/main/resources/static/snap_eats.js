@@ -1206,9 +1206,31 @@ function pushRecentLocation(location) {
     saveRecentLocations(nextLocations);
 }
 
+function normalizeLocationScope(location) {
+    const scope = String(location?.scope || "").trim().toLowerCase();
+    if (scope === "city" || scope === "area") {
+        return scope;
+    }
+
+    const label = normalizeTextForMatching(location?.label || "");
+    const subtitle = normalizeTextForMatching(location?.subtitle || "");
+    const cityPatterns = ["new delhi", "delhi", "mumbai", "bombay", "pune", "bengaluru", "bangalore", "gurgaon", "gurugram", "hyderabad", "kolkata", "calcutta", "chennai"];
+    const isCitySelection = cityPatterns.some((pattern) => label === pattern || subtitle === pattern);
+    return isCitySelection ? "city" : "area";
+}
+
+function createLocationSelection(location, fallbackScope = "area") {
+    return {
+        label: String(location?.label || "").trim(),
+        subtitle: String(location?.subtitle || "").trim(),
+        scope: normalizeLocationScope({ ...location, scope: location?.scope || fallbackScope })
+    };
+}
+
 function applyLocationSelection(location) {
-    saveSelectedLocation(location);
-    pushRecentLocation(location);
+    const nextLocation = createLocationSelection(location, "area");
+    saveSelectedLocation(nextLocation);
+    pushRecentLocation(nextLocation);
     closeLocationPicker();
     fetchRestaurants(activeCategory, document.getElementById("searchInput")?.value || "").catch(() => {});
 }
@@ -1219,7 +1241,7 @@ function applyFooterLocation(label, subtitle) {
         return;
     }
     const safeSubtitle = String(subtitle || "").trim();
-    const location = { label: safeLabel, subtitle: safeSubtitle };
+    const location = createLocationSelection({ label: safeLabel, subtitle: safeSubtitle, scope: "city" }, "city");
     saveSelectedLocation(location);
     pushRecentLocation(location);
     if (document.getElementById("restaurantsGrid")) {
@@ -1821,7 +1843,12 @@ function getSelectedLocationFilters() {
     }
 
     const genericLabels = new Set(["other", "current location"]);
-    const locality = detectedCity || genericLabels.has(label.toLowerCase()) ? "" : label;
+    const normalizedLabel = normalizeTextForMatching(label);
+    const isCityLabel = cityAliases.some((entry) =>
+        entry.patterns.some((pattern) => normalizedLabel === pattern || normalizedLabel === normalizeTextForMatching(entry.canonical))
+    );
+    const scope = normalizeLocationScope(selectedLocation || {});
+    const locality = scope === "city" || genericLabels.has(label.toLowerCase()) || isCityLabel ? "" : label;
     return {
         city: detectedCity,
         locality
@@ -3882,7 +3909,7 @@ function renderLocationPicker(query = "") {
             <section class="location-panel">
                 <p class="location-panel-title">Recent searches</p>
                 ${suggestions.length ? suggestions.map((location) => `
-                    <div class="location-history-card" onclick="applyLocationSelection({ label: '${escapeAttribute(location.label)}', subtitle: '${escapeAttribute(location.subtitle)}' })">
+                    <div class="location-history-card" onclick="applyLocationSelection({ label: '${escapeAttribute(location.label)}', subtitle: '${escapeAttribute(location.subtitle)}', scope: '${escapeAttribute(location.scope || normalizeLocationScope(location))}' })">
                         <span class="location-history-icon">&#9716;</span>
                         <div>
                             <strong>${escapeHtml(location.label)}</strong>
