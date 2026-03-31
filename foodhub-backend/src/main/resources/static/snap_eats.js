@@ -4017,8 +4017,8 @@ function renderCorporatePage() {
         return;
     }
 
-    const creatorName = escapeHtml(currentUser?.name || OWNER_NAME);
-    const creatorEmail = currentUser?.email ? escapeHtml(currentUser.email) : OWNER_EMAIL;
+    const creatorName = currentUser?.name || OWNER_NAME;
+    const creatorEmail = currentUser?.email || OWNER_EMAIL;
     const currentYear = new Date().getFullYear();
 
     const restaurantCount = restaurants.length || 0;
@@ -4108,156 +4108,179 @@ function renderCorporatePage() {
         { value: `${fulfilledOrders}+`, label: "Orders delivered" },
         { value: `${paymentMethodsCount}+`, label: "Saved payment methods" }
     ].map((metric) => `
-        <article class="corp-long-metric-card">
-            <strong>${escapeHtml(metric.value)}</strong>
-            <span>${escapeHtml(metric.label)}</span>
+        <article class="sn-metric-card">
+            <div class="sn-metric-val">${escapeHtml(metric.value)}</div>
+            <div class="sn-metric-label">${escapeHtml(metric.label)}</div>
         </article>
     `).join("");
 
     const storyCardsMarkup = storyCards.map((story) => `
-        <article class="corp-long-value-card">
-            <div class="corp-long-value-head">
-                <span class="corp-long-value-icon">${story.icon}</span>
+        <article class="sn-value-card">
+            <div class="sn-value-icon">${story.icon}</div>
+            <div class="sn-value-copy">
                 <h3>${escapeHtml(story.title)}</h3>
+                <p>${escapeHtml(story.body)}</p>
             </div>
-            <p>${escapeHtml(story.body)}</p>
         </article>
     `).join("");
 
     const capabilityMarkup = capabilityCards.map((capability) => `
-        <article class="corp-long-cap-card">
+        <article class="sn-cap-card">
             <h3>${escapeHtml(capability.title)}</h3>
             <p>${escapeHtml(capability.copy)}</p>
         </article>
     `).join("");
 
     const timelineMarkup = timeline.map((step) => `
-        <article class="corp-long-timeline-card">
-            <p class="corp-long-year">${escapeHtml(step.year)}</p>
+        <article class="sn-timeline-item">
+            <div class="sn-timeline-dot"></div>
+            <p class="sn-timeline-year">${escapeHtml(step.year)}</p>
             <h3>${escapeHtml(step.title)}</h3>
             <p>${escapeHtml(step.copy)}</p>
         </article>
     `).join("");
 
     const peopleMarkup = activePeople.map((person) => `
-        <article class="corp-long-person-card">
-            <span class="corp-long-person-icon">${person.visualIcon}</span>
+        <article class="sn-person-card">
+            <div class="sn-person-avatar">${person.visualIcon}</div>
             <h3>${escapeHtml(person.name)}</h3>
-            <p class="corp-long-person-role">${escapeHtml(person.role)}</p>
+            <p class="sn-person-role">${escapeHtml(person.role)}</p>
             <p>${escapeHtml(person.copy)}</p>
         </article>
     `).join("");
 
     content.innerHTML = `
-        <div class="corporate-shell corp-long">
-            <section class="corp-long-hero">
-                <div class="corp-long-hero-copy">
-                    <h1>Built to make neighborhood food ordering reliable, fast, and trusted.</h1>
-                    <p>
-                        SnapEats is a product-led delivery platform focused on smooth discovery, transparent pricing, and a dependable checkout flow.
-                        We combine strong engineering with local market execution to deliver better everyday ordering experiences.
-                    </p>
-                    <div class="corp-long-actions">
-                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the team</button>
-                        <button class="secondary-button" type="button" onclick="document.getElementById('corpLongContactSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Contact us</button>
+        <div class="sn-corp">
+            <section class="sn-hero">
+                <div class="sn-hero-inner">
+                    <div class="sn-hero-copy">
+                        <div class="sn-eyebrow">SnapEats Platform</div>
+                        <h1>Built to make <span>neighborhood food</span> ordering reliable, fast, and trusted.</h1>
+                        <p>
+                            SnapEats is a product-led delivery platform focused on smooth discovery, transparent pricing, and a dependable checkout flow.
+                            The corporate experience now follows the same design mindset with stronger hierarchy, cleaner spacing, and a more polished web presence.
+                        </p>
+                        <div class="sn-actions">
+                            <button class="sn-btn-primary" type="button" onclick="closeCorporatePage(); openAuthModal();">Join the team</button>
+                            <button class="sn-btn-outline" type="button" onclick="document.getElementById('snContactSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });">Contact us</button>
+                        </div>
                     </div>
-                </div>
-                <div class="corp-long-metrics-grid">
-                    ${metricsMarkup}
-                </div>
-            </section>
-
-            <section class="corp-long-section">
-                <div class="corp-long-section-head">
-                    <p>Mission, Vision, Values</p>
-                    <h2>What Drives SnapEats</h2>
-                    <span>Our operating principles across product, engineering, and delivery execution.</span>
-                </div>
-                <div class="corp-long-values-grid">
-                    ${storyCardsMarkup}
-                </div>
-            </section>
-
-            <section class="corp-long-section">
-                <div class="corp-long-section-head">
-                    <p>Platform</p>
-                    <h2>How SnapEats Delivers</h2>
-                    <span>A practical stack for neighborhood food commerce with trust and speed.</span>
-                </div>
-                <div class="corp-long-cap-grid">
-                    ${capabilityMarkup}
-                </div>
-            </section>
-
-            <section class="corp-long-section">
-                <div class="corp-long-section-head">
-                    <p>Journey</p>
-                    <h2>Growth Timeline</h2>
-                    <span>Key milestones from foundation to present expansion.</span>
-                </div>
-                <div class="corp-long-timeline-grid">
-                    ${timelineMarkup}
-                </div>
-            </section>
-
-            <section class="corp-long-section">
-                <div class="corp-long-section-head corp-long-section-head-row">
-                    <div>
-                        <p>Leadership</p>
-                        <h2>People Behind SnapEats</h2>
-                        <span>Management and advisory team building the platform.</span>
-                    </div>
-                    <div class="corp-long-tabs">
-                        <button class="corp-long-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
-                        <button class="corp-long-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board & Advisors</button>
-                    </div>
-                </div>
-                <div class="corp-long-people-grid">
-                    ${peopleMarkup}
-                </div>
-            </section>
-
-            <section class="corp-long-section corp-long-section-careers">
-                <div class="corp-long-section-head">
-                    <p>Careers</p>
-                    <h2>Build With Real Ownership</h2>
-                    <span>Join engineering, operations, and growth teams shaping local delivery quality.</span>
-                </div>
-                <div class="corp-long-careers-box">
-                    <div>
-                        <strong>Open roles across engineering, operations, and growth</strong>
-                        <p>Work on reliable user flows, conversion improvements, and partner outcomes at scale.</p>
-                    </div>
-                    <div class="corp-long-actions">
-                        <button class="primary-button" type="button" onclick="closeCorporatePage(); openAuthModal();">Apply now</button>
-                        <a class="secondary-button" href="mailto:careers@snap-eats.com?subject=SnapEats%20Careers" target="_blank" rel="noopener noreferrer">Email recruiting</a>
+                    <div class="sn-hero-rail">
+                        <div class="sn-metrics-grid">
+                            ${metricsMarkup}
+                        </div>
+                        <article class="sn-rail-card">
+                            <div class="sn-rail-label">Web Experience</div>
+                            <h3>Designed like a real product page, not a placeholder panel.</h3>
+                            <p>Clear visual rhythm, stronger section contrast, and generous 32px side spacing make the corporate area feel intentional and premium.</p>
+                        </article>
                     </div>
                 </div>
             </section>
 
-            <section class="corp-long-section" id="corpLongContactSection">
-                <div class="corp-long-section-head">
-                    <p>Contact</p>
-                    <h2>Get in touch</h2>
-                    <span>Reach the product and support team directly.</span>
-                </div>
-                <div class="corp-long-contact-grid">
-                    <div class="corp-long-contact-card">
-                        <h3>Corporate Office</h3>
-                        <p>Jamia Nagar, New Delhi, Delhi 110025</p>
-                        <h3>Project Owner</h3>
-                        <p>${creatorName}</p>
-                        <p>${creatorEmail}</p>
-                        <h3>Support</h3>
-                        <p>support@snapeats.in</p>
+            <section class="sn-section sn-section--white">
+                <div class="sn-section-inner">
+                    <div class="sn-section-head">
+                        <div class="sn-eyebrow">Mission, Vision, Values</div>
+                        <h2>What Drives SnapEats</h2>
+                        <p>Our operating principles across product, engineering, and delivery execution.</p>
                     </div>
-                    <div class="corp-long-map-card">
-                        <iframe
-                            title="SnapEats office map"
-                            loading="lazy"
-                            referrerpolicy="no-referrer-when-downgrade"
-                            src="https://www.google.com/maps?q=Jamia+Nagar,+New+Delhi&output=embed"
-                        ></iframe>
+                    <div class="sn-values-grid">
+                        ${storyCardsMarkup}
+                    </div>
+                </div>
+            </section>
+
+            <section class="sn-section">
+                <div class="sn-section-inner">
+                    <div class="sn-section-head">
+                        <div class="sn-eyebrow">Platform</div>
+                        <h2>How SnapEats Delivers</h2>
+                        <p>A practical stack for neighborhood food commerce with trust and speed.</p>
+                    </div>
+                    <div class="sn-cap-grid">
+                        ${capabilityMarkup}
+                    </div>
+                </div>
+            </section>
+
+            <section class="sn-section sn-section--white">
+                <div class="sn-section-inner">
+                    <div class="sn-section-head">
+                        <div class="sn-eyebrow">Journey</div>
+                        <h2>Growth Timeline</h2>
+                        <p>Key milestones from foundation to present expansion.</p>
+                    </div>
+                    <div class="sn-timeline">
+                        ${timelineMarkup}
+                    </div>
+                </div>
+            </section>
+
+            <section class="sn-section">
+                <div class="sn-section-inner">
+                    <div class="sn-people-head">
+                        <div class="sn-section-head sn-section-head-compact">
+                            <div class="sn-eyebrow">Leadership</div>
+                            <h2>People Behind SnapEats</h2>
+                            <p>Management and advisory team building the platform.</p>
+                        </div>
+                        <div class="sn-tab-group">
+                            <button class="sn-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management</button>
+                            <button class="sn-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board and Advisors</button>
+                        </div>
+                    </div>
+                    <div class="sn-people-grid">
+                        ${peopleMarkup}
+                    </div>
+                </div>
+            </section>
+
+            <section class="sn-section sn-section--white">
+                <div class="sn-section-inner">
+                    <div class="sn-section-head">
+                        <div class="sn-eyebrow">Careers</div>
+                        <h2>Build With Real Ownership</h2>
+                        <p>Join engineering, operations, and growth teams shaping local delivery quality.</p>
+                    </div>
+                    <div class="sn-careers-band">
+                        <div class="sn-careers-copy">
+                            <h3>Open roles across engineering, operations, and growth</h3>
+                            <p>Work on reliable user flows, conversion improvements, and partner outcomes at scale.</p>
+                        </div>
+                        <div class="sn-actions">
+                            <button class="sn-btn-primary" type="button" onclick="closeCorporatePage(); openAuthModal();">Apply now</button>
+                            <a class="sn-btn-outline sn-btn-outline-light" href="mailto:careers@snap-eats.com?subject=SnapEats%20Careers" target="_blank" rel="noopener noreferrer">Email recruiting</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sn-section" id="snContactSection">
+                <div class="sn-section-inner">
+                    <div class="sn-section-head">
+                        <div class="sn-eyebrow">Contact</div>
+                        <h2>Get in touch</h2>
+                        <p>Reach the product and support team directly.</p>
+                    </div>
+                    <div class="sn-contact-grid">
+                        <div class="sn-contact-card">
+                            <h4>Corporate Office</h4>
+                            <p>Jamia Nagar, New Delhi, Delhi 110025</p>
+                            <h4>Project Owner</h4>
+                            <p>${escapeHtml(creatorName)}</p>
+                            <p>${escapeHtml(creatorEmail)}</p>
+                            <h4>Support</h4>
+                            <p>support@snapeats.in</p>
+                        </div>
+                        <div class="sn-map-card">
+                            <iframe
+                                title="SnapEats office map"
+                                loading="lazy"
+                                referrerpolicy="no-referrer-when-downgrade"
+                                src="https://www.google.com/maps?q=Jamia+Nagar,+New+Delhi&output=embed"
+                            ></iframe>
+                        </div>
                     </div>
                 </div>
             </section>
