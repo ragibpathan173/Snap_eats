@@ -4108,7 +4108,7 @@ function getAboutStorySections() {
                 "Our mission is to make neighborhood food ordering simple, dependable, and fast for people who do not want friction in the middle of a busy day.",
                 "From restaurant discovery to checkout and support, every detail at SnapEats should reduce effort, increase confidence, and feel worth returning to."
             ],
-            image: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=1400&q=80"
+            image: "images/about/mission-rider.png"
         },
         vision: {
             label: "Vision",
@@ -4293,12 +4293,15 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
         name: creatorName,
         role: "Founder and Product Engineer",
         copy: "Owns the end-to-end product direction, platform architecture, and the customer experience details that shape SnapEats.",
-        tone: "tone-ember"
+        tone: "tone-ember",
+        image: "images/about/ragib-ali-khan.jpeg"
     };
     const founderMarkup = `
         <article class="about-person-card">
-            <div class="about-person-portrait ${escapeHtml(founderProfile.tone)}">
-                <span>${escapeHtml(getInitials(founderProfile.name))}</span>
+            <div class="about-person-portrait ${escapeHtml(founderProfile.tone)} ${founderProfile.image ? "has-photo" : ""}">
+                ${founderProfile.image
+                    ? `<img src="${escapeHtml(founderProfile.image)}" alt="${escapeHtml(founderProfile.name)}">`
+                    : `<span>${escapeHtml(getInitials(founderProfile.name))}</span>`}
             </div>
             <div class="about-person-copy">
                 <h3>${escapeHtml(founderProfile.name)}</h3>

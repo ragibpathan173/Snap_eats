@@ -9856,6 +9856,15 @@ body {
     padding: 28px;
 }
 
+.about-person-portrait img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 18%;
+}
+
 .about-person-portrait::before {
     content: "";
     position: absolute;
@@ -9863,6 +9872,11 @@ body {
     background:
         radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.22), transparent 28%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.16));
+}
+
+.about-person-portrait.has-photo::before {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.08));
 }
 
 .about-person-portrait span {
