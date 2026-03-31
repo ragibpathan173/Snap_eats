@@ -7,6 +7,7 @@ const RECENT_LOCATIONS_STORAGE_KEY = "snap_eats_recent_locations";
 const ADDRESS_SEARCH_BIAS_KEY = "snap_eats_address_search_bias";
 const OWNER_NAME = "Ragib Ali Khan";
 const OWNER_EMAIL = "ragibpathan173@gmail.com";
+const SUPPORT_EMAIL = "support@snapeats.in";
 const PINCODE_LOOKUP_BASE_URL = "https://api.postalpincode.in/pincode/";
 const REVERSE_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/reverse";
 const FORWARD_GEOCODE_BASE_URL = "https://nominatim.openstreetmap.org/search";
@@ -4082,8 +4083,8 @@ function renderCorporatePage() {
         return;
     }
 
-    const creatorName = currentUser?.name || OWNER_NAME;
-    const creatorEmail = currentUser?.email || OWNER_EMAIL;
+    const creatorName = OWNER_NAME;
+    const creatorEmail = OWNER_EMAIL;
     const restaurantCount = restaurants.length || 0;
     const categoryCount = categories.length || 0;
     const fulfilledOrders = orderHistory.filter((order) => String(order.status || "").toUpperCase() === "DELIVERED").length;
@@ -4216,8 +4217,6 @@ function getAboutBlogPosts() {
 function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, categoryCount, fulfilledOrders, paymentMethodsCount }) {
     const storySections = getAboutStorySections();
     const activeStory = storySections[corporateStoryTab] || storySections.mission;
-    const peopleGroups = getAboutPeopleGroups(creatorName);
-    const activePeople = corporatePeopleTab === "board" ? peopleGroups.board : peopleGroups.management;
     const blogPosts = getAboutBlogPosts();
     const normalizedJourneyIndex = CORPORATE_JOURNEY_STEPS.length
         ? ((corporateJourneyIndex % CORPORATE_JOURNEY_STEPS.length) + CORPORATE_JOURNEY_STEPS.length) % CORPORATE_JOURNEY_STEPS.length
@@ -4290,19 +4289,40 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
         ></button>
     `).join("");
 
-    const peopleMarkup = activePeople.map((person) => `
+    const founderProfile = {
+        name: creatorName,
+        role: "Founder and Product Engineer",
+        copy: "Owns the end-to-end product direction, platform architecture, and the customer experience details that shape SnapEats.",
+        tone: "tone-ember"
+    };
+    const founderMarkup = `
         <article class="about-person-card">
-            <div class="about-person-portrait ${escapeHtml(person.tone)}">
-                <span>${escapeHtml(getInitials(person.name))}</span>
+            <div class="about-person-portrait ${escapeHtml(founderProfile.tone)}">
+                <span>${escapeHtml(getInitials(founderProfile.name))}</span>
             </div>
             <div class="about-person-copy">
-                <h3>${escapeHtml(person.name)}</h3>
-                <p class="about-person-role">${escapeHtml(person.role)}</p>
-                <p>${escapeHtml(person.copy)}</p>
+                <h3>${escapeHtml(founderProfile.name)}</h3>
+                <p class="about-person-role">${escapeHtml(founderProfile.role)}</p>
+                <p>${escapeHtml(founderProfile.copy)}</p>
             </div>
-            <span class="about-person-arrow" aria-hidden="true">&#8594;</span>
         </article>
-    `).join("");
+    `;
+    const aboutAppLogoMarkup = `
+        <div class="about-qr-art" aria-hidden="true">
+            <div class="about-qr-logo">
+                <span class="about-qr-logo-mark">
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                        <path d="M30.9 11.7c0-1.1.9-2 2-2s2 .9 2 2v2.1h-4z" fill="currentColor"/>
+                        <path d="M13.4 33.4a18.6 18.6 0 0 1 37.2 0z" fill="currentColor"/>
+                        <path d="M20.6 27.5c1.8-4.2 4.3-7.1 7.4-8.3 2-.8 3.8 1.3 2.6 3-1.7 2.3-2.8 5-3.4 7.9h-6.6z" fill="#ffffff"/>
+                        <rect x="8.8" y="33.1" width="46.4" height="3.7" rx="1.85" fill="currentColor"/>
+                        <path d="M16.4 39.8h31.2a2.5 2.5 0 0 1 0 5H16.4a2.5 2.5 0 0 1 0-5z" fill="currentColor"/>
+                    </svg>
+                </span>
+                <strong class="about-qr-logo-word">SnapEats</strong>
+            </div>
+        </div>
+    `;
 
     const blogMarkup = blogPosts.map((post) => `
         <article class="about-blog-card">
@@ -4421,19 +4441,9 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                             <p class="about-section-label">Details of Business</p>
                             <h2>People Building SnapEats</h2>
                         </div>
-                        <div class="about-business-controls">
-                            <div class="about-people-tabs">
-                                <button class="about-people-tab ${corporatePeopleTab === "management" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('management')">Management Team</button>
-                                <button class="about-people-tab ${corporatePeopleTab === "board" ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('board')">Board of Directors</button>
-                            </div>
-                            <div class="about-arrow-group">
-                                <button class="about-arrow-button" type="button" aria-label="Scroll people cards left" onclick="scrollCorporateTrack('aboutPeopleTrack', -1)">&#8592;</button>
-                                <button class="about-arrow-button active" type="button" aria-label="Scroll people cards right" onclick="scrollCorporateTrack('aboutPeopleTrack', 1)">&#8594;</button>
-                            </div>
-                        </div>
                     </div>
-                    <div class="about-people-track" id="aboutPeopleTrack">
-                        ${peopleMarkup}
+                    <div class="about-founder-stage">
+                        ${founderMarkup}
                     </div>
                 </div>
             </section>
@@ -4490,7 +4500,7 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                         <div class="about-phone-frame">
                             <div class="about-phone-notch"></div>
                             <div class="about-phone-screen">
-                                <div class="about-qr-art"></div>
+                                ${aboutAppLogoMarkup}
                                 <span>Scan to explore</span>
                             </div>
                         </div>
@@ -4514,7 +4524,7 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                             <p>${escapeHtml(creatorName)}</p>
                             <p>${escapeHtml(creatorEmail)}</p>
                             <h3>For help and support:</h3>
-                            <p>Email: support@snapeats.in</p>
+                            <p>Email: ${escapeHtml(SUPPORT_EMAIL)}</p>
                         </div>
                         <div class="about-contact-map">
                             <iframe title="SnapEats contact map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://www.google.com/maps?q=Jamia+Nagar,+New+Delhi&output=embed"></iframe>
@@ -4540,7 +4550,7 @@ function renderHelpModal() {
             description: "Resolve order issues quickly with live status, refund tracking, and item support.",
             actions: [
                 { label: "View orders", onClick: "closeHelp(); openOrders()" },
-                { label: "Email support", href: "mailto:support@snap-eats.com?subject=Order%20help" }
+                { label: "Email support", href: "mailto:support@snapeats.in?subject=Order%20help" }
             ],
             faqs: [
                 { question: "Where is my order?", answer: "Open Orders to see live status, ETA, and rider details once assigned." },
@@ -4724,7 +4734,7 @@ function renderHelpModal() {
                                 <span class="help-contact-icon">&#9993;</span>
                                 <div>
                                     <strong>Need more help?</strong>
-                                    <p>Email us at <strong>support@snap-eats.com</strong> or call <strong>+91 90000 12345</strong>.</p>
+                                    <p>Email us at <strong>${escapeHtml(SUPPORT_EMAIL)}</strong> or call <strong>+91 90000 12345</strong>.</p>
                                 </div>
                             </div>
                         </div>
