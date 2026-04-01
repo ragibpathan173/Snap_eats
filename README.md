@@ -88,6 +88,81 @@ Notes:
 - H2 data is persisted in the named Docker volume `snap_eats_data`.
 - `docker compose down -v` removes the persisted dev database volume.
 
+## Build Docker Images
+
+You can also build the frontend and backend as separate images without Docker Compose.
+
+### Backend image
+
+```bash
+docker build -t ghcr.io/<your-github-user>/snap-eats-backend:latest ./foodhub-backend
+```
+
+### Frontend image
+
+```bash
+docker build -t ghcr.io/<your-github-user>/snap-eats-frontend:latest ./frontend
+```
+
+The frontend image accepts a runtime environment variable named `BACKEND_UPSTREAM`.
+Use it to point the frontend proxy at whichever backend container or host you want.
+
+## Run Docker Images Without Compose
+
+Create a shared Docker network first:
+
+```bash
+docker network create snap-eats-net
+```
+
+Run the backend container:
+
+```bash
+docker run -d \
+  --name snap-eats-backend \
+  --network snap-eats-net \
+  -p 8081:8081 \
+  -e SPRING_DATASOURCE_URL=jdbc:h2:file:/app/data/foodhub;DB_CLOSE_ON_EXIT=FALSE \
+  -e SECURITY_OTP_DEV_RETURN=true \
+  -e OTP_DELIVERY_EMAIL_ENABLED=false \
+  -e OTP_DELIVERY_SMS_ENABLED=false \
+  -v snap_eats_data:/app/data \
+  ghcr.io/<your-github-user>/snap-eats-backend:latest
+```
+
+Run the frontend container:
+
+```bash
+docker run -d \
+  --name snap-eats-frontend \
+  --network snap-eats-net \
+  -p 8080:80 \
+  -e BACKEND_UPSTREAM=http://snap-eats-backend:8081 \
+  ghcr.io/<your-github-user>/snap-eats-frontend:latest
+```
+
+Open:
+
+- `http://localhost:8080/`
+- `http://localhost:8081/swagger-ui.html`
+
+Useful checks:
+
+```bash
+docker logs -f snap-eats-backend
+docker logs -f snap-eats-frontend
+docker ps
+```
+
+Cleanup:
+
+```bash
+docker rm -f snap-eats-frontend snap-eats-backend
+docker network rm snap-eats-net
+```
+
+If you already have an app on `8080` or `8081`, publish to different host ports instead, for example `-p 18080:80` and `-p 18081:8081`.
+
 ## Run Natively
 
 ### Backend
