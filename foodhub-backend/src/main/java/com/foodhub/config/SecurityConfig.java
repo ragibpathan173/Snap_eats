@@ -33,10 +33,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(
                                 "/",
-                                "/index.html",
-                                "/snap_eats.html",
-                                "/snap_eats.css",
-                                "/snap_eats.js",
                                 "/favicon.ico",
                                 "/h2-console/**",
                                 "/swagger-ui/**",

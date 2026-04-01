@@ -14,13 +14,14 @@ Complete guide for testing all FoodHub API endpoints.
 
 ## Prerequisites
 
-- Backend running on http://localhost:8080
+- Backend running on http://localhost:8081
 - Postman or cURL installed
 - Browser for GET requests
+- Optional: when using the separate frontend container, the same API is also proxied at http://localhost:8080/api
 
 ## Base URL
 ```
-http://localhost:8080/api
+http://localhost:8081/api
 ```
 
 ---
@@ -34,7 +35,7 @@ GET /api/categories
 
 **cURL:**
 ```bash
-curl http://localhost:8080/api/categories
+curl http://localhost:8081/api/categories
 ```
 
 **Response:**
@@ -57,7 +58,7 @@ curl http://localhost:8080/api/categories
 GET /api/categories/active
 ```
 
-**Browser:** http://localhost:8080/api/categories/active
+**Browser:** http://localhost:8081/api/categories/active
 
 ---
 
@@ -70,7 +71,7 @@ GET /api/restaurants/active
 
 **cURL:**
 ```bash
-curl http://localhost:8080/api/restaurants/active
+curl http://localhost:8081/api/restaurants/active
 ```
 
 ### Get Restaurants by Category
@@ -80,7 +81,7 @@ GET /api/restaurants/category/{category}
 
 **Example:**
 ```bash
-curl http://localhost:8080/api/restaurants/category/italian
+curl http://localhost:8081/api/restaurants/category/italian
 ```
 
 ### Search Restaurants
@@ -90,7 +91,7 @@ GET /api/restaurants/search?query={searchTerm}
 
 **Example:**
 ```bash
-curl "http://localhost:8080/api/restaurants/search?query=pizza"
+curl "http://localhost:8081/api/restaurants/search?query=pizza"
 ```
 
 ### Get Top Rated Restaurants
@@ -98,7 +99,7 @@ curl "http://localhost:8080/api/restaurants/search?query=pizza"
 GET /api/restaurants/top-rated
 ```
 
-**Browser:** http://localhost:8080/api/restaurants/top-rated
+**Browser:** http://localhost:8081/api/restaurants/top-rated
 
 ---
 
@@ -111,7 +112,7 @@ GET /api/menu-items/restaurant/{restaurantId}
 
 **Example:**
 ```bash
-curl http://localhost:8080/api/menu-items/restaurant/1
+curl http://localhost:8081/api/menu-items/restaurant/1
 ```
 
 **With Filters:**
@@ -127,7 +128,7 @@ Content-Type: application/json
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8080/api/menu-items \
+curl -X POST http://localhost:8081/api/menu-items \
   -H "Content-Type: application/json" \
   -d '{
     "restaurantId": 1,
@@ -148,7 +149,7 @@ GET /api/menu-items/search?query={searchTerm}
 
 **Example:**
 ```bash
-curl "http://localhost:8080/api/menu-items/search?query=pizza"
+curl "http://localhost:8081/api/menu-items/search?query=pizza"
 ```
 
 ### Get Vegetarian Items
@@ -173,7 +174,7 @@ Content-Type: application/json
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8080/api/orders \
+curl -X POST http://localhost:8081/api/orders \
   -H "Content-Type: application/json" \
   -d '{
     "userId": 1,
@@ -194,7 +195,7 @@ GET /api/orders/user/{userId}
 
 **Example:**
 ```bash
-curl http://localhost:8080/api/orders/user/1
+curl http://localhost:8081/api/orders/user/1
 ```
 
 ### Update Order Status
@@ -204,7 +205,7 @@ PATCH /api/orders/{id}/status?status=CONFIRMED
 
 **cURL:**
 ```bash
-curl -X PATCH "http://localhost:8080/api/orders/1/status?status=CONFIRMED"
+curl -X PATCH "http://localhost:8081/api/orders/1/status?status=CONFIRMED"
 ```
 
 **Available Statuses:**
@@ -227,7 +228,7 @@ Content-Type: application/json
 
 **cURL:**
 ```bash
-curl -X POST http://localhost:8080/api/users/register \
+curl -X POST http://localhost:8081/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
@@ -276,7 +277,7 @@ GET /api/users/search?query={searchTerm}
           "name": "Get Active Categories",
           "request": {
             "method": "GET",
-            "url": "http://localhost:8080/api/categories/active"
+            "url": "http://localhost:8081/api/categories/active"
           }
         }
       ]
@@ -288,14 +289,14 @@ GET /api/users/search?query={searchTerm}
           "name": "Get Active Restaurants",
           "request": {
             "method": "GET",
-            "url": "http://localhost:8080/api/restaurants/active"
+            "url": "http://localhost:8081/api/restaurants/active"
           }
         },
         {
           "name": "Search Restaurants",
           "request": {
             "method": "GET",
-            "url": "http://localhost:8080/api/restaurants/search?query=pizza"
+            "url": "http://localhost:8081/api/restaurants/search?query=pizza"
           }
         }
       ]

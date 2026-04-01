@@ -1,6 +1,6 @@
 # SnapEats
 
-SnapEats is a Swiggy-inspired food ordering web application built with a Spring Boot backend and a static HTML/CSS/JavaScript frontend.
+SnapEats is a Swiggy-inspired food ordering web application with a separate Spring Boot backend and static HTML/CSS/JavaScript frontend.
 
 It includes restaurant discovery, OTP-first login/signup (email or phone), cart and checkout, addresses, offers/coupons, subscription perks, and a full account experience.
 
@@ -40,44 +40,25 @@ It includes restaurant discovery, OTP-first login/signup (email or phone), cart 
 ```text
 Snap_eats/
 |-- README.md
+|-- frontend/
+|   |-- Dockerfile
+|   |-- index.html
+|   |-- snap_eats.html
+|   |-- snap_eats.css
+|   |-- snap_eats.js
+|   `-- images/
 `-- foodhub-backend/
     |-- pom.xml
-    |-- src/main/java/com/foodhub/
-    |   |-- config/
-    |   |-- controller/
-    |   |-- model/
-    |   |-- repository/
-    |   `-- service/
-    `-- src/main/resources/
-        |-- application.properties
-        `-- static/
-            |-- index.html
-            |-- snap_eats.html
-            |-- snap_eats.css
-            `-- snap_eats.js
+    `-- src/main/
+        |-- java/com/foodhub/
+        `-- resources/
+            |-- application.properties
+            `-- db/migration/
 ```
-
-## Run Locally
-
-### Prerequisites
-
-- Java 17+
-- Maven 3.6+
-
-### Start backend + frontend
-
-```bash
-cd foodhub-backend
-mvn spring-boot:run
-```
-
-Open:
-
-- `http://localhost:8081/`
 
 ## Run With Docker
 
-From the repo root:
+Docker is the easiest way to run the separated frontend and backend together.
 
 ```bash
 docker compose up --build
@@ -85,12 +66,13 @@ docker compose up --build
 
 Open:
 
-- `http://localhost:8081/`
+- `http://localhost:8080/`
+- `http://localhost:8081/swagger-ui.html`
 
-If `8081` is already in use, pick another host port:
+If either port is already in use, pick different host ports:
 
 ```bash
-BACKEND_PORT=18081 docker compose up --build
+FRONTEND_PORT=18080 BACKEND_PORT=18081 docker compose up --build
 ```
 
 Useful commands:
@@ -102,9 +84,42 @@ docker compose down -v
 
 Notes:
 
-- The Spring Boot app still serves the static frontend and API from the same container.
+- The frontend is served from its own container and proxies `/api` requests to the backend container.
 - H2 data is persisted in the named Docker volume `snap_eats_data`.
 - `docker compose down -v` removes the persisted dev database volume.
+
+## Run Natively
+
+### Backend
+
+Prerequisites:
+
+- Java 17+
+- Maven 3.6+
+
+```bash
+cd foodhub-backend
+mvn clean spring-boot:run
+```
+
+### Frontend
+
+Start the native frontend dev server in a second terminal:
+
+```powershell
+cd frontend
+.\start-dev.ps1
+```
+
+This serves the app at `http://localhost:3000/`.
+
+The frontend auto-targets `http://localhost:8081/api` in this native flow, while still keeping `/api` for Docker on `http://localhost:8080/`.
+
+Smoke test for native mode:
+
+```powershell
+.\scripts\frontend_smoke_test.ps1 -FrontendBaseUrl http://localhost:3000 -BackendBaseUrl http://localhost:8081
+```
 
 ## OTP Delivery Configuration
 

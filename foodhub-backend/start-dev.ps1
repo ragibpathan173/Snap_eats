@@ -21,9 +21,13 @@ if ($listeners) {
 Write-Host "Starting Spring Boot..."
 Write-Host ""
 Write-Host "URLS:"
-Write-Host "  App:      http://localhost:$Port/snap_eats.html"
 Write-Host "  API:      http://localhost:$Port/api/categories/active"
+Write-Host "  Swagger:  http://localhost:$Port/swagger-ui.html"
 Write-Host "  Health:   http://localhost:$Port/actuator/health/readiness"
+Write-Host "  Frontend: Run ../frontend/start-dev.ps1 or use docker compose up --build"
 Write-Host ""
 
-mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=$Port"
+Write-Host "Cleaning old build output so stale frontend assets are not served from the backend..."
+Write-Host ""
+
+mvn clean spring-boot:run "-Dspring-boot.run.arguments=--server.port=$Port"

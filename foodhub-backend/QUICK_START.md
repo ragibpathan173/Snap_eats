@@ -23,11 +23,11 @@ mvn clean install
 
 ### 3. Run
 ```bash
-mvn spring-boot:run
+mvn clean spring-boot:run
 ```
 
 ### 4. Verify
-Open browser: http://localhost:8080/api/categories/active
+Open browser: http://localhost:8081/api/categories/active
 
 You should see 18 categories loaded! 🎉
 
@@ -35,13 +35,13 @@ You should see 18 categories loaded! 🎉
 
 | Service | URL |
 |---------|-----|
-| API Base | http://localhost:8080/api |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| H2 Console | http://localhost:8080/h2-console |
+| API Base | http://localhost:8081/api |
+| Swagger UI | http://localhost:8081/swagger-ui.html |
+| H2 Console | http://localhost:8081/h2-console |
 
 ## 🗄️ H2 Database Login
 ```
-JDBC URL: jdbc:h2:mem:foodhub
+JDBC URL: jdbc:h2:file:./data/foodhub
 Username: sa
 Password: (leave blank)
 ```
@@ -50,30 +50,34 @@ Password: (leave blank)
 
 ### Get Categories
 ```bash
-curl http://localhost:8080/api/categories/active
+curl http://localhost:8081/api/categories/active
 ```
 
 ### Get Restaurants
 ```bash
-curl http://localhost:8080/api/restaurants/active
+curl http://localhost:8081/api/restaurants/active
 ```
 
 ### Search Restaurants
 ```bash
-curl "http://localhost:8080/api/restaurants/search?query=pizza"
+curl "http://localhost:8081/api/restaurants/search?query=pizza"
 ```
 
 ## 🎨 Connect Frontend
 
-Your frontend should call:
+The frontend now lives in the repo-level `frontend/` folder and is served separately from the backend.
+
+If you are calling the backend directly during local development, your frontend should call:
 ```javascript
-const API_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:8081/api';
 
 // Get categories
 fetch(`${API_URL}/categories/active`)
   .then(res => res.json())
   .then(data => console.log(data));
 ```
+
+If you are serving `frontend/` through Docker Compose or another reverse proxy, keep the default `/api` value from `frontend/config.js`.
 
 ## ✅ Verify Data Loaded
 
@@ -94,17 +98,17 @@ Your backend is running with:
 
 ## 🔧 Common Issues
 
-### Port 8080 already in use?
+### Port 8081 already in use?
 Change port in `application.properties`:
 ```properties
-server.port=8081
+server.port=18081
 ```
 
 ### Database not connecting?
 Check `application.properties`:
 ```properties
-spring.datasource.url=jdbc:h2:mem:foodhub
-spring.jpa.hibernate.ddl-auto=create-drop
+spring.datasource.url=jdbc:h2:file:./data/foodhub;DB_CLOSE_ON_EXIT=FALSE
+spring.jpa.hibernate.ddl-auto=update
 ```
 
 ## 📚 Next Steps

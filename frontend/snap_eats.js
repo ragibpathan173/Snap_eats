@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api";
+const API_BASE_URL = (window.__SNAP_EATS_API_BASE_URL__ || "/api").replace(/\/$/, "");
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";

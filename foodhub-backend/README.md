@@ -2,6 +2,8 @@
 
 A comprehensive food delivery platform backend built with Spring Boot 3.2.0, providing RESTful APIs for restaurant management, menu items, orders, and user management.
 
+In the combined SnapEats repo, the frontend lives in the sibling `../frontend` folder and is served separately from this backend module.
+
 ## 📋 Table of Contents
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -82,7 +84,7 @@ mvn clean install
 
 3. **Run the application**
 ```bash
-mvn spring-boot:run
+mvn clean spring-boot:run
 ```
 
 4. **Access the application**
@@ -91,6 +93,7 @@ mvn spring-boot:run
 - H2 Console: http://localhost:8081/h2-console
 - Health (liveness): http://localhost:8081/actuator/health/liveness
 - Health (readiness): http://localhost:8081/actuator/health/readiness
+- Frontend (repo root workflow): serve `../frontend` separately or run `docker compose up --build` from the repo root
 
 ### H2 Database Access
 - JDBC URL: `jdbc:h2:file:./data/foodhub`
