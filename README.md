@@ -113,7 +113,7 @@ cd frontend
 
 This serves the app at `http://localhost:3000/`.
 
-The frontend auto-targets `http://localhost:8081/api` in this native flow, while still keeping `/api` for Docker on `http://localhost:8080/`.
+In native mode, the frontend dev server proxies `/api` to the backend on `http://localhost:8081`, so you only need to open one app link: `http://localhost:3000/`.
 
 Smoke test for native mode:
 

@@ -1,4 +1,4 @@
-import { createServer } from "node:http";
+import { createServer, request as createProxyRequest } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const args = process.argv.slice(2);
 const portFlagIndex = args.indexOf("--port");
 const port = portFlagIndex >= 0 ? Number.parseInt(args[portFlagIndex + 1], 10) : 3000;
+const backendBaseUrl = new URL("http://127.0.0.1:8081");
 
 if (!Number.isInteger(port) || port <= 0) {
     console.error("A valid numeric port is required.");
@@ -35,7 +36,7 @@ function isInsideRoot(resolvedPath) {
 
 async function resolveFilePath(requestPathname) {
     const decodedPath = decodeURIComponent(requestPathname);
-    const localPath = decodedPath === "/" ? "index.html" : decodedPath.replace(/^\/+/, "");
+    const localPath = decodedPath === "/" ? "snap_eats.html" : decodedPath.replace(/^\/+/, "");
     let resolvedPath = path.resolve(rootDirectory, localPath);
 
     if (!isInsideRoot(resolvedPath)) {
@@ -49,7 +50,7 @@ async function resolveFilePath(requestPathname) {
         }
     } catch {
         if (!path.extname(resolvedPath)) {
-            return path.join(rootDirectory, "index.html");
+            return path.join(rootDirectory, "snap_eats.html");
         }
 
         return null;
@@ -63,9 +64,45 @@ async function resolveFilePath(requestPathname) {
     }
 }
 
+function proxyApiRequest(clientRequest, clientResponse) {
+    const requestUrl = new URL(clientRequest.url ?? "/", `http://${clientRequest.headers.host ?? "localhost"}`);
+    const upstreamUrl = new URL(requestUrl.pathname + requestUrl.search, backendBaseUrl);
+    const forwardedHeaders = { ...clientRequest.headers, host: backendBaseUrl.host };
+
+    const upstreamRequest = createProxyRequest(
+        upstreamUrl,
+        {
+            method: clientRequest.method,
+            headers: forwardedHeaders
+        },
+        (upstreamResponse) => {
+            clientResponse.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+            upstreamResponse.pipe(clientResponse);
+        }
+    );
+
+    upstreamRequest.on("error", (error) => {
+        if (clientResponse.headersSent) {
+            clientResponse.end();
+            return;
+        }
+
+        clientResponse.writeHead(502, { "Content-Type": "text/plain; charset=utf-8" });
+        clientResponse.end(`Proxy error: ${error.message}`);
+    });
+
+    clientRequest.pipe(upstreamRequest);
+}
+
 const server = createServer(async (request, response) => {
     try {
         const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+
+        if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+            proxyApiRequest(request, response);
+            return;
+        }
+
         const filePath = await resolveFilePath(url.pathname);
 
         if (!filePath) {
@@ -92,6 +129,7 @@ const server = createServer(async (request, response) => {
 server.listen(port, "127.0.0.1", () => {
     console.log(`Serving SnapEats frontend from ${rootDirectory}`);
     console.log(`Frontend URL: http://localhost:${port}/`);
+    console.log(`Proxying /api to ${backendBaseUrl.origin}/api`);
     console.log("Press Ctrl+C to stop.");
 });
 

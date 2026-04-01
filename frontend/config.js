@@ -15,11 +15,7 @@
         return;
     }
 
-    const hostname = window.location.hostname;
-    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
-    const useBackendDirectly = window.location.protocol === "file:" || (isLocalHost && window.location.port !== "8080");
-
-    window.__SNAP_EATS_API_BASE_URL__ = useBackendDirectly
+    window.__SNAP_EATS_API_BASE_URL__ = window.location.protocol === "file:"
         ? "http://localhost:8081/api"
         : "/api";
 })();
