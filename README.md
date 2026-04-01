@@ -75,6 +75,37 @@ Open:
 
 - `http://localhost:8081/`
 
+## Run With Docker
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+Open:
+
+- `http://localhost:8081/`
+
+If `8081` is already in use, pick another host port:
+
+```bash
+BACKEND_PORT=18081 docker compose up --build
+```
+
+Useful commands:
+
+```bash
+docker compose down
+docker compose down -v
+```
+
+Notes:
+
+- The Spring Boot app still serves the static frontend and API from the same container.
+- H2 data is persisted in the named Docker volume `snap_eats_data`.
+- `docker compose down -v` removes the persisted dev database volume.
+
 ## OTP Delivery Configuration
 
 You can run in dev mode (returns OTP in API response) or configure real delivery.

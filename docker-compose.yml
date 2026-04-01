@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: ./foodhub-backend
+      dockerfile: Dockerfile
+    container_name: snap-eats-backend
+    ports:
+      - "${BACKEND_PORT:-8081}:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:h2:file:/app/data/foodhub;DB_CLOSE_ON_EXIT=FALSE
+      SECURITY_OTP_DEV_RETURN: "true"
+      OTP_DELIVERY_EMAIL_ENABLED: "false"
+      OTP_DELIVERY_SMS_ENABLED: "false"
+    volumes:
+      - snap_eats_data:/app/data
+
+volumes:
+  snap_eats_data:

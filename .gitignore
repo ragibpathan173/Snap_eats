@@ -26,6 +26,8 @@ replay_pid*
 # Build output
 target/
 foodhub-backend/target/
+foodhub-backend/data/*.mv.db
+foodhub-backend/data/*.trace.db
 
 # Editor settings
 .vscode/
