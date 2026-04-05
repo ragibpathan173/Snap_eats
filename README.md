@@ -105,7 +105,9 @@ docker build -t ghcr.io/<your-github-user>/snap-eats-frontend:latest ./frontend
 ```
 
 The frontend image accepts a runtime environment variable named `BACKEND_UPSTREAM`.
-Use it to point the frontend proxy at whichever backend container or host you want.
+Use `host:port` format to point the frontend proxy at whichever backend container or host you want.
+
+It also accepts `PORT`, which is useful on platforms like Render that inject a required HTTP port for web services.
 
 ## Run Docker Images Without Compose
 
@@ -137,7 +139,7 @@ docker run -d \
   --name snap-eats-frontend \
   --network snap-eats-net \
   -p 8080:80 \
-  -e BACKEND_UPSTREAM=http://snap-eats-backend:8081 \
+  -e BACKEND_UPSTREAM=snap-eats-backend:8081 \
   ghcr.io/<your-github-user>/snap-eats-frontend:latest
 ```
 
@@ -162,6 +164,32 @@ docker network rm snap-eats-net
 ```
 
 If you already have an app on `8080` or `8081`, publish to different host ports instead, for example `-p 18080:80` and `-p 18081:8081`.
+
+## Deploy on Render
+
+This repo now includes a root-level `render.yaml` Blueprint for a public frontend, a private backend, and a managed Postgres database.
+
+What it does:
+
+- creates `snap-eats-frontend` as the only public URL you share
+- creates `snap-eats-backend` as a private internal service
+- creates `snap-eats-db` as the Postgres database
+- wires the frontend `/api` proxy to the private backend automatically
+- converts Render's `postgresql://...` database URL into the JDBC URL Spring Boot needs
+
+Steps:
+
+1. Push this repo to GitHub.
+2. In Render, choose `New +` -> `Blueprint`.
+3. Connect the GitHub repo that contains this `render.yaml`.
+4. Review the three resources Render detects and click `Apply`.
+5. Wait for the database, backend, and frontend deploys to finish.
+6. Open the public frontend URL that Render shows for `snap-eats-frontend`.
+
+Important note:
+
+- The Blueprint keeps OTP in demo mode with `SECURITY_OTP_DEV_RETURN=true` so the app keeps working without SMTP or SMS credentials.
+- If you want real public signups, switch that to `false` and add real email or SMS delivery settings in Render.
 
 ## Run Natively
 
