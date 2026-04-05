@@ -278,6 +278,11 @@ let adminMenuItems = [];
 let adminMenuLoading = false;
 let adminMenuError = "";
 let adminEditingMenuItemId = null;
+let adminUserStats = null;
+let adminUsers = [];
+let adminUsersLoading = false;
+let adminUsersError = "";
+let adminUserSearchTerm = "";
 let favoriteRestaurants = [];
 let favoriteMenuItems = [];
 let savedPaymentMethods = [];
@@ -5869,6 +5874,9 @@ function setAccountSection(section) {
     if (section === "admin" && isAdminUser() && !adminRestaurants.length) {
         loadAdminRestaurants();
     }
+    if (section === "admin" && isAdminUser() && !adminUsers.length && !adminUsersLoading && !adminUserStats) {
+        loadAdminUsersDashboard();
+    }
     if (section === "subscription" && currentUser?.id && !subscriptionPlans.length && !subscriptionLoading) {
         fetchSubscriptionData();
     }
@@ -5912,12 +5920,116 @@ function renderAccountSidebar() {
     `).join("");
 }
 
+function formatAdminRoleLabel(role) {
+    return String(role || "USER")
+        .toLowerCase()
+        .split("_")
+        .map((part) => part ? part.charAt(0).toUpperCase() + part.slice(1) : "")
+        .join(" ");
+}
+
+function renderAdminPeoplePanel() {
+    const stats = adminUserStats || {};
+    const totalUsers = Number(stats.totalUsers || adminUsers.length || 0);
+    const activeUsers = Number(stats.activeUsers || adminUsers.filter((user) => user.active).length || 0);
+    const totalCustomers = Number(stats.totalCustomers || adminUsers.filter((user) => user.role === "USER").length || 0);
+    const totalAdmins = Number(stats.totalAdmins || adminUsers.filter((user) => user.role === "ADMIN").length || 0);
+    const searchSummary = adminUserSearchTerm
+        ? `${adminUsers.length} match${adminUsers.length === 1 ? "" : "es"} for "${escapeHtml(adminUserSearchTerm)}"`
+        : `${adminUsers.length} registered user${adminUsers.length === 1 ? "" : "s"}`;
+
+    return `
+        <section class="admin-user-directory-panel">
+            <div class="account-panel-head account-panel-head-compact">
+                <div>
+                    <p class="menu-eyebrow">People</p>
+                    <h3>User access overview</h3>
+                    <p class="account-panel-copy">Only admin users can see signed-up account details here. This shows registered users, not anonymous visitors.</p>
+                </div>
+            </div>
+
+            <div class="account-stat-grid admin-user-stats-grid">
+                <div class="account-card">
+                    <span>Total users</span>
+                    <strong>${formatNumber(totalUsers)}</strong>
+                </div>
+                <div class="account-card">
+                    <span>Active users</span>
+                    <strong>${formatNumber(activeUsers)}</strong>
+                </div>
+                <div class="account-card">
+                    <span>Customers</span>
+                    <strong>${formatNumber(totalCustomers)}</strong>
+                </div>
+                <div class="account-card">
+                    <span>Admins</span>
+                    <strong>${formatNumber(totalAdmins)}</strong>
+                </div>
+            </div>
+
+            <div class="admin-user-directory-head">
+                <div class="payment-form-header">
+                    <strong>User directory</strong>
+                    <p>${searchSummary}</p>
+                </div>
+                <form class="admin-user-search" onsubmit="searchAdminUsers(event)">
+                    <input
+                        id="adminUserSearchInput"
+                        type="search"
+                        value="${escapeAttribute(adminUserSearchTerm)}"
+                        placeholder="Search by name, email, or phone"
+                    >
+                    <button class="secondary-button" type="submit">Search</button>
+                    ${adminUserSearchTerm ? `<button class="text-button" type="button" onclick="clearAdminUserSearch()">Clear</button>` : ""}
+                </form>
+            </div>
+
+            ${adminUsersError ? `<div class="checkout-feedback error">${escapeHtml(adminUsersError)}</div>` : ""}
+
+            ${adminUsersLoading ? `
+                <div class="account-placeholder-card compact">
+                    <p>Loading user access data...</p>
+                </div>
+            ` : `
+                <div class="admin-user-list">
+                    ${adminUsers.length ? adminUsers.map((user) => `
+                        <article class="admin-user-card">
+                            <div>
+                                <strong>${escapeHtml(user.name || "Unnamed user")}</strong>
+                                <p>
+                                    ${escapeHtml(user.email || "No email")}
+                                    ${user.phoneNumber ? ` &bull; ${escapeHtml(user.phoneNumber)}` : ""}
+                                </p>
+                                ${user.address ? `<p>${escapeHtml(user.address)}</p>` : ""}
+                                <div class="admin-user-meta">
+                                    <span class="admin-user-pill">${escapeHtml(formatAdminRoleLabel(user.role))}</span>
+                                    <span class="admin-user-pill ${user.active ? "active" : "inactive"}">${user.active ? "Active" : "Inactive"}</span>
+                                    ${user.city || user.state ? `<span class="admin-user-pill">${escapeHtml([user.city, user.state].filter(Boolean).join(", "))}</span>` : ""}
+                                    ${user.pincode ? `<span class="admin-user-pill">PIN ${escapeHtml(user.pincode)}</span>` : ""}
+                                </div>
+                            </div>
+                            <div class="admin-user-side">
+                                <span>ID #${escapeHtml(String(user.id ?? "-"))}</span>
+                                <strong>${escapeHtml(formatDateTime(user.createdAt) || "-")}</strong>
+                            </div>
+                        </article>
+                    `).join("") : `
+                        <div class="account-placeholder-card compact">
+                            <p>No users found for this filter.</p>
+                        </div>
+                    `}
+                </div>
+            `}
+        </section>
+    `;
+}
+
 function renderAdminPanel() {
     if (!isAdminUser()) {
         return `
             <div class="account-panel">
                 <h3>Admin access required</h3>
-                <p class="account-panel-copy">Only admin users can manage menus.</p>
+                <p class="account-panel-copy">Only admin users can view people data and manage menus.</p>
             </div>
         `;
     }
@@ -5932,13 +6044,14 @@ function renderAdminPanel() {
             <div class="account-panel-head">
                 <div>
                     <p class="menu-eyebrow">Admin</p>
-                    <h3>Menu operations</h3>
-                    <p class="account-panel-copy">Add, edit, and delete menu items by restaurant.</p>
+                    <h3>Admin control center</h3>
+                    <p class="account-panel-copy">Review registered users and manage menu operations by restaurant.</p>
                 </div>
-                <button class="secondary-button" type="button" onclick="loadAdminRestaurants()">Refresh</button>
+                <button class="secondary-button" type="button" onclick="refreshAdminPanel()">Refresh all</button>
             </div>
 
             ${adminMenuError ? `<div class="checkout-feedback error">${escapeHtml(adminMenuError)}</div>` : ""}
+            ${renderAdminPeoplePanel()}
 
             <div class="admin-menu-layout">
                 <section class="admin-menu-list-panel">
@@ -6378,6 +6491,64 @@ function renderAccountPanel() {
 
 function isAdminUser() {
     return currentUser?.role === "ADMIN";
+}
+
+async function refreshAdminPanel() {
+    if (!isAdminUser()) {
+        return;
+    }
+
+    await Promise.all([
+        loadAdminRestaurants(),
+        loadAdminUsersDashboard(adminUserSearchTerm)
+    ]);
+}
+
+async function loadAdminUsersDashboard(query = adminUserSearchTerm) {
+    if (!isAdminUser()) {
+        adminUserStats = null;
+        adminUsers = [];
+        adminUsersError = "Admin access required.";
+        renderAuthModal();
+        return;
+    }
+
+    adminUsersLoading = true;
+    adminUsersError = "";
+    adminUserSearchTerm = String(query || "").trim();
+    renderAuthModal();
+
+    try {
+        const [statsPayload, usersPayload] = await Promise.all([
+            fetchJson(`${API_BASE_URL}/users/stats`),
+            fetchJson(
+                adminUserSearchTerm
+                    ? `${API_BASE_URL}/users/search?query=${encodeURIComponent(adminUserSearchTerm)}`
+                    : `${API_BASE_URL}/users`
+            )
+        ]);
+
+        adminUserStats = statsPayload && typeof statsPayload === "object" ? statsPayload : {};
+        adminUsers = Array.isArray(usersPayload) ? usersPayload : [];
+    } catch (error) {
+        adminUserStats = null;
+        adminUsers = [];
+        adminUsersError = error.message || "Failed to load admin user data.";
+    } finally {
+        adminUsersLoading = false;
+        renderAuthModal();
+    }
+}
+
+async function searchAdminUsers(event) {
+    event.preventDefault();
+    const query = document.getElementById("adminUserSearchInput")?.value || "";
+    await loadAdminUsersDashboard(query);
+}
+
+async function clearAdminUserSearch() {
+    adminUserSearchTerm = "";
+    await loadAdminUsersDashboard("");
 }
 
 async function loadAdminRestaurants() {

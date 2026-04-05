@@ -24,6 +24,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -112,7 +114,7 @@ public class UserController {
                 user.setPassword(passwordEncoder.encode(user.getPassword()));
             }
 
-            user.setRole(user.getRole() == null ? User.Role.USER : user.getRole());
+            user.setRole(User.Role.USER);
             user.setActive(user.getActive() == null ? true : user.getActive());
 
             User savedUser = userRepository.save(user);
@@ -538,6 +540,10 @@ public class UserController {
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return ResponseEntity.status(adminError.getStatusCode()).build();
+            }
             List<User> users = userRepository.findAll();
             return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
@@ -548,6 +554,10 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             Optional<User> user = userRepository.findById(id);
             if (user.isPresent()) {
                 return ResponseEntity.ok(sanitizeUser(user.get()));
@@ -564,6 +574,10 @@ public class UserController {
     @GetMapping("/email/{email}")
     public ResponseEntity<?> getUserByEmail(@PathVariable String email) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             Optional<User> user = userRepository.findByEmail(email);
             if (user.isPresent()) {
                 return ResponseEntity.ok(sanitizeUser(user.get()));
@@ -580,6 +594,10 @@ public class UserController {
     @GetMapping("/active")
     public ResponseEntity<List<User>> getActiveUsers() {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return ResponseEntity.status(adminError.getStatusCode()).build();
+            }
             List<User> users = userRepository.findByActiveTrue();
             return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
@@ -590,6 +608,10 @@ public class UserController {
     @GetMapping("/role/{role}")
     public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return ResponseEntity.status(adminError.getStatusCode()).build();
+            }
             User.Role userRole = User.Role.valueOf(role.toUpperCase());
             List<User> users = userRepository.findByRole(userRole);
             return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
@@ -601,6 +623,10 @@ public class UserController {
     @GetMapping("/search")
     public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return ResponseEntity.status(adminError.getStatusCode()).build();
+            }
             List<User> users = userRepository.searchUsers(query);
             return ResponseEntity.ok(users.stream().map(this::sanitizeUser).toList());
         } catch (Exception e) {
@@ -613,6 +639,10 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @Valid @RequestBody User userDetails) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             Optional<User> optionalUser = userRepository.findById(id);
             
             if (optionalUser.isEmpty()) {
@@ -722,6 +752,10 @@ public class UserController {
             @RequestParam String oldPassword,
             @RequestParam String newPassword) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             Optional<User> optionalUser = userRepository.findById(id);
             
             if (optionalUser.isEmpty()) {
@@ -758,6 +792,10 @@ public class UserController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             if (!userRepository.existsById(id)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", "User not found with id: " + id));
@@ -776,6 +814,10 @@ public class UserController {
     @GetMapping("/stats")
     public ResponseEntity<?> getUserStats() {
         try {
+            ResponseEntity<?> adminError = requireAdminAccess();
+            if (adminError != null) {
+                return adminError;
+            }
             Map<String, Object> stats = new HashMap<>();
             stats.put("totalUsers", userRepository.count());
             stats.put("activeUsers", userRepository.countByActiveTrue());
@@ -797,6 +839,23 @@ public class UserController {
         }
         return userRepository.findByEmail(DemoUserDataLoader.DEMO_USER_EMAIL)
                 .orElseThrow(() -> new IllegalStateException("Guest user not available"));
+    }
+
+    private ResponseEntity<?> requireAdminAccess() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Authentication required"));
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        if (!isAdmin) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Admin access required"));
+        }
+
+        return null;
     }
 
     private User sanitizeUser(User user) {

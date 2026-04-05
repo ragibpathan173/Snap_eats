@@ -4169,6 +4169,116 @@ body.modal-open {
     gap: 8px;
 }
 
+.admin-user-directory-panel {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #edf0f3;
+    border-radius: 20px;
+    background: #fff;
+}
+
+.admin-user-stats-grid {
+    margin-top: 18px;
+}
+
+.admin-user-directory-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin: 8px 0 14px;
+}
+
+.admin-user-search {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.admin-user-search input {
+    min-width: min(320px, 100%);
+    padding: 12px 14px;
+    border: 1px solid #d7dce2;
+    border-radius: 12px;
+    font: inherit;
+    background: #fff;
+}
+
+.admin-user-search input:focus {
+    outline: none;
+    border-color: #cb202d;
+}
+
+.admin-user-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.admin-user-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.admin-user-card strong {
+    color: #02060c;
+    font-size: 18px;
+}
+
+.admin-user-card p {
+    margin-top: 6px;
+    color: #686b78;
+}
+
+.admin-user-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.admin-user-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #3730a3;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-user-pill.active {
+    background: rgba(20, 76, 42, 0.12);
+    color: #144c2a;
+}
+
+.admin-user-pill.inactive {
+    background: rgba(180, 35, 24, 0.1);
+    color: #b42318;
+}
+
+.admin-user-side {
+    display: grid;
+    gap: 8px;
+    justify-items: end;
+    text-align: right;
+}
+
+.admin-user-side span {
+    color: #686b78;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
 .account-placeholder-card.compact {
     min-height: 220px;
 }
@@ -10773,6 +10883,21 @@ body {
         align-items: start !important;
     }
 
+    .admin-user-card {
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: start !important;
+    }
+
+    .admin-user-directory-head,
+    .admin-user-search {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .admin-user-search input {
+        min-width: 0 !important;
+    }
+
     .favorite-restaurant-actions,
     .favorite-dish-actions,
     .cart-item-controls,
@@ -11222,14 +11347,18 @@ body {
 
     .favorite-restaurant-card,
     .favorite-dish-card,
-    .cart-item-card {
+    .cart-item-card,
+    .admin-user-card {
         grid-template-columns: 1fr !important;
     }
 
     .favorite-restaurant-actions,
     .favorite-dish-actions,
-    .cart-item-controls {
+    .cart-item-controls,
+    .admin-user-side {
         width: 100% !important;
+        justify-items: start !important;
+        text-align: left !important;
     }
 
     .cart-item-total {
