@@ -10824,7 +10824,7 @@ body {
 
 @media (max-width: 640px) {
     :root {
-        --app-header-offset: 112px;
+        --app-header-offset: 78px;
     }
 
     .container {
@@ -10835,8 +10835,21 @@ body {
         padding: 8px 0 !important;
     }
 
+    .header .container {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        gap: 10px 12px !important;
+    }
+
+    .brand-block {
+        width: auto !important;
+        min-width: 0 !important;
+        justify-content: flex-start !important;
+    }
+
     .logo {
-        gap: 10px !important;
+        display: none !important;
     }
 
     .logo-mark {
@@ -10850,7 +10863,9 @@ body {
     }
 
     .location-chip {
-        max-width: calc(100vw - 148px) !important;
+        width: 100% !important;
+        max-width: none !important;
+        justify-content: flex-start !important;
     }
 
     .location-label {
@@ -10861,9 +10876,41 @@ body {
         display: none !important;
     }
 
+    .nav-links {
+        width: auto !important;
+        justify-content: flex-end !important;
+        gap: 8px !important;
+        overflow: visible !important;
+        padding-bottom: 0 !important;
+    }
+
+    .nav-links .nav-link {
+        display: none !important;
+    }
+
+    .nav-links #authNavLink,
+    .nav-links .cart-link {
+        display: inline-flex !important;
+        align-items: center !important;
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+    }
+
     .nav-link {
         padding: 9px 11px !important;
         font-size: 13px !important;
+    }
+
+    .nav-link-icon {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    .cart-count {
+        min-width: 18px !important;
+        height: 18px !important;
+        padding: 0 5px !important;
+        font-size: 11px !important;
     }
 
     .hero-banner {
@@ -10884,6 +10931,37 @@ body {
 
     .categories-container {
         gap: 10px !important;
+    }
+
+    .categories-section,
+    .restaurants-section {
+        padding: 20px 0 !important;
+    }
+
+    .categories-section .container,
+    .restaurants-section .container {
+        padding: 18px 14px !important;
+    }
+
+    .categories-section .container {
+        margin-top: -14px !important;
+        padding-bottom: 10px !important;
+    }
+
+    .categories-wrapper {
+        margin-bottom: 0 !important;
+    }
+
+    .categories-container {
+        padding: 8px 0 6px !important;
+    }
+
+    .section-divider {
+        margin: 8px auto !important;
+    }
+
+    .restaurants-section .container {
+        padding-top: 14px !important;
     }
 
     .category-card {
