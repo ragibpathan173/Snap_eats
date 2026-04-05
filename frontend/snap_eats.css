@@ -11467,3 +11467,59 @@ body {
         font-size: 16px !important;
     }
 }
+/* Tighten the homepage handoff between category rail and restaurant grid */
+.categories-section {
+    padding: 32px 0 10px !important;
+}
+
+.restaurants-section {
+    padding: 14px 0 32px !important;
+}
+
+.section-divider {
+    margin: 8px auto !important;
+}
+
+.categories-wrapper {
+    margin-bottom: 0 !important;
+}
+
+.categories-container {
+    padding: 14px 0 8px !important;
+}
+
+.restaurants-section .section-title {
+    margin-bottom: 18px !important;
+}
+
+@media (max-width: 1024px) {
+    .categories-section {
+        padding: 28px 0 10px !important;
+    }
+
+    .restaurants-section {
+        padding: 12px 0 28px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .categories-section {
+        padding: 16px 0 6px !important;
+    }
+
+    .restaurants-section {
+        padding: 8px 0 18px !important;
+    }
+
+    .section-divider {
+        margin: 4px auto !important;
+    }
+
+    .categories-container {
+        padding: 8px 0 4px !important;
+    }
+
+    .restaurants-section .section-title {
+        margin-bottom: 14px !important;
+    }
+}
