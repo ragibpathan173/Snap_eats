@@ -10400,7 +10400,7 @@ body {
 }
 
 /* Final mobile responsiveness overrides */
-@media (max-width: 900px) {
+@media (max-width: 768px) {
     :root {
         --app-header-offset: 124px;
     }
