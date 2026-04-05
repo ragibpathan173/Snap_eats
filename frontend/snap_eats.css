@@ -111,6 +111,24 @@ body {
     align-items: center;
     flex-wrap: wrap;
     justify-content: flex-end;
+    min-width: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.nav-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    justify-content: flex-end;
+    flex-shrink: 0;
 }
 
 .nav-link {
@@ -4945,6 +4963,19 @@ body.modal-open {
         gap: 16px;
     }
 
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .nav-top-actions {
+        width: 100%;
+        justify-content: flex-end;
+        gap: 10px 14px;
+    }
+
     .logo-text {
         font-size: 24px;
     }
@@ -4954,6 +4985,7 @@ body.modal-open {
         justify-content: flex-start;
         gap: 10px 14px;
         overflow-x: auto;
+        flex-wrap: nowrap;
         padding-bottom: 4px;
         scrollbar-width: none;
     }
@@ -11002,20 +11034,35 @@ body {
         display: none !important;
     }
 
-    .nav-links {
+    .header-actions {
+        display: contents !important;
+    }
+
+    .nav-top-actions {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
         width: auto !important;
         justify-content: flex-end !important;
         gap: 8px !important;
-        overflow: visible !important;
-        padding-bottom: 0 !important;
+    }
+
+    .nav-links {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        overflow-x: auto !important;
+        flex-wrap: nowrap !important;
+        padding-bottom: 4px !important;
     }
 
     .nav-links .nav-link {
-        display: none !important;
+        display: inline-flex !important;
+        flex: 0 0 auto !important;
     }
 
-    .nav-links #authNavLink,
-    .nav-links .cart-link {
+    .nav-top-actions .nav-link {
         display: inline-flex !important;
         align-items: center !important;
         padding: 8px 10px !important;
