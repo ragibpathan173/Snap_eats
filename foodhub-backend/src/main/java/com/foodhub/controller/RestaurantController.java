@@ -2,6 +2,7 @@ package com.foodhub.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foodhub.config.RealFoodPhotoService;
 import com.foodhub.model.Restaurant;
 import com.foodhub.repository.RestaurantRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ public class RestaurantController {
 
     @Autowired
     private RestaurantRepository restaurantRepository;
+
+    @Autowired
+    private RealFoodPhotoService realFoodPhotoService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -117,6 +121,8 @@ public class RestaurantController {
     }
 
     private void copyRestaurantFields(Restaurant target, Restaurant source) {
+        String desiredImageUrl = realFoodPhotoService.restaurantPhotoUrl(source);
+
         target.setRestaurantId(source.getRestaurantId());
         target.setName(source.getName());
         target.setCuisine(source.getCuisine());
@@ -124,7 +130,9 @@ public class RestaurantController {
         target.setReviewCount(source.getReviewCount() == null ? 0 : source.getReviewCount());
         target.setTime(source.getTime());
         target.setDiscount(source.getDiscount());
-        target.setImage(source.getImage());
+        if (realFoodPhotoService.shouldReplaceManagedImage(target.getImage(), desiredImageUrl)) {
+            target.setImage(desiredImageUrl);
+        }
         target.setLogo(source.getLogo());
         target.setCategory(source.getCategory());
         target.setCity(source.getCity());

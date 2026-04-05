@@ -12,9 +12,9 @@ if ($listeners) {
         ($_ -split "\s+")[-1]
     } | Where-Object { $_ -match "^\d+$" } | Select-Object -Unique
 
-    foreach ($pid in $pids) {
-        Write-Host "Stopping process on port $Port (PID $pid)..."
-        cmd /c "taskkill /PID $pid /F" | Out-Null
+    foreach ($processId in $pids) {
+        Write-Host "Stopping process on port $Port (PID $processId)..."
+        cmd /c "taskkill /PID $processId /F" | Out-Null
     }
 }
 
