@@ -10398,3 +10398,703 @@ body {
         padding: 26px 20px 20px;
     }
 }
+
+/* Final mobile responsiveness overrides */
+@media (max-width: 900px) {
+    :root {
+        --app-header-offset: 124px;
+    }
+
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    .container {
+        padding: 0 16px !important;
+    }
+
+    .header {
+        padding: 10px 0 !important;
+    }
+
+    .header .container {
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+
+    .brand-block {
+        width: 100% !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    .logo-mark {
+        width: 46px !important;
+        height: 46px !important;
+    }
+
+    .logo-mark svg {
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    .logo-text {
+        font-size: 24px !important;
+    }
+
+    .location-chip {
+        max-width: calc(100vw - 180px) !important;
+        gap: 8px !important;
+    }
+
+    .location-label,
+    .location-subtitle {
+        font-size: 14px !important;
+    }
+
+    .nav-links {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        overflow-x: auto !important;
+        padding-bottom: 4px !important;
+        scrollbar-width: none;
+    }
+
+    .nav-links::-webkit-scrollbar,
+    .menu-filter-row::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-link {
+        flex: 0 0 auto !important;
+        padding: 10px 12px !important;
+        border: 1px solid #e5e7eb;
+        border-radius: 999px;
+        background: #fff;
+        font-size: 14px !important;
+    }
+
+    .nav-link-icon {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .header-search-strip.open {
+        max-height: 180px !important;
+        padding: 12px 0 14px !important;
+    }
+
+    .search-bar {
+        max-width: none !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .search-btn,
+    .restaurants-load-more,
+    .discovery-filter-clear-all,
+    .discovery-filter-apply {
+        width: 100% !important;
+    }
+
+    .hero-banner {
+        padding: 34px 0 !important;
+    }
+
+    .hero-title {
+        font-size: clamp(28px, 7vw, 38px) !important;
+        line-height: 1.08 !important;
+    }
+
+    .hero-subtitle {
+        font-size: 16px !important;
+    }
+
+    .categories-section,
+    .restaurants-section {
+        padding: 38px 0 !important;
+    }
+
+    .section-title {
+        font-size: 26px !important;
+        margin-bottom: 22px !important;
+    }
+
+    .categories-container {
+        gap: 14px !important;
+        padding: 10px 0 16px !important;
+    }
+
+    .category-card {
+        min-width: 142px !important;
+        max-width: 142px !important;
+        height: 118px !important;
+    }
+
+    .category-name {
+        font-size: 16px !important;
+    }
+
+    .scroll-btn {
+        display: none !important;
+    }
+
+    .discovery-chip-row {
+        gap: 8px !important;
+    }
+
+    .discovery-chip {
+        min-height: 40px !important;
+        padding: 9px 12px !important;
+        font-size: 14px !important;
+    }
+
+    .discovery-quick-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .discovery-quick-row > * {
+        min-width: 0;
+    }
+
+    .restaurants-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+    }
+
+    .restaurant-image {
+        height: 170px !important;
+    }
+
+    .restaurant-info {
+        padding: 14px !important;
+    }
+
+    .restaurants-footer,
+    .cart-header,
+    .orders-header,
+    .address-map-head,
+    .payment-method-top,
+    .payment-method-actions,
+    .checkout-payment-head,
+    .account-panel-head,
+    .menu-toolbar-meta,
+    .help-panel-head,
+    .help-panel-actions {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .app-section {
+        padding: 16px 0 12px !important;
+    }
+
+    .app-content,
+    .app-text {
+        gap: 16px !important;
+    }
+
+    .app-text h2 {
+        white-space: normal !important;
+        text-align: center !important;
+    }
+
+    .app-badges {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+    }
+
+    .footer {
+        padding: 44px 0 24px !important;
+    }
+
+    .footer-top {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 26px !important;
+    }
+
+    .social-icons {
+        flex-wrap: wrap;
+    }
+
+    .modal.open .modal-content,
+    .modal.open .cart-modal-content,
+    .modal.open .address-modal-content,
+    .modal.open .orders-modal-content,
+    .modal.open .auth-modal-content,
+    .modal.open .location-modal-content,
+    .modal.open .offers-modal-content,
+    .modal.open .corporate-modal-content,
+    .modal-content,
+    .cart-modal-content,
+    .address-modal-content,
+    .orders-modal-content,
+    .auth-modal-content,
+    .location-modal-content,
+    .offers-modal-content,
+    .corporate-modal-content {
+        height: calc(100dvh - var(--app-header-offset)) !important;
+        max-height: calc(100dvh - var(--app-header-offset)) !important;
+    }
+
+    .close-btn {
+        top: calc(var(--app-header-offset) + 8px) !important;
+        right: 16px !important;
+    }
+
+    .modal-loading,
+    .modal-error {
+        padding: 48px 24px !important;
+    }
+
+    .menu-hero,
+    .menu-toolbar,
+    .cart-shell,
+    .address-book-shell,
+    .corporate-shell,
+    .help-panel-shell,
+    .location-picker-shell,
+    .order-success-shell {
+        padding: 20px !important;
+    }
+
+    .menu-grid {
+        padding: 10px 20px 22px !important;
+    }
+
+    .menu-hero {
+        grid-template-columns: 1fr !important;
+        gap: 18px !important;
+    }
+
+    .menu-hero-image {
+        height: 220px !important;
+    }
+
+    .menu-hero-copy h2 {
+        font-size: 32px !important;
+    }
+
+    .menu-filter-row {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        padding-bottom: 4px !important;
+    }
+
+    .menu-chip {
+        flex: 0 0 auto;
+    }
+
+    .menu-item-card {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+        padding: 18px !important;
+    }
+
+    .menu-item-aside {
+        justify-self: stretch !important;
+    }
+
+    .menu-item-image {
+        width: 100% !important;
+        height: 210px !important;
+    }
+
+    .menu-cart-stepper {
+        margin-top: 0 !important;
+    }
+
+    .cart-layout,
+    .address-book-layout,
+    .payment-management-grid,
+    .admin-menu-layout,
+    .account-layout,
+    .auth-modal-content.account-mode .account-layout,
+    .help-panel-shell,
+    .help-panel-grid,
+    .corporate-story-layout {
+        grid-template-columns: 1fr !important;
+    }
+
+    .account-layout,
+    .auth-modal-content.account-mode .account-layout {
+        width: calc(100% - 28px) !important;
+        margin: 0 auto !important;
+    }
+
+    .auth-modal-content.account-mode .account-hero,
+    .auth-modal-content.account-mode .account-hero-inner,
+    .auth-modal-content.account-mode .account-layout {
+        width: calc(100% - 28px) !important;
+    }
+
+    .auth-modal-content.account-mode .account-hero,
+    .auth-modal-content.account-mode .account-hero-inner {
+        padding: 20px 16px 16px !important;
+    }
+
+    .auth-modal-content.account-mode .account-hero h2 {
+        font-size: clamp(34px, 7vw, 46px) !important;
+    }
+
+    .account-sidebar {
+        padding: 14px !important;
+    }
+
+    .account-nav-item {
+        width: 100% !important;
+        margin-left: 0 !important;
+        border-radius: 14px;
+    }
+
+    .account-main {
+        min-height: 0 !important;
+        padding: 24px 20px !important;
+    }
+
+    .account-panel h3,
+    .cart-header h2,
+    .orders-header h2,
+    .auth-header h2 {
+        font-size: 28px !important;
+    }
+
+    .account-stat-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .favorite-restaurant-card,
+    .favorite-dish-card,
+    .cart-item-card {
+        grid-template-columns: 92px 1fr !important;
+        align-items: start !important;
+    }
+
+    .favorite-restaurant-actions,
+    .favorite-dish-actions,
+    .cart-item-controls,
+    .cart-item-total {
+        grid-column: 1 / -1 !important;
+        justify-self: start !important;
+    }
+
+    .order-card-top,
+    .account-order-card,
+    .location-action-card,
+    .location-history-card {
+        align-items: flex-start !important;
+    }
+
+    .order-success-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .address-map-search,
+    .discovery-filter-modal-foot {
+        grid-template-columns: 1fr !important;
+    }
+
+    .discovery-filter-modal-foot {
+        display: grid !important;
+        padding: 16px !important;
+    }
+
+    .corporate-shell,
+    .corporate-section {
+        padding: 20px !important;
+    }
+
+    .corporate-section-title {
+        font-size: 34px !important;
+    }
+
+    .corporate-contact-copy h3,
+    .corporate-careers-layout h3 {
+        font-size: 24px !important;
+    }
+
+    .corporate-contact-copy p,
+    .corporate-careers-layout p {
+        font-size: 16px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    :root {
+        --app-header-offset: 112px;
+    }
+
+    .container {
+        padding: 0 14px !important;
+    }
+
+    .header {
+        padding: 8px 0 !important;
+    }
+
+    .logo {
+        gap: 10px !important;
+    }
+
+    .logo-mark {
+        width: 42px !important;
+        height: 42px !important;
+        border-radius: 12px !important;
+    }
+
+    .logo-text {
+        font-size: 22px !important;
+    }
+
+    .location-chip {
+        max-width: calc(100vw - 148px) !important;
+    }
+
+    .location-label {
+        font-size: 13px !important;
+    }
+
+    .location-subtitle {
+        display: none !important;
+    }
+
+    .nav-link {
+        padding: 9px 11px !important;
+        font-size: 13px !important;
+    }
+
+    .hero-banner {
+        padding: 28px 0 !important;
+    }
+
+    .hero-title {
+        font-size: 26px !important;
+    }
+
+    .hero-subtitle {
+        font-size: 15px !important;
+    }
+
+    .section-title {
+        font-size: 22px !important;
+    }
+
+    .categories-container {
+        gap: 10px !important;
+    }
+
+    .category-card {
+        min-width: 124px !important;
+        max-width: 124px !important;
+        height: 104px !important;
+        border-radius: 16px !important;
+    }
+
+    .category-overlay {
+        padding: 20px 12px 12px !important;
+    }
+
+    .category-name {
+        font-size: 15px !important;
+    }
+
+    .discovery-quick-row,
+    .restaurants-grid,
+    .footer-top,
+    .order-success-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .restaurant-image,
+    .favorite-restaurant-image,
+    .favorite-dish-image,
+    .cart-item-image {
+        width: 100% !important;
+        height: 180px !important;
+    }
+
+    .restaurant-image {
+        border-radius: 16px !important;
+    }
+
+    .restaurant-name,
+    .favorite-restaurant-copy h4,
+    .favorite-dish-copy h4,
+    .payment-method-card h4 {
+        font-size: 20px !important;
+    }
+
+    .restaurant-info {
+        padding: 14px 12px 16px !important;
+    }
+
+    .app-content {
+        gap: 12px !important;
+    }
+
+    .app-text {
+        gap: 12px !important;
+    }
+
+    .app-text h2 {
+        font-size: 16px !important;
+    }
+
+    .app-badges img {
+        height: 40px !important;
+    }
+
+    .app-image {
+        display: none !important;
+    }
+
+    .modal-loading,
+    .modal-error {
+        padding: 34px 16px !important;
+    }
+
+    .close-btn {
+        top: calc(var(--app-header-offset) + 6px) !important;
+        right: 12px !important;
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 24px !important;
+    }
+
+    .menu-hero,
+    .menu-toolbar,
+    .menu-grid,
+    .cart-shell,
+    .address-book-shell,
+    .help-panel-shell,
+    .corporate-shell,
+    .location-picker-shell,
+    .order-success-shell,
+    .auth-modal-content.account-mode .account-hero,
+    .auth-modal-content.account-mode .account-hero-inner,
+    .account-main {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    .menu-grid {
+        padding-top: 10px !important;
+        padding-bottom: 20px !important;
+    }
+
+    .menu-hero-image {
+        height: 200px !important;
+    }
+
+    .menu-hero-copy h2 {
+        font-size: 28px !important;
+    }
+
+    .menu-item-card {
+        padding: 16px !important;
+        border-radius: 18px !important;
+    }
+
+    .menu-item-card h3 {
+        font-size: 20px !important;
+    }
+
+    .menu-item-image {
+        height: 180px !important;
+    }
+
+    .location-picker-shell .close-btn-inline {
+        margin-bottom: 18px !important;
+    }
+
+    .location-search-input {
+        padding: 16px 18px !important;
+        font-size: 16px !important;
+    }
+
+    .location-action-card,
+    .location-history-card {
+        grid-template-columns: 22px 1fr !important;
+        gap: 12px !important;
+        padding: 16px !important;
+    }
+
+    .location-action-card strong,
+    .location-history-card strong {
+        font-size: 16px !important;
+    }
+
+    .favorite-restaurant-card,
+    .favorite-dish-card,
+    .cart-item-card {
+        grid-template-columns: 1fr !important;
+    }
+
+    .favorite-restaurant-actions,
+    .favorite-dish-actions,
+    .cart-item-controls {
+        width: 100% !important;
+    }
+
+    .cart-item-total {
+        font-weight: 800;
+    }
+
+    .account-sidebar {
+        padding: 12px !important;
+    }
+
+    .account-nav-item {
+        padding: 14px 16px !important;
+        font-size: 15px !important;
+    }
+
+    .account-panel h3,
+    .cart-header h2,
+    .orders-header h2,
+    .auth-header h2 {
+        font-size: 26px !important;
+    }
+
+    .order-card,
+    .order-success-card,
+    .payment-method-card,
+    .payment-form-panel,
+    .address-list-panel,
+    .address-form-panel,
+    .help-panel,
+    .corporate-section {
+        padding: 16px !important;
+    }
+
+    .help-panel-head h3,
+    .corporate-contact-copy h3 {
+        font-size: 20px !important;
+    }
+
+    .help-panel-actions .help-action-button {
+        width: 100% !important;
+    }
+
+    .corporate-section-title {
+        font-size: 30px !important;
+        gap: 10px !important;
+    }
+
+    .corporate-section-title span {
+        width: 34px !important;
+    }
+
+    .corporate-shell.corp-pro .corp-pro-hero-copy h1,
+    .corporate-shell.corp-long .corp-long-hero-copy h1 {
+        font-size: 34px !important;
+    }
+
+    .corporate-contact-copy p,
+    .corporate-careers-layout p {
+        font-size: 16px !important;
+    }
+}
