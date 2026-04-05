@@ -301,6 +301,15 @@ body {
     margin-bottom: 20px;
 }
 
+.categories-wrapper.is-empty {
+    min-height: 0;
+    margin-bottom: 0;
+}
+
+.categories-wrapper.is-empty .scroll-btn {
+    display: none;
+}
+
 .categories-container {
     display: flex;
     gap: 25px;
@@ -352,6 +361,15 @@ body {
 
 .category-card:hover .category-image {
     transform: scale(1.05);
+}
+
+.category-card.image-fallback {
+    background: linear-gradient(145deg, #b91c1c 0%, #ef6c24 100%);
+    border: none;
+}
+
+.category-card.image-fallback .category-image {
+    display: none;
 }
 
 .category-overlay {

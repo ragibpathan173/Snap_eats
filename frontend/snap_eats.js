@@ -51,6 +51,64 @@ const PLATFORM_COUPONS = [
         maxDiscount: 30
     }
 ];
+const FALLBACK_DISCOVERY_CATEGORIES = [
+    {
+        id: "CAT001",
+        categoryId: "CAT001",
+        name: "Food",
+        image: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&h=400&fit=crop",
+        filter: "all",
+        active: true
+    },
+    {
+        id: "CAT004",
+        categoryId: "CAT004",
+        name: "Pizza",
+        image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&h=400&fit=crop",
+        filter: "italian",
+        active: true
+    },
+    {
+        id: "CAT005",
+        categoryId: "CAT005",
+        name: "Burgers",
+        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop",
+        filter: "american",
+        active: true
+    },
+    {
+        id: "CAT006",
+        categoryId: "CAT006",
+        name: "Chinese",
+        image: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=400&h=400&fit=crop",
+        filter: "chinese",
+        active: true
+    },
+    {
+        id: "CAT007",
+        categoryId: "CAT007",
+        name: "Indian",
+        image: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=400&h=400&fit=crop",
+        filter: "indian",
+        active: true
+    },
+    {
+        id: "CAT008",
+        categoryId: "CAT008",
+        name: "Desserts",
+        image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&h=400&fit=crop",
+        filter: "desserts",
+        active: true
+    },
+    {
+        id: "CAT009",
+        categoryId: "CAT009",
+        name: "Mexican",
+        image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=400&fit=crop",
+        filter: "mexican",
+        active: true
+    }
+];
 const PAYMENT_OFFERS = [
     {
         type: "CARD",
@@ -709,6 +767,45 @@ function maskDeleteAccountPhone(phone) {
 
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getFallbackCategories() {
+    return FALLBACK_DISCOVERY_CATEGORIES.map((category) => ({ ...category }));
+}
+
+function getFallbackCategoryByFilter(filter, index = 0) {
+    const normalizedFilter = String(filter || "").trim().toLowerCase();
+    return FALLBACK_DISCOVERY_CATEGORIES.find((category) => category.filter === normalizedFilter)
+        || FALLBACK_DISCOVERY_CATEGORIES[index % FALLBACK_DISCOVERY_CATEGORIES.length]
+        || FALLBACK_DISCOVERY_CATEGORIES[0];
+}
+
+function normalizeCategoryEntry(category, index = 0) {
+    const fallback = getFallbackCategoryByFilter(category?.filter, index);
+    const normalizedFilter = String(category?.filter || fallback?.filter || "all").trim().toLowerCase() || "all";
+    const normalizedImage = resolveApiAssetUrl(category?.image || fallback?.image || "");
+    return {
+        ...fallback,
+        ...category,
+        id: category?.id || category?.categoryId || fallback?.id || `fallback-category-${index}`,
+        categoryId: category?.categoryId || category?.id || fallback?.categoryId || `fallback-category-${index}`,
+        name: String(category?.name || fallback?.name || "Food").trim() || "Food",
+        filter: normalizedFilter,
+        image: normalizedImage || fallback?.image || ""
+    };
+}
+
+function normalizeCategoryList(categoryList) {
+    if (!Array.isArray(categoryList)) {
+        return getFallbackCategories();
+    }
+
+    const normalized = categoryList
+        .filter((category) => category && category.active !== false)
+        .map((category, index) => normalizeCategoryEntry(category, index))
+        .filter((category) => category.name);
+
+    return normalized.length ? normalized : getFallbackCategories();
 }
 
 function resolveApiAssetUrl(value) {
@@ -2881,8 +2978,28 @@ function changeAddressLocationSelection() {
 }
 
 async function fetchCategories() {
-    categories = await fetchJson(`${API_BASE_URL}/categories/active`);
+    try {
+        const fetchedCategories = await fetchJson(`${API_BASE_URL}/categories/active`);
+        categories = normalizeCategoryList(fetchedCategories);
+    } catch {
+        categories = getFallbackCategories();
+    }
     renderCategories();
+}
+
+function handleCategoryImageError(imageElement) {
+    if (!(imageElement instanceof HTMLImageElement)) {
+        return;
+    }
+
+    const fallbackImage = String(imageElement.dataset.fallbackSrc || "").trim();
+    if (fallbackImage && imageElement.dataset.fallbackApplied !== "true" && imageElement.src !== fallbackImage) {
+        imageElement.dataset.fallbackApplied = "true";
+        imageElement.src = fallbackImage;
+        return;
+    }
+
+    imageElement.closest(".category-card")?.classList.add("image-fallback");
 }
 
 async function fetchRestaurants(category = activeCategory, searchQuery = "") {
@@ -3031,18 +3148,32 @@ function renderCategories() {
         return;
     }
 
-    container.innerHTML = categories.map((category) => `
+    const wrapper = container.closest(".categories-wrapper");
+    const normalizedCategories = normalizeCategoryList(categories);
+    categories = normalizedCategories;
+    wrapper?.classList.toggle("is-empty", normalizedCategories.length === 0);
+
+    container.innerHTML = normalizedCategories.map((category, index) => {
+        const fallbackImage = resolveApiAssetUrl(getFallbackCategoryByFilter(category.filter, index)?.image || "");
+        return `
         <button
             class="category-card ${activeCategory === (category.filter || "all") ? "active" : ""}"
             type="button"
             onclick="filterByCategory('${escapeAttribute(category.filter || "all")}')"
         >
-            <img src="${category.image}" alt="${escapeHtml(category.name)}" class="category-image">
+            <img
+                src="${escapeAttribute(resolveApiAssetUrl(category.image || fallbackImage))}"
+                alt="${escapeHtml(category.name)}"
+                class="category-image"
+                data-fallback-src="${escapeAttribute(fallbackImage)}"
+                onerror="handleCategoryImageError(this)"
+            >
             <div class="category-overlay">
                 <div class="category-name">${escapeHtml(category.name)}</div>
             </div>
         </button>
-    `).join("");
+    `;
+    }).join("");
 }
 
 function compareRestaurantsByName(left, right) {
