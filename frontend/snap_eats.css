@@ -11549,14 +11549,16 @@ body {
     }
 
     .menu-item-card {
-        grid-template-columns: 1fr !important;
-        align-content: start !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
         gap: 12px !important;
         padding: 14px !important;
         min-width: 0 !important;
     }
 
     .menu-item-copy {
+        order: 2 !important;
         min-width: 0 !important;
     }
 
@@ -11604,11 +11606,11 @@ body {
     }
 
     .menu-item-aside {
-        justify-self: stretch !important;
-        gap: 10px !important;
+        display: contents !important;
     }
 
     .menu-item-image {
+        order: 1 !important;
         width: 100% !important;
         height: 118px !important;
         border-radius: 14px !important;
@@ -11616,6 +11618,7 @@ body {
 
     .add-button,
     .menu-cart-stepper {
+        order: 3 !important;
         width: 100% !important;
         min-width: 0 !important;
     }
