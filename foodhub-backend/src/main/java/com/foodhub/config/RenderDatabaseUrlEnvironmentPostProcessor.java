@@ -20,6 +20,7 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
         implements EnvironmentPostProcessor, Ordered {
 
     private static final String PROPERTY_SOURCE_NAME = "renderDatabaseUrlOverrides";
+    private static final String POSTGRES_FLYWAY_LOCATIONS = "classpath:db/migration-postgresql";
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment,
@@ -65,6 +66,11 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
                     "SPRING_JPA_DATABASE_PLATFORM",
                     "spring.jpa.database-platform")) {
                 overrides.put("spring.jpa.database-platform", "org.hibernate.dialect.PostgreSQLDialect");
+            }
+            if (!hasExplicitSetting(environment,
+                    "SPRING_FLYWAY_LOCATIONS",
+                    "spring.flyway.locations")) {
+                overrides.put("spring.flyway.locations", POSTGRES_FLYWAY_LOCATIONS);
             }
 
             String userInfo = uri.getUserInfo();
