@@ -11541,3 +11541,82 @@ body {
         margin-bottom: 14px !important;
     }
 }
+
+@media (max-width: 768px) {
+    .menu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+
+    .menu-item-card {
+        grid-template-columns: 1fr !important;
+        align-content: start !important;
+        gap: 12px !important;
+        padding: 14px !important;
+        min-width: 0 !important;
+    }
+
+    .menu-item-copy {
+        min-width: 0 !important;
+    }
+
+    .menu-item-topline {
+        gap: 6px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .menu-item-card h3 {
+        font-size: 17px !important;
+        line-height: 1.2 !important;
+        margin-bottom: 6px !important;
+    }
+
+    .menu-item-card p {
+        font-size: 12px !important;
+        line-height: 1.45 !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .menu-item-category,
+    .menu-badge,
+    .diet-pill,
+    .menu-discount {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+    }
+
+    .menu-favorite-toggle {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 16px !important;
+    }
+
+    .menu-item-meta {
+        gap: 6px !important;
+        margin-top: 10px !important;
+    }
+
+    .menu-price {
+        font-size: 17px !important;
+    }
+
+    .menu-item-aside {
+        justify-self: stretch !important;
+        gap: 10px !important;
+    }
+
+    .menu-item-image {
+        width: 100% !important;
+        height: 118px !important;
+        border-radius: 14px !important;
+    }
+
+    .add-button,
+    .menu-cart-stepper {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
