@@ -10824,11 +10824,12 @@ body {
 
 @media (max-width: 640px) {
     :root {
+        --layout-side-gap: 0px;
         --app-header-offset: 78px;
     }
 
     .container {
-        padding: 0 14px !important;
+        padding: 0 !important;
     }
 
     .header {
@@ -10917,6 +10918,34 @@ body {
         padding: 28px 0 !important;
     }
 
+    .header .container,
+    .header-search-strip .container {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    .hero-banner,
+    .section-divider,
+    .categories-section .container,
+    .restaurants-section .container,
+    .app-section .container,
+    .footer .container {
+        width: 100% !important;
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    .hero-banner .container {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
     .hero-title {
         font-size: 26px !important;
     }
@@ -10940,7 +10969,7 @@ body {
 
     .categories-section .container,
     .restaurants-section .container {
-        padding: 18px 14px !important;
+        padding: 18px 0 !important;
     }
 
     .categories-section .container {
@@ -10962,6 +10991,22 @@ body {
 
     .restaurants-section .container {
         padding-top: 14px !important;
+    }
+
+    .section-title,
+    .restaurants-footer,
+    .discovery-filters,
+    .app-text,
+    .footer-top,
+    .footer-bottom {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    .categories-container,
+    .restaurants-grid {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
     }
 
     .category-card {
