@@ -1,4 +1,11 @@
 const API_BASE_URL = (window.__SNAP_EATS_API_BASE_URL__ || "/api").replace(/\/$/, "");
+const API_ORIGIN = (() => {
+    try {
+        return new URL(API_BASE_URL, window.location.origin).origin;
+    } catch {
+        return window.location.origin;
+    }
+})();
 const CART_STORAGE_KEY = "snap_eats_cart";
 const AUTH_STORAGE_KEY = "snap_eats_current_user";
 const AUTH_TOKEN_STORAGE_KEY = "snap_eats_auth_token";
@@ -699,6 +706,52 @@ function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function resolveApiAssetUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+        return "";
+    }
+    if (/^(?:[a-z]+:)?\/\//i.test(raw) || raw.startsWith("data:") || raw.startsWith("blob:")) {
+        return raw;
+    }
+    if (raw.startsWith("/")) {
+        return `${API_ORIGIN}${raw}`;
+    }
+    try {
+        return new URL(raw, `${API_ORIGIN}/`).toString();
+    } catch {
+        return raw;
+    }
+}
+
+function shouldNormalizeApiAssetField(key, value) {
+    if (typeof value !== "string") {
+        return false;
+    }
+    const normalizedKey = String(key || "");
+    return normalizedKey === "image"
+        || normalizedKey === "logo"
+        || normalizedKey.endsWith("Image");
+}
+
+function normalizeApiPayload(payload) {
+    if (Array.isArray(payload)) {
+        return payload.map((entry) => normalizeApiPayload(entry));
+    }
+    if (!payload || typeof payload !== "object") {
+        return payload;
+    }
+
+    return Object.fromEntries(
+        Object.entries(payload).map(([key, value]) => {
+            if (shouldNormalizeApiAssetField(key, value)) {
+                return [key, resolveApiAssetUrl(value)];
+            }
+            return [key, normalizeApiPayload(value)];
+        })
+    );
+}
+
 function buildCorrelationId() {
     const randomPart = Math.random().toString(36).slice(2, 8);
     return `snap-${Date.now().toString(36)}-${randomPart}`;
@@ -770,7 +823,7 @@ async function fetchJson(url, options = {}) {
         }
 
         if (response.ok) {
-            return data;
+            return normalizeApiPayload(data);
         }
 
         const error = new Error(data.error || data.message || `Request failed with status ${response.status}`);

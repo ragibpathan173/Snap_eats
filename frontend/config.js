@@ -1,4 +1,5 @@
 (function () {
+    const githubPagesApiBaseUrl = "https://snap-eats-backend.onrender.com/api";
     const params = new URLSearchParams(window.location.search);
     const queryOverride = params.get("apiBaseUrl");
     let storedOverride = null;
@@ -15,7 +16,10 @@
         return;
     }
 
+    const isGithubPagesHost = /github\.io$/i.test(window.location.hostname);
     window.__SNAP_EATS_API_BASE_URL__ = window.location.protocol === "file:"
         ? "http://localhost:8081/api"
+        : isGithubPagesHost
+        ? githubPagesApiBaseUrl
         : "/api";
 })();
