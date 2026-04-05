@@ -9,11 +9,15 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 @Component
 public class DemoUserDataLoader {
 
     public static final String DEMO_USER_EMAIL = "guest@snap-eats.local";
     public static final String DEMO_ADMIN_EMAIL = "admin@snap-eats.local";
+    public static final String OWNER_ADMIN_EMAIL = "ragibpathan00@gmail.com";
+    public static final String OWNER_ADMIN_PHONE = "9660966829";
 
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
@@ -59,6 +63,8 @@ public class DemoUserDataLoader {
             return userRepository.save(admin);
         });
 
+        ensureOwnerAdminAccounts();
+
         if (userAddressRepository.findByUserIdAndActiveTrueOrderByDefaultAddressDescUpdatedAtDesc(user.getId()).isEmpty()) {
             userAddressRepository.save(createAddress(
                     user.getId(),
@@ -85,6 +91,56 @@ public class DemoUserDataLoader {
                     "560008",
                     false
             ));
+        }
+    }
+
+    private void ensureOwnerAdminAccounts() {
+        User ownerByEmail = userRepository.findByEmail(OWNER_ADMIN_EMAIL).orElse(null);
+        User ownerByPhone = userRepository.findByPhoneNumber(OWNER_ADMIN_PHONE).orElse(null);
+
+        if (ownerByEmail == null && ownerByPhone == null) {
+            User ownerAdmin = new User();
+            ownerAdmin.setName("Ragib Pathan");
+            ownerAdmin.setEmail(OWNER_ADMIN_EMAIL);
+            ownerAdmin.setPhoneNumber(OWNER_ADMIN_PHONE);
+            ownerAdmin.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
+            ownerAdmin.setRole(User.Role.ADMIN);
+            ownerAdmin.setActive(true);
+            userRepository.save(ownerAdmin);
+            return;
+        }
+
+        if (ownerByEmail != null) {
+            promoteToOwnerAdmin(ownerByEmail);
+        }
+
+        if (ownerByPhone != null && (ownerByEmail == null || !ownerByPhone.getId().equals(ownerByEmail.getId()))) {
+            promoteToOwnerAdmin(ownerByPhone);
+        }
+    }
+
+    private void promoteToOwnerAdmin(User user) {
+        boolean changed = false;
+
+        if (user.getRole() != User.Role.ADMIN) {
+            user.setRole(User.Role.ADMIN);
+            changed = true;
+        }
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            user.setActive(true);
+            changed = true;
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            user.setEmail(OWNER_ADMIN_EMAIL);
+            changed = true;
+        }
+        if (user.getPhoneNumber() == null || user.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(OWNER_ADMIN_PHONE);
+            changed = true;
+        }
+
+        if (changed) {
+            userRepository.save(user);
         }
     }
 

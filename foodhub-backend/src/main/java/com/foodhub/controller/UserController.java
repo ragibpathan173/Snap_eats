@@ -118,6 +118,7 @@ public class UserController {
             user.setActive(user.getActive() == null ? true : user.getActive());
 
             User savedUser = userRepository.save(user);
+            savedUser = ensureOwnerAdminAccess(savedUser, null, null);
             return ResponseEntity.status(HttpStatus.CREATED).body(buildAuthResponse(savedUser));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -154,6 +155,7 @@ public class UserController {
                         .body(Map.of("error", "Your account is inactive"));
             }
 
+            user = ensureOwnerAdminAccess(user, null, null);
             return ResponseEntity.ok(buildAuthResponse(user));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -312,12 +314,19 @@ public class UserController {
             if (existingUser.isPresent()) {
                 user = existingUser.get();
             } else {
-                if (request.name == null || request.name.isBlank()) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("error", "Name is required to create a new account."));
+                Optional<User> ownerAdminAccount = findOwnerAdminCandidate(parsedIdentifier, request.email);
+                if (ownerAdminAccount.isPresent()) {
+                    user = ownerAdminAccount.get();
+                } else {
+                    if (request.name == null || request.name.isBlank()) {
+                        return ResponseEntity.badRequest()
+                                .body(Map.of("error", "Name is required to create a new account."));
+                    }
+                    user = createOtpUser(parsedIdentifier, request.name, request.email, request.referralCode);
                 }
-                user = createOtpUser(parsedIdentifier, request.name, request.email, request.referralCode);
             }
+
+            user = ensureOwnerAdminAccess(user, parsedIdentifier, request.email);
 
             otpRecord.setConsumed(true);
             authOtpRepository.save(otpRecord);
@@ -942,6 +951,86 @@ public class UserController {
             user.setEmail(email);
         }
         return userRepository.save(user);
+    }
+
+    private Optional<User> findOwnerAdminCandidate(ParsedIdentifier parsedIdentifier, String requestedEmail) {
+        if (!matchesOwnerAdmin(parsedIdentifier, requestedEmail)) {
+            return Optional.empty();
+        }
+
+        Optional<User> byEmail = userRepository.findByEmail(DemoUserDataLoader.OWNER_ADMIN_EMAIL);
+        if (byEmail.isPresent()) {
+            return byEmail;
+        }
+
+        return userRepository.findByPhoneNumber(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+    }
+
+    private User ensureOwnerAdminAccess(User user, ParsedIdentifier parsedIdentifier, String requestedEmail) {
+        if (!matchesOwnerAdmin(user, parsedIdentifier, requestedEmail)) {
+            return user;
+        }
+
+        boolean changed = false;
+        if (user.getRole() != User.Role.ADMIN) {
+            user.setRole(User.Role.ADMIN);
+            changed = true;
+        }
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            user.setActive(true);
+            changed = true;
+        }
+        if ((user.getEmail() == null || user.getEmail().isBlank()) && matchesOwnerAdminEmail(requestedEmail)) {
+            user.setEmail(DemoUserDataLoader.OWNER_ADMIN_EMAIL);
+            changed = true;
+        }
+        if ((user.getPhoneNumber() == null || user.getPhoneNumber().isBlank())
+                && parsedIdentifier != null
+                && !parsedIdentifier.email()
+                && matchesOwnerAdminPhone(parsedIdentifier.value())) {
+            user.setPhoneNumber(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+            changed = true;
+        }
+
+        return changed ? userRepository.save(user) : user;
+    }
+
+    private boolean matchesOwnerAdmin(User user, ParsedIdentifier parsedIdentifier, String requestedEmail) {
+        if (user != null && (matchesOwnerAdminEmail(user.getEmail()) || matchesOwnerAdminPhone(user.getPhoneNumber()))) {
+            return true;
+        }
+        return matchesOwnerAdmin(parsedIdentifier, requestedEmail);
+    }
+
+    private boolean matchesOwnerAdmin(ParsedIdentifier parsedIdentifier, String requestedEmail) {
+        if (parsedIdentifier != null) {
+            if (parsedIdentifier.email() && matchesOwnerAdminEmail(parsedIdentifier.value())) {
+                return true;
+            }
+            if (!parsedIdentifier.email() && matchesOwnerAdminPhone(parsedIdentifier.value())) {
+                return true;
+            }
+        }
+        return matchesOwnerAdminEmail(requestedEmail);
+    }
+
+    private boolean matchesOwnerAdminEmail(String email) {
+        return email != null && DemoUserDataLoader.OWNER_ADMIN_EMAIL.equalsIgnoreCase(email.trim());
+    }
+
+    private boolean matchesOwnerAdminPhone(String phone) {
+        return phone != null && normalizePhoneNumber(phone).equals(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+    }
+
+    private String normalizePhoneNumber(String phone) {
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.startsWith("0") && digits.length() == 11) {
+            digits = digits.substring(1);
+        }
+        if (digits.startsWith("91") && digits.length() >= 12) {
+            digits = digits.substring(digits.length() - 10);
+        }
+        return digits;
     }
 
     private ParsedIdentifier parseIdentifier(String identifierInput) {
