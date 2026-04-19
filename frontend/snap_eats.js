@@ -384,6 +384,8 @@ let deleteAccountOtpCooldownTimer = null;
 let deleteAccountDevOtp = "";
 let deleteAccountPanelOpen = false;
 let helpActiveTopic = "orders";
+let helpActiveResourceId = "";
+let footerActivePage = "about-us";
 let corporateStoryTab = "mission";
 let corporatePeopleTab = "management";
 let corporateSectionTab = "overview";
@@ -1218,7 +1220,8 @@ function switchHeaderPanel(target) {
         location: closeLocationPicker,
         offers: closeOffers,
         corporate: closeCorporatePage,
-        help: closeHelp
+        help: closeHelp,
+        footer: closeFooterPage
     };
 
     Object.entries(closeByKey).forEach(([key, closeFn]) => {
@@ -4018,6 +4021,54 @@ function openHelp(event) {
     renderHelpModal();
 }
 
+function openFooterPage(pageId, event) {
+    if (event) {
+        event.preventDefault();
+    }
+
+    footerActivePage = pageId || "about-us";
+    switchHeaderPanel("footer");
+
+    const modal = document.getElementById("footerModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add("open");
+    document.body.classList.add("modal-open");
+    renderFooterPage();
+}
+
+function openFooterCorporateSection(sectionId, storyTab) {
+    if (storyTab) {
+        const allowedTabs = new Set(["mission", "vision", "values"]);
+        corporateStoryTab = allowedTabs.has(storyTab) ? storyTab : corporateStoryTab;
+        corporateSectionTab = corporateStoryTab;
+    }
+
+    openCorporatePage();
+
+    if (!sectionId) {
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        const target = document.getElementById(sectionId);
+        if (target) {
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "start"
+            });
+        }
+    });
+}
+
+function openFooterHelpTopic(topic, resourceId) {
+    helpActiveTopic = topic || "orders";
+    helpActiveResourceId = resourceId || "";
+    openHelp();
+}
+
 function closeCart() {
     const modal = document.getElementById("cartModal");
     if (!modal) {
@@ -4107,6 +4158,18 @@ function closeCorporatePage() {
 
 function closeHelp() {
     const modal = document.getElementById("helpModal");
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove("open");
+    if (!anyModalOpen()) {
+        document.body.classList.remove("modal-open");
+    }
+}
+
+function closeFooterPage() {
+    const modal = document.getElementById("footerModal");
     if (!modal) {
         return;
     }
@@ -4364,8 +4427,9 @@ function setOffersTab(tab) {
     renderOffersModal();
 }
 
-function setHelpTopic(topic) {
+function setHelpTopic(topic, resourceId = "") {
     helpActiveTopic = topic;
+    helpActiveResourceId = resourceId || "";
     renderHelpModal();
 }
 
@@ -4506,10 +4570,42 @@ function getAboutBlogPosts() {
     ];
 }
 
+function getAboutPressItems() {
+    return [
+        {
+            date: "April 02, 2026",
+            tag: "Press Update",
+            coverTitle: "Platform Growth",
+            title: "SnapEats expands its product story around local restaurant discovery and smoother repeat ordering",
+            copy: "A quick overview of the product direction, city-ready discovery improvements, and the reliability work shaping everyday ordering.",
+            accent: "accent-apricot"
+        },
+        {
+            date: "March 22, 2026",
+            tag: "Partnership Note",
+            coverTitle: "Partner Focus",
+            title: "Restaurant onboarding at SnapEats is being designed for faster setup, clearer expectations, and stronger menu presentation",
+            copy: "This update outlines how partner onboarding, menu readiness, and support loops are being framed for long-term quality.",
+            accent: "accent-cream"
+        },
+        {
+            date: "March 08, 2026",
+            tag: "Brand Note",
+            coverTitle: "Built Local",
+            title: "SnapEats continues to position itself as a local-first food commerce experience with clean, trusted UX",
+            copy: "The emphasis remains on clarity, dependable ordering flows, and everyday convenience that feels premium without being complicated.",
+            accent: "accent-sand"
+        }
+    ];
+}
+
 function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, categoryCount, fulfilledOrders, paymentMethodsCount }) {
     const storySections = getAboutStorySections();
     const activeStory = storySections[corporateStoryTab] || storySections.mission;
     const blogPosts = getAboutBlogPosts();
+    const pressItems = getAboutPressItems();
+    const peopleGroups = getAboutPeopleGroups(creatorName);
+    const activePeopleGroup = peopleGroups[corporatePeopleTab] || peopleGroups.management || [];
     const normalizedJourneyIndex = CORPORATE_JOURNEY_STEPS.length
         ? ((corporateJourneyIndex % CORPORATE_JOURNEY_STEPS.length) + CORPORATE_JOURNEY_STEPS.length) % CORPORATE_JOURNEY_STEPS.length
         : 0;
@@ -4581,27 +4677,29 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
         ></button>
     `).join("");
 
-    const founderProfile = {
-        name: creatorName,
-        role: "Founder and Product Engineer",
-        copy: "Owns the end-to-end product direction, platform architecture, and the customer experience details that shape SnapEats.",
-        tone: "tone-ember",
-        image: "images/about/ragib-ali-khan.jpeg"
-    };
-    const founderMarkup = `
+    const peopleTabsMarkup = [
+        { id: "management", label: "Core team" },
+        { id: "board", label: "Board advisors" }
+    ].map((group) => `
+        <button class="about-people-tab ${corporatePeopleTab === group.id ? "active" : ""}" type="button" onclick="setCorporatePeopleTab('${group.id}')">
+            ${escapeHtml(group.label)}
+        </button>
+    `).join("");
+
+    const peopleMarkup = activePeopleGroup.map((person) => `
         <article class="about-person-card">
-            <div class="about-person-portrait ${escapeHtml(founderProfile.tone)} ${founderProfile.image ? "has-photo" : ""}">
-                ${founderProfile.image
-                    ? `<img src="${escapeHtml(founderProfile.image)}" alt="${escapeHtml(founderProfile.name)}">`
-                    : `<span>${escapeHtml(getInitials(founderProfile.name))}</span>`}
+            <div class="about-person-portrait ${escapeHtml(person.tone)} ${person.image ? "has-photo" : ""}">
+                ${person.image
+                    ? `<img src="${escapeHtml(person.image)}" alt="${escapeHtml(person.name)}">`
+                    : `<span>${escapeHtml(getInitials(person.name))}</span>`}
             </div>
             <div class="about-person-copy">
-                <h3>${escapeHtml(founderProfile.name)}</h3>
-                <p class="about-person-role">${escapeHtml(founderProfile.role)}</p>
-                <p>${escapeHtml(founderProfile.copy)}</p>
+                <h3>${escapeHtml(person.name)}</h3>
+                <p class="about-person-role">${escapeHtml(person.role)}</p>
+                <p>${escapeHtml(person.copy)}</p>
             </div>
         </article>
-    `;
+    `).join("");
     const aboutAppLogoMarkup = `
         <div class="about-qr-art" aria-hidden="true">
             <div class="about-qr-logo">
@@ -4629,6 +4727,21 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                 <p class="about-blog-date">${escapeHtml(post.date)}</p>
                 <h3>${escapeHtml(post.title)}</h3>
                 <a class="about-inline-button" href="mailto:stories@snap-eats.com?subject=SnapEats%20Story" target="_blank" rel="noopener noreferrer">Read more</a>
+            </div>
+        </article>
+    `).join("");
+
+    const pressMarkup = pressItems.map((item) => `
+        <article class="about-blog-card">
+            <div class="about-blog-cover ${escapeHtml(item.accent)}">
+                <span class="about-blog-tag">${escapeHtml(item.tag)}</span>
+                <strong>${escapeHtml(item.coverTitle)}</strong>
+            </div>
+            <div class="about-blog-body">
+                <p class="about-blog-date">${escapeHtml(item.date)}</p>
+                <h3>${escapeHtml(item.title)}</h3>
+                <p class="about-blog-snippet">${escapeHtml(item.copy)}</p>
+                <a class="about-inline-button" href="mailto:press@snap-eats.com?subject=SnapEats%20Press%20Enquiry" target="_blank" rel="noopener noreferrer">Contact press</a>
             </div>
         </article>
     `).join("");
@@ -4729,21 +4842,30 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                 </div>
             </section>
 
-            <section class="about-section about-section-plain">
+            <section class="about-section about-section-plain" id="aboutLeadershipSection">
                 <div class="about-container">
                     <div class="about-business-head">
                         <div>
-                            <p class="about-section-label">Details of Business</p>
+                            <p class="about-section-label">Leadership & Team</p>
                             <h2>People Building SnapEats</h2>
                         </div>
+                        <div class="about-business-controls">
+                            <div class="about-people-tabs">
+                                ${peopleTabsMarkup}
+                            </div>
+                            <div class="about-arrow-group">
+                                <button class="about-icon-button about-arrow-button active" type="button" aria-label="Scroll leadership cards left" onclick="scrollCorporateTrack('aboutPeopleTrack', -1)">&#8592;</button>
+                                <button class="about-icon-button about-arrow-button active" type="button" aria-label="Scroll leadership cards right" onclick="scrollCorporateTrack('aboutPeopleTrack', 1)">&#8594;</button>
+                            </div>
+                        </div>
                     </div>
-                    <div class="about-founder-stage">
-                        ${founderMarkup}
+                    <div class="about-people-track" id="aboutPeopleTrack">
+                        ${peopleMarkup}
                     </div>
                 </div>
             </section>
 
-            <section class="about-section">
+            <section class="about-section" id="aboutCareersSection">
                 <div class="about-container">
                     <div class="about-title-row">
                         <span></span>
@@ -4765,7 +4887,7 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                 </div>
             </section>
 
-            <section class="about-section about-section-plain">
+            <section class="about-section about-section-plain" id="aboutBlogSection">
                 <div class="about-container">
                     <div class="about-title-row">
                         <span></span>
@@ -4777,6 +4899,22 @@ function buildAboutSnapEatsPage({ creatorName, creatorEmail, restaurantCount, ca
                     </div>
                     <div class="about-center-action">
                         <a class="about-primary-button" href="mailto:stories@snap-eats.com?subject=SnapEats%20Blog" target="_blank" rel="noopener noreferrer">Explore</a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="about-section" id="aboutPressSection">
+                <div class="about-container">
+                    <div class="about-title-row">
+                        <span></span>
+                        <h2>Press Room</h2>
+                        <span></span>
+                    </div>
+                    <div class="about-blog-grid">
+                        ${pressMarkup}
+                    </div>
+                    <div class="about-center-action">
+                        <a class="about-primary-button" href="mailto:press@snap-eats.com?subject=SnapEats%20Press%20Desk" target="_blank" rel="noopener noreferrer">Reach the press desk</a>
                     </div>
                 </div>
             </section>
@@ -4840,7 +4978,7 @@ function renderHelpModal() {
     const helpTopics = [
         {
             id: "orders",
-            label: "Help with orders",
+            label: "Help & Support",
             meta: "Tracking, cancellations, refunds",
             description: "Resolve order issues quickly with live status, refund tracking, and item support.",
             actions: [
@@ -4861,70 +4999,186 @@ function renderHelpModal() {
         },
         {
             id: "one",
-            label: "SnapEats One FAQs",
-            meta: "Membership, benefits, delivery savings",
-            description: "Everything about SnapEats One: free delivery, priority support, and member-only deals.",
+            label: "SnapEats One",
+            meta: "Membership, benefits, savings",
+            description: "Learn how the SnapEats One membership improves everyday ordering with delivery savings and priority support.",
             actions: [
                 { label: "View membership", onClick: "closeHelp(); openAuthModal(); setAccountSection('subscription')" },
-                { label: "Membership terms", href: "#" }
+                { label: "Terms & policies", onClick: "setHelpTopic('legal', 'terms')" }
             ],
             faqs: [
-                { question: "What are the benefits?", answer: "Members get free delivery on eligible orders and exclusive partner discounts." },
-                { question: "How do I renew?", answer: "Your plan auto-renews unless you cancel before the renewal date." },
-                { question: "Is there a trial?", answer: "We occasionally offer limited trials during seasonal campaigns." },
-                { question: "Can I cancel anytime?", answer: "Yes, you can cancel from the Account > SnapEatPro section." }
+                { question: "What are the benefits?", answer: "Members get free delivery on eligible orders, partner discounts, and faster support access." },
+                { question: "How do I renew?", answer: "Your plan can auto-renew unless you cancel it before the renewal date." },
+                { question: "Is there a trial?", answer: "Limited trials can appear during seasonal campaigns and onboarding offers." },
+                { question: "Can I cancel anytime?", answer: "Yes, you can manage the plan from the Account > SnapEatPro section." }
             ],
             tips: [
-                "Check the plan card for per-order discount caps.",
-                "Use member offers during peak hours to save more.",
-                "Keep your plan active for uninterrupted perks."
+                "Check plan cards for minimum order value and delivery benefit limits.",
+                "Use member offers during peak dining hours for better savings.",
+                "Keep your account active so perks continue without interruption."
+            ]
+        },
+        {
+            id: "genie",
+            label: "SnapEats Genie",
+            meta: "Quick pickups and local errands",
+            description: "SnapEats Genie is positioned as a hyperlocal convenience service for time-sensitive pickups, drop-offs, and everyday errands.",
+            actions: [
+                { label: "Notify me", href: "mailto:hello@snap-eats.com?subject=SnapEats%20Genie%20Interest" },
+                { label: "Partner with Genie", href: "mailto:partners@snap-eats.com?subject=SnapEats%20Genie%20Partnership" }
+            ],
+            faqs: [
+                { question: "What is SnapEats Genie?", answer: "It is a convenience-first service concept for sending or receiving essentials across nearby neighborhoods." },
+                { question: "What can I send?", answer: "Common use cases include documents, lunch boxes, small packages, store pickups, and essentials." },
+                { question: "How is pricing handled?", answer: "Pricing is usually distance-led, with a base fee and clear surcharges when applicable." },
+                { question: "Is Genie live in every city?", answer: "Availability depends on operational readiness and partner coverage in that location." }
+            ],
+            tips: [
+                "Package items securely and mention landmark details clearly.",
+                "Use Genie for lightweight, non-restricted items only.",
+                "Keep pickup and drop contacts reachable during the trip."
             ]
         },
         {
             id: "general",
             label: "General issues",
             meta: "Login, payments, coupons",
-            description: "Troubleshoot account access, payment failures, or coupon problems.",
+            description: "Troubleshoot account access, payment failures, OTP issues, or coupon problems.",
             actions: [
                 { label: "Account settings", onClick: "closeHelp(); openAuthModal(); setAccountSection('settings')" },
                 { label: "Payment methods", onClick: "closeHelp(); openAuthModal(); setAccountSection('payments')" }
             ],
             faqs: [
                 { question: "OTP not received", answer: "Wait 30 seconds and tap Resend OTP. Check spam for email OTPs." },
-                { question: "Payment failed but money deducted", answer: "Refunds are initiated automatically within 24 hours." },
-                { question: "Coupon not working", answer: "Verify the minimum order value and coupon validity." },
-                { question: "App feels slow", answer: "Clear browser cache or reopen the app for a fresh session." }
+                { question: "Payment failed but money deducted", answer: "Refunds are initiated automatically within 24 hours in most cases." },
+                { question: "Coupon not working", answer: "Verify the minimum order value, validity window, and payment restrictions." },
+                { question: "App feels slow", answer: "Refresh the page or clear the browser cache to restart the session cleanly." }
             ],
             tips: [
                 "Use UPI for faster payment confirmations.",
-                "Keep your profile info updated for smoother support.",
-                "Coupons apply only once per eligible order."
+                "Keep your profile details updated for smoother support handling.",
+                "Apply coupons only after checking restaurant and cart eligibility."
             ]
         },
         {
             id: "partner",
-            label: "Partner onboarding",
+            label: "Partner with us",
             meta: "Restaurant partnerships",
-            description: "Interested in listing your restaurant? Start with menus, pricing, and training.",
+            description: "Restaurants can onboard with SnapEats for delivery visibility, better menu presentation, and city-level growth support.",
             actions: [
-                { label: "Partner with us", href: "mailto:partners@snap-eats.com?subject=Partner%20with%20SnapEats" },
-                { label: "Download checklist", href: "#" }
+                { label: "Start partnership", href: "mailto:partners@snap-eats.com?subject=Partner%20with%20SnapEats" },
+                { label: "Business inquiries", onClick: "setHelpTopic('business')" }
             ],
             faqs: [
-                { question: "What documents are required?", answer: "FSSAI license, GST details, and menu pricing are required." },
-                { question: "How long does onboarding take?", answer: "Typical onboarding completes within 3-5 business days." },
-                { question: "How do payouts work?", answer: "Payouts are settled weekly with a detailed statement." },
-                { question: "Who manages menu updates?", answer: "You can update menus through the partner dashboard anytime." }
+                { question: "What documents are required?", answer: "FSSAI license, bank details, GST details where applicable, and menu pricing are usually required." },
+                { question: "How long does onboarding take?", answer: "A typical onboarding cycle can complete in 3-5 business days once documents are verified." },
+                { question: "How do payouts work?", answer: "Payouts are settled on a regular cycle with a statement for order and commission reconciliation." },
+                { question: "Who manages menu updates?", answer: "Menus can be updated through the partner workflow as items, prices, or availability change." }
             ],
             tips: [
-                "Upload high-quality menu images for better discovery.",
-                "Keep preparation times accurate to reduce delays.",
-                "Offer combo meals to improve order value."
+                "Upload strong food images and keep descriptions crisp.",
+                "Use realistic prep times to improve ETA trust.",
+                "Bundle high-conversion combos for better order value."
+            ]
+        },
+        {
+            id: "ride",
+            label: "Ride with us",
+            meta: "Delivery partner onboarding",
+            description: "Explore how delivery partners can ride with SnapEats, manage shifts, and earn with reliable last-mile operations.",
+            actions: [
+                { label: "Apply to ride", href: "mailto:riders@snap-eats.com?subject=Ride%20with%20SnapEats" },
+                { label: "Safety support", onClick: "setHelpTopic('safety')" }
+            ],
+            faqs: [
+                { question: "Who can apply?", answer: "Eligible riders usually need valid identity documents, a working phone, and a compliant delivery vehicle where required." },
+                { question: "How are earnings calculated?", answer: "Earnings are typically based on completed trips, distance, incentives, and peak-hour programs." },
+                { question: "Can I choose my schedule?", answer: "Flexible availability is supported in most partner-led delivery models, depending on city operations." },
+                { question: "What support is available during a trip?", answer: "Support channels help with order issues, address confusion, rider safety, and escalation handling." }
+            ],
+            tips: [
+                "Keep phone battery, maps, and payment readiness checked before going online.",
+                "Use clear delivery notes and call only when needed.",
+                "Report unsafe locations or unusual order situations immediately."
+            ]
+        },
+        {
+            id: "business",
+            label: "Business inquiries",
+            meta: "Corporate, media, brand conversations",
+            description: "Use this route for enterprise partnerships, brand campaigns, campus rollouts, catering, or broader business conversations with SnapEats.",
+            actions: [
+                { label: "Email business desk", href: "mailto:business@snap-eats.com?subject=SnapEats%20Business%20Inquiry" },
+                { label: "Open press room", onClick: "closeHelp(); openFooterCorporateSection('aboutPressSection')" }
+            ],
+            faqs: [
+                { question: "What type of inquiries fit here?", answer: "Corporate catering, B2B dining programs, strategic partnerships, activations, and media collaborations fit here." },
+                { question: "How should I write the request?", answer: "Include your company name, city, estimated requirement, timeline, and the outcome you are looking for." },
+                { question: "Do you support campus or office launches?", answer: "Yes, location-specific launches and curated food access programs can be discussed through the business desk." },
+                { question: "Who should contact for media?", answer: "Media and brand communication requests can begin here or through the press room contact." }
+            ],
+            tips: [
+                "Share city, order volume, and timeline in the first email.",
+                "Mention if the need is recurring or event-based.",
+                "Attach decks or requirements only after the first message if needed."
+            ],
+            resources: [
+                { id: "corporate", title: "Corporate dining", body: "Office meal programs, recurring catering, and employee food experiences across selected delivery zones." },
+                { id: "collabs", title: "Brand collaborations", body: "Campaign activations, co-branded partnerships, and promotional launch concepts with restaurant partners." },
+                { id: "campus", title: "Campus and community", body: "Launch support for student communities, hostels, and neighborhood food access programs." }
+            ]
+        },
+        {
+            id: "issue",
+            label: "Report an issue",
+            meta: "Bugs, complaints, missing details",
+            description: "Use this section to report app bugs, broken flows, menu mismatches, billing concerns, or unresolved order problems.",
+            actions: [
+                { label: "Email issue desk", href: "mailto:support@snapeats.in?subject=SnapEats%20Issue%20Report" },
+                { label: "Open orders", onClick: "closeHelp(); openOrders()" }
+            ],
+            faqs: [
+                { question: "What should I include in an issue report?", answer: "Share the order ID if available, screenshots, time of issue, city, and a short note on what happened." },
+                { question: "Where do product bugs go?", answer: "UI bugs, payment glitches, OTP problems, and page errors can all be reported through this route." },
+                { question: "Can I report restaurant content issues?", answer: "Yes, you can report wrong pricing, outdated menus, unavailable items, or misleading photos." },
+                { question: "How quickly are issues reviewed?", answer: "Urgent live-order issues are prioritized first, followed by technical or catalog issues." }
+            ],
+            tips: [
+                "Attach screenshots whenever possible.",
+                "Report order issues while the order is still active or soon after delivery.",
+                "Use the exact phone number or email tied to the affected account."
+            ]
+        },
+        {
+            id: "legal",
+            label: "Legal & policies",
+            meta: "Terms, privacy, refunds",
+            description: "Review the main policy topics that shape ordering, refunds, cookies, privacy, and promotional eligibility on SnapEats.",
+            actions: [
+                { label: "Order support", onClick: "setHelpTopic('orders')" },
+                { label: "Email policy support", href: "mailto:support@snapeats.in?subject=SnapEats%20Policy%20Question" }
+            ],
+            faqs: [
+                { question: "When can I cancel an order?", answer: "You can cancel before restaurant confirmation. After preparation begins, cancellation may be restricted." },
+                { question: "How do refunds work?", answer: "Eligible refunds are initiated automatically and usually reflect within 3-5 business days depending on payment mode." },
+                { question: "What data does SnapEats store?", answer: "We store the account, address, and order details needed to complete orders, support your account, and improve the service." },
+                { question: "How are offers validated?", answer: "Offers apply only on eligible restaurants, order values, payment methods, and campaign windows shown at checkout." }
+            ],
+            tips: [
+                "Read offer conditions before placing the order.",
+                "Keep payment confirmations until the order is completed.",
+                "Reach out to support quickly when a refund or policy issue needs review."
+            ],
+            resources: [
+                { id: "terms", title: "Terms & Conditions", body: "Covers account responsibilities, order placement rules, platform usage expectations, and service limitations." },
+                { id: "cookies", title: "Cookie Policy", body: "Explains how browser storage and cookies support sessions, preferences, sign-in continuity, and experience analytics." },
+                { id: "privacy", title: "Privacy Policy", body: "Outlines what user data SnapEats collects, why it is used, and how it supports authentication, ordering, and support." },
+                { id: "refunds", title: "Refund Policy", body: "Describes refund eligibility, cancellation timing, failed payment handling, and the usual settlement timelines." }
             ]
         },
         {
             id: "safety",
-            label: "Report safety emergency",
+            label: "Safety support",
             meta: "Urgent help and guidelines",
             description: "If you feel unsafe, contact us immediately and we will prioritize your request.",
             actions: [
@@ -4932,10 +5186,10 @@ function renderHelpModal() {
                 { label: "Email safety", href: "mailto:safety@snap-eats.com?subject=Safety%20concern" }
             ],
             faqs: [
-                { question: "How to report an incident?", answer: "Use the emergency contact number or email safety@snap-eats.com." },
-                { question: "Will my report stay confidential?", answer: "Yes, all reports are handled confidentially." },
-                { question: "Can I block a delivery partner?", answer: "Report the issue and we will take immediate action." },
-                { question: "What happens next?", answer: "A dedicated agent will follow up within 2 hours." }
+                { question: "How do I report an incident?", answer: "Use the emergency contact number or email safety@snap-eats.com with the order details and location." },
+                { question: "Will my report stay confidential?", answer: "Yes, safety reports are treated confidentially and escalated with priority." },
+                { question: "Can I block a delivery partner?", answer: "Report the issue immediately and we will review the situation and take appropriate action." },
+                { question: "What happens next?", answer: "A dedicated agent or support lead will review the case and follow up as quickly as possible." }
             ],
             tips: [
                 "Share clear details like time, order ID, and location.",
@@ -4947,16 +5201,16 @@ function renderHelpModal() {
             id: "market",
             label: "SnapEats Market onboarding",
             meta: "Grocery & essentials",
-            description: "Learn about grocery partner onboarding, delivery SLAs, and inventory updates.",
+            description: "Learn about grocery partner onboarding, delivery SLAs, and inventory updates for essentials commerce.",
             actions: [
                 { label: "Start onboarding", href: "mailto:market@snap-eats.com?subject=Market%20onboarding" },
-                { label: "Delivery SLA guide", href: "#" }
+                { label: "Business desk", onClick: "setHelpTopic('business')" }
             ],
             faqs: [
-                { question: "Which categories are supported?", answer: "Fresh produce, daily essentials, packaged goods, and beverages." },
-                { question: "How are stock updates handled?", answer: "Inventory can be synced daily or updated manually." },
-                { question: "What are delivery windows?", answer: "Standard delivery window is 45-60 minutes." },
-                { question: "How do substitutions work?", answer: "Customers can approve substitutions in the order notes." }
+                { question: "Which categories are supported?", answer: "Fresh produce, daily essentials, packaged goods, beverages, and convenience-led inventory are common categories." },
+                { question: "How are stock updates handled?", answer: "Inventory can be synced daily or updated manually so customers see the right availability." },
+                { question: "What are delivery windows?", answer: "Standard delivery windows are planned around city operations, partner readiness, and inventory confidence." },
+                { question: "How do substitutions work?", answer: "Customers can approve substitutions through the order flow or notes depending on the fulfillment model." }
             ],
             tips: [
                 "Keep stock accurate to avoid cancellations.",
@@ -4967,6 +5221,7 @@ function renderHelpModal() {
     ];
 
     const activeTopic = helpTopics.find((topic) => topic.id === helpActiveTopic) || helpTopics[0];
+    const activeResourceId = helpActiveTopic === activeTopic.id ? helpActiveResourceId : "";
 
     const navMarkup = helpTopics.map((topic) => `
         <button
@@ -4979,7 +5234,17 @@ function renderHelpModal() {
         </button>
     `).join("");
 
-    const panelActionsBlock = "";
+    const panelActionsBlock = (activeTopic.actions || []).length ? `
+        <div class="help-panel-actions">
+            ${(activeTopic.actions || []).map((action, index) => {
+                const buttonClass = index === 0 ? "primary-button" : "secondary-button";
+                if (action.onClick) {
+                    return `<button class="help-action-button ${buttonClass}" type="button" onclick="${action.onClick}">${escapeHtml(action.label)}</button>`;
+                }
+                return `<a class="help-action-button ${buttonClass}" href="${escapeHtml(action.href || "#")}" target="_blank" rel="noopener noreferrer">${escapeHtml(action.label)}</a>`;
+            }).join("")}
+        </div>
+    ` : "";
 
     const faqMarkup = (activeTopic.faqs || []).map((faq) => `
         <article class="help-faq-card">
@@ -4987,6 +5252,20 @@ function renderHelpModal() {
             <p>${escapeHtml(faq.answer)}</p>
         </article>
     `).join("");
+
+    const resourcesMarkup = (activeTopic.resources || []).length ? `
+        <div class="help-resource-shell">
+            <h4>${escapeHtml(activeTopic.resourceHeading || "More details")}</h4>
+            <div class="help-resource-grid">
+                ${(activeTopic.resources || []).map((resource) => `
+                    <article class="help-resource-card ${activeResourceId === resource.id ? "active" : ""}">
+                        <h3>${escapeHtml(resource.title)}</h3>
+                        <p>${escapeHtml(resource.body)}</p>
+                    </article>
+                `).join("")}
+            </div>
+        </div>
+    ` : "";
 
     const tipsMarkup = (activeTopic.tips || []).map((tip) => `
         <li>${escapeHtml(tip)}</li>
@@ -5019,6 +5298,7 @@ function renderHelpModal() {
                             <div class="help-faq-grid">
                                 ${faqMarkup}
                             </div>
+                            ${resourcesMarkup}
                         </div>
                         <div>
                             <h4>Quick tips</h4>
@@ -5036,6 +5316,604 @@ function renderHelpModal() {
                     </div>
                 </div>
             </section>
+        </div>
+    `;
+}
+
+function getFooterPageData() {
+    const restaurantCount = restaurants.length || 0;
+    const categoryCount = categories.length || 0;
+    const fulfilledOrders = orderHistory.filter((order) => String(order.status || "").toUpperCase() === "DELIVERED").length;
+    const peopleGroups = getAboutPeopleGroups(OWNER_NAME);
+
+    return {
+        groups: [
+            { label: "Company", items: ["about-us", "careers", "team", "one", "genie", "blog", "press"] },
+            { label: "Contact Us", items: ["help-support", "partner", "ride", "business", "issue"] },
+            { label: "Legal", items: ["terms", "cookies", "privacy", "refund"] }
+        ],
+        pages: {
+            "about-us": {
+                group: "Company",
+                label: "About Us",
+                meta: "Story",
+                title: "SnapEats is being built as a local-first food ordering experience.",
+                subtitle: "The product focuses on cleaner discovery, trusted checkout, and support that feels clear when customers need it most.",
+                stats: [[`${restaurantCount}+`, "restaurant partners"], [`${categoryCount}+`, "active categories"], [`${fulfilledOrders}+`, "delivered orders"]],
+                overview: [
+                    "SnapEats is designed for people who want everyday ordering to feel simple, dependable, and worth repeating. The aim is not only speed. It is confidence across discovery, checkout, and support."
+                ],
+                points: [
+                    ["Cleaner discovery", "Restaurant browsing is shaped to help users reach confident choices faster."],
+                    ["Trust in checkout", "Pricing, offers, and payment moments are framed to reduce surprises."],
+                    ["Human support", "Support routes are written to feel direct, calm, and practical."]
+                ],
+                faqs: [
+                    ["What makes SnapEats different?", "The focus is on local relevance, cleaner UX, and repeat trust instead of generic marketplace clutter."],
+                    ["Who is it built for?", "Students, professionals, families, and repeat customers who want convenience without confusion."]
+                ],
+                aside: {
+                    title: "Brand principles",
+                    copy: "The strongest product choices keep convenience practical and trustworthy.",
+                    bullets: ["Local-first discovery", "Honest pricing clarity", "Steady support quality"]
+                },
+                actions: [
+                    { label: "Explore restaurants", onClick: "closeFooterPage(); goHome()" },
+                    { label: "Business inquiries", onClick: "openFooterPage('business')" }
+                ]
+            },
+            careers: {
+                group: "Company",
+                label: "Careers",
+                meta: "Work",
+                title: "Careers at SnapEats are about visible ownership and fast product impact.",
+                subtitle: "The work blends product thinking, operational empathy, and quick feedback loops across engineering, growth, and reliability.",
+                stats: [["High ownership", "team expectation"], ["Fast iteration", "delivery rhythm"], ["Visible impact", "career payoff"]],
+                overview: [
+                    "SnapEats suits people who care about shipping meaningful improvements quickly and want their work to show up in a real customer experience."
+                ],
+                points: [
+                    ["Own important surfaces", "Work can shape discovery, checkout, payments, support, and partner quality."],
+                    ["Move with feedback nearby", "Product, operations, and customer realities stay close enough to improve each other fast."],
+                    ["Grow through practical work", "The best progress comes from solving visible problems well."]
+                ],
+                faqs: [
+                    ["What kind of roles fit best?", "People who value product quality, user trust, and thoughtful systems tend to fit well."],
+                    ["What matters most in hiring?", "Ownership, clarity, collaboration, and steady execution matter more than noise."]
+                ],
+                aside: {
+                    title: "Good fit signals",
+                    copy: "People usually fit well here when they like ambiguity that leads to practical product improvements.",
+                    bullets: ["Comfort with cross-functional work", "Care about UX and operations", "Bias toward steady shipping"]
+                },
+                actions: [
+                    { label: "Email careers", href: "mailto:careers@snap-eats.com?subject=Careers%20at%20SnapEats" },
+                    { label: "Meet the team", onClick: "openFooterPage('team')" }
+                ]
+            },
+            team: {
+                group: "Company",
+                label: "Team",
+                meta: "People",
+                title: "SnapEats is shaped by a compact core team and a practical advisory bench.",
+                subtitle: "The structure keeps product, growth, operations, and platform thinking close enough to make the experience feel coherent.",
+                stats: [["1 founder", "product direction"], [`${peopleGroups.management.length}`, "core roles"], [`${peopleGroups.board.length}`, "advisory voices"]],
+                overview: [
+                    "SnapEats is intentionally driven by a small team so decisions stay close to the product and important customer flows improve without long handoffs."
+                ],
+                points: [
+                    [`${OWNER_NAME}`, "Founder and Product Engineer guiding end-to-end product direction and platform quality."],
+                    ["Core team", "Operations, growth, and checkout ownership keep business and UX decisions connected."],
+                    ["Advisors", "External voices support expansion, architecture, and unit economics."]
+                ],
+                faqs: [
+                    ["Who owns product direction?", `${OWNER_NAME} leads the product direction and the engineering choices behind the customer experience.`],
+                    ["Why keep the team compact?", "A focused structure helps the product stay coherent and move faster."]
+                ],
+                aside: {
+                    title: "How the team works",
+                    copy: "The model works best when product, operations, and growth stay tightly connected.",
+                    bullets: ["Shared accountability", "Fast iteration", "Clear product ownership"]
+                },
+                actions: [
+                    { label: "Read about us", onClick: "openFooterPage('about-us')" },
+                    { label: "Press page", onClick: "openFooterPage('press')" }
+                ]
+            },
+            one: {
+                group: "Company",
+                label: "SnapEats One",
+                meta: "Membership",
+                title: "SnapEats One is the membership layer built for better repeat-order value.",
+                subtitle: "It is designed around delivery savings, member-only deals, and support perks that make regular ordering feel smarter over time.",
+                stats: [["Free delivery", "eligible orders"], ["Member deals", "partner perks"], ["Repeat value", "membership goal"]],
+                overview: [
+                    "SnapEats One gives frequent customers a dedicated value layer so repeat ordering feels materially better, not just differently branded."
+                ],
+                points: [
+                    ["Delivery savings", "Members can unlock free delivery on eligible orders depending on plan rules."],
+                    ["Exclusive offers", "Partner restaurants can extend member-only pricing or curated savings."],
+                    ["Account value", "The plan helps repeat ordering feel more rewarding over time."]
+                ],
+                faqs: [
+                    ["Who benefits most?", "People who order regularly and want both savings and stronger repeat value."],
+                    ["Can I manage the plan in my account?", "Yes, the membership area in the account flow is the natural place to manage it."]
+                ],
+                aside: {
+                    title: "Membership mindset",
+                    copy: "The idea is to make repeat ordering feel practically better.",
+                    bullets: ["Visible savings", "Consistent perks", "Clear support advantage"]
+                },
+                actions: [
+                    { label: "Open membership", onClick: "closeFooterPage(); openAuthModal(); setAccountSection('subscription')" },
+                    { label: "Refund policy", onClick: "openFooterPage('refund')" }
+                ]
+            },
+            genie: {
+                group: "Company",
+                label: "SnapEats Genie",
+                meta: "Convenience",
+                title: "SnapEats Genie is the hyperlocal convenience layer for pickups and everyday errands.",
+                subtitle: "It extends the delivery model into small local logistics such as essentials, documents, and time-sensitive neighborhood handoffs.",
+                stats: [["Quick pickup", "local use case"], ["Distance-led", "pricing logic"], ["Neighborhood", "service scope"]],
+                overview: [
+                    "SnapEats Genie is positioned as a practical convenience service for simple local logistics that fit the same trust expectations people already have from delivery."
+                ],
+                points: [
+                    ["Pickup to drop convenience", "Useful for lunch boxes, documents, essentials, and small package movement."],
+                    ["Built for urgency", "The experience should stay clear, quick to book, and easy to understand."],
+                    ["Natural brand extension", "Genie builds on delivery familiarity instead of inventing a separate trust system."]
+                ],
+                faqs: [
+                    ["What kind of items fit Genie?", "Lightweight, non-restricted items such as documents, essentials, and small neighborhood pickups."],
+                    ["Is Genie available everywhere?", "Availability depends on local operational readiness and coverage."]
+                ],
+                aside: {
+                    title: "Common use cases",
+                    copy: "The clearest Genie moments are simple, local, and time-sensitive.",
+                    bullets: ["Forgotten items", "Small package movement", "Nearby essentials pickup"]
+                },
+                actions: [
+                    { label: "Register interest", href: "mailto:hello@snap-eats.com?subject=SnapEats%20Genie%20Interest" },
+                    { label: "Business inquiries", onClick: "openFooterPage('business')" }
+                ]
+            },
+            blog: {
+                group: "Company",
+                label: "Blog",
+                meta: "Stories",
+                title: "The SnapEats blog is where product thinking, growth notes, and brand stories come together.",
+                subtitle: "It acts as the editorial layer for product updates, restaurant stories, and the ideas shaping the experience.",
+                stats: [["Product stories", "main theme"], ["Partner notes", "main theme"], ["Trust and UX", "main theme"]],
+                overview: [
+                    "The blog gives SnapEats a place to explain what is being built, why certain decisions matter, and how restaurants and customers experience the platform over time."
+                ],
+                points: [
+                    ["Inside Faster Discovery", "How SnapEats is designing cleaner discovery for neighborhood favorites."],
+                    ["Local Brand Momentum", "What makes restaurant onboarding feel faster, clearer, and more useful."],
+                    ["Trust In Checkout", "From OTP to payment confirmation: shaping reliable customer confidence."]
+                ],
+                faqs: [
+                    ["What kind of content belongs here?", "Product stories, restaurant success notes, growth updates, and experience writing all fit naturally."],
+                    ["Why does the blog matter?", "It gives the brand a voice beyond the order flow and explains the thinking behind the product."]
+                ],
+                aside: {
+                    title: "Editorial themes",
+                    copy: "The strongest stories usually sit at the overlap of product clarity and local relevance.",
+                    bullets: ["Feature reasoning", "Partner growth stories", "Trust-building UX"]
+                },
+                actions: [
+                    { label: "Email the stories desk", href: "mailto:stories@snap-eats.com?subject=SnapEats%20Blog" },
+                    { label: "Open press page", onClick: "openFooterPage('press')" }
+                ]
+            },
+            press: {
+                group: "Company",
+                label: "Press",
+                meta: "Media",
+                title: "The SnapEats press page is for media context, product notes, and partnership-facing announcements.",
+                subtitle: "It acts as the formal narrative surface for explaining what SnapEats is building and who to contact for coverage.",
+                stats: [["Media desk", "contact route"], ["Product context", "coverage angle"], ["Local brand", "positioning"]],
+                overview: [
+                    "The press page provides a clearer narrative surface for product milestones, partner notes, and broader brand positioning."
+                ],
+                points: [
+                    ["Platform Growth", "Local restaurant discovery and smoother repeat ordering remain central themes."],
+                    ["Partner Focus", "Onboarding, menu readiness, and support loops matter for long-term quality."],
+                    ["Built Local", "The brand continues to position itself around clear UX and everyday convenience."]
+                ],
+                faqs: [
+                    ["Who should use this page?", "Media contacts, partner teams, and anyone needing a clearer picture of the brand narrative."],
+                    ["How do I contact the press desk?", "The press desk should be the main route for media emails, interview requests, and coverage questions."]
+                ],
+                aside: {
+                    title: "Good press requests include",
+                    copy: "Specific asks are easier to respond to quickly.",
+                    bullets: ["Publication or organization name", "Story angle", "Timeline or deadline"]
+                },
+                actions: [
+                    { label: "Email press desk", href: "mailto:press@snap-eats.com?subject=SnapEats%20Press%20Desk" },
+                    { label: "Business contact", onClick: "openFooterPage('business')" }
+                ]
+            },
+            "help-support": {
+                group: "Contact Us",
+                label: "Help & Support",
+                meta: "Support",
+                title: "This dedicated support page covers orders, refunds, billing, and account help.",
+                subtitle: "It gives customers a clear route for live order issues, missing items, refund questions, and payment confusion.",
+                stats: [["Live orders", "first priority"], ["3-5 days", "usual refund window"], ["Account help", "support route"]],
+                overview: [
+                    "Support should feel straightforward and calm. The most important cases are live order issues first, followed by refunds, billing concerns, and account problems that block ordering."
+                ],
+                points: [
+                    ["Order tracking", "Use support when delivery progress, ETA, or rider coordination needs attention."],
+                    ["Refunds and adjustments", "Handle missing items, wrong items, and failed payments through clear resolution routes."],
+                    ["Account and payment help", "OTP issues, payment glitches, and coupon problems all belong here."]
+                ],
+                faqs: [
+                    ["Where should I start for an active order?", "Open order history first because live order situations should always be handled before older issues."],
+                    ["What if a payment failed?", "Most failed payments reconcile automatically, but support should still be contacted if funds were debited."]
+                ],
+                aside: {
+                    title: "Fastest routes",
+                    copy: "These actions usually reduce delay the most.",
+                    bullets: ["Use order history for recent cases", `Email ${SUPPORT_EMAIL} with screenshots`, "Keep the account details used for the order ready"]
+                },
+                actions: [
+                    { label: "Open orders", onClick: "closeFooterPage(); openOrders()" },
+                    { label: "Email support", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Support` }
+                ]
+            },
+            partner: {
+                group: "Contact Us",
+                label: "Partner with us",
+                meta: "Restaurants",
+                title: "Restaurant partnerships at SnapEats are built around clarity, visibility, and operational trust.",
+                subtitle: "This page is for restaurant owners who want a cleaner onboarding path, stronger menu presentation, and local growth support.",
+                stats: [["3-5 days", "typical onboarding"], ["Menu quality", "growth lever"], ["Partner support", "ongoing need"]],
+                overview: [
+                    "Partnering with SnapEats should feel structured and useful. Restaurants need clear expectations on documents, menus, payouts, and visibility from the start."
+                ],
+                points: [
+                    ["Faster onboarding", "Clear requirements and next steps help partner restaurants launch faster."],
+                    ["Better menu presentation", "Strong images, clear copy, and accurate prep times improve conversion."],
+                    ["Long-term growth support", "The strongest partnerships use local campaigns and honest service expectations."]
+                ],
+                faqs: [
+                    ["What is needed to begin?", "Restaurant identity, bank details, menu information, and regulatory documents are the usual starting points."],
+                    ["Can menus change after launch?", "Yes, menus should stay editable as prices, photos, timing, or availability evolve."]
+                ],
+                aside: {
+                    title: "Useful first email details",
+                    copy: "A little context makes the partnership conversation much faster.",
+                    bullets: ["Restaurant name and city", "Cuisine or outlet type", "Launch timeline if one exists"]
+                },
+                actions: [
+                    { label: "Start partnership", href: "mailto:partners@snap-eats.com?subject=Partner%20with%20SnapEats" },
+                    { label: "Business inquiries", onClick: "openFooterPage('business')" }
+                ]
+            },
+            ride: {
+                group: "Contact Us",
+                label: "Ride with us",
+                meta: "Delivery",
+                title: "Ride with us is the dedicated page for delivery-partner interest and rider expectations.",
+                subtitle: "It exists for people exploring rider onboarding, shift flexibility, earnings logic, trip support, and safety readiness.",
+                stats: [["Flexible", "availability model"], ["Trip-based", "earning logic"], ["Safety-first", "partner expectation"]],
+                overview: [
+                    "Delivery is one of the most visible parts of the customer experience, so the rider side of the platform deserves its own clear information surface."
+                ],
+                points: [
+                    ["Flexible work rhythm", "The delivery model can support flexible availability while maintaining operational discipline."],
+                    ["Clear trip context", "Good rider tools reduce confusion around distance, destination, and customer notes."],
+                    ["Support in motion", "Active trip issues should have fast support paths, especially for addresses and safety concerns."]
+                ],
+                faqs: [
+                    ["Who can apply?", "Eligible riders generally need basic identity documents, a phone, and a compliant delivery vehicle where required."],
+                    ["What if something feels unsafe?", "Safety concerns should be escalated immediately through the rider or safety support channels."]
+                ],
+                aside: {
+                    title: "Good rider habits",
+                    copy: "These habits improve both operations and rider experience.",
+                    bullets: ["Keep maps and phone ready", "Read customer notes early", "Escalate unsafe situations quickly"]
+                },
+                actions: [
+                    { label: "Apply to ride", href: "mailto:riders@snap-eats.com?subject=Ride%20with%20SnapEats" },
+                    { label: "Report an issue", onClick: "openFooterPage('issue')" }
+                ]
+            },
+            business: {
+                group: "Contact Us",
+                label: "Business inquiries",
+                meta: "Business",
+                title: "Business inquiries deserve a dedicated route for conversations beyond customer support.",
+                subtitle: "This page is for enterprise dining, office catering, campus launches, brand collaborations, and strategic conversations with SnapEats.",
+                stats: [["Corporate", "dining programs"], ["Brand", "collaborations"], ["Media", "adjacent route"]],
+                overview: [
+                    "Business inquiries are often too broad or strategic to fit inside a generic support workflow. They need a clearer intake path and a page that tells people what belongs here."
+                ],
+                points: [
+                    ["Corporate dining", "Recurring office meal programs and internal food access plans can begin here."],
+                    ["Brand collaborations", "Campaigns, activations, and partner launches fit this route well."],
+                    ["Media overlap", "This page also works when a request touches business, brand, and press at once."]
+                ],
+                faqs: [
+                    ["What should be in the first email?", "Company name, city, rough scale, use case, and the timeline usually make the request far easier to route."],
+                    ["Does this include office catering?", "Yes, office dining and recurring internal food programs are strong examples of business inquiries."]
+                ],
+                aside: {
+                    title: "Best way to frame the ask",
+                    copy: "A little structure in the first note saves several rounds of clarification.",
+                    bullets: ["Mention city and scale", "Say if the need is recurring", "Explain the outcome you want"]
+                },
+                actions: [
+                    { label: "Email business desk", href: "mailto:business@snap-eats.com?subject=SnapEats%20Business%20Inquiry" },
+                    { label: "Open press page", onClick: "openFooterPage('press')" }
+                ]
+            },
+            issue: {
+                group: "Contact Us",
+                label: "Report an issue",
+                meta: "Issues",
+                title: "Report an issue is the dedicated destination for bugs, service complaints, and unresolved order problems.",
+                subtitle: "It is meant for missing items, wrong menus, payment glitches, broken flows, or unresolved account problems.",
+                stats: [["Order issues", "highest urgency"], ["Bug reports", "product route"], ["Catalog fixes", "content route"]],
+                overview: [
+                    "Customers should not have to guess where to report a problem. This page exists so issue reporting feels separate from general support."
+                ],
+                points: [
+                    ["Order-level issues", "Use this route for missing items, wrong items, billing mismatches, or unresolved delivery complaints."],
+                    ["App and flow bugs", "Use it for broken screens, payment glitches, OTP issues, or checkout problems."],
+                    ["Content mismatches", "Report outdated menu pricing or incorrect restaurant details here."]
+                ],
+                faqs: [
+                    ["What should I include?", "Order reference, screenshots, timing, city, and a clear note on what went wrong are the most useful details."],
+                    ["Does this cover technical bugs too?", "Yes, especially if the bug blocks login, ordering, checkout, or payment."]
+                ],
+                aside: {
+                    title: "Strong issue reports include",
+                    copy: "A little structure makes investigation much easier.",
+                    bullets: ["Screenshots or recordings", "The linked account details", "The exact screen or step"]
+                },
+                actions: [
+                    { label: "Email issue desk", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Issue%20Report` },
+                    { label: "Open orders", onClick: "closeFooterPage(); openOrders()" }
+                ]
+            },
+            terms: {
+                group: "Legal",
+                label: "Terms & Conditions",
+                meta: "Rules",
+                title: "Terms & Conditions explain the rules for using SnapEats and placing orders through the platform.",
+                subtitle: "This page outlines the expectations behind account usage, order placement, payment behavior, and platform responsibilities.",
+                stats: [["Platform use", "covered area"], ["Order rules", "covered area"], ["Service limits", "covered area"]],
+                overview: [
+                    "Terms & Conditions set the practical rules that govern how orders are placed, what responsibilities belong to the user, and what service boundaries SnapEats needs to be clear about."
+                ],
+                points: [
+                    ["Account responsibility", "Users are expected to keep account access secure and provide accurate ordering details."],
+                    ["Order commitment", "Once an order moves into preparation, cancellation flexibility may change."],
+                    ["Service boundaries", "Availability, fulfillment timing, and offer eligibility depend on city and operational conditions."]
+                ],
+                faqs: [
+                    ["Why do terms matter for ordering?", "They clarify what users can expect and what obligations apply once an order is placed."],
+                    ["Can terms change over time?", "Yes, as the service evolves, terms may be updated to reflect product or operational changes."]
+                ],
+                aside: {
+                    title: "Terms usually cover",
+                    copy: "These are the areas most customers care about first.",
+                    bullets: ["Account use", "Cancellation timing", "Offer eligibility"]
+                },
+                actions: [
+                    { label: "Policy support", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Terms%20Question` },
+                    { label: "Privacy policy", onClick: "openFooterPage('privacy')" }
+                ]
+            },
+            cookies: {
+                group: "Legal",
+                label: "Cookie Policy",
+                meta: "Cookies",
+                title: "Cookie Policy explains how SnapEats uses browser storage and cookies to keep the experience working smoothly.",
+                subtitle: "It covers session continuity, saved preferences, location context, and browser-based convenience settings.",
+                stats: [["Session memory", "main purpose"], ["Saved preferences", "main purpose"], ["Device continuity", "main purpose"]],
+                overview: [
+                    "Cookie use in SnapEats is primarily about keeping the app usable across refreshes and repeat visits. It helps preserve sessions and useful preferences."
+                ],
+                points: [
+                    ["Session continuity", "Cookies and browser storage help maintain sign-in state and reduce repeated friction."],
+                    ["Preference memory", "They can preserve location context and other convenience-oriented settings."],
+                    ["Experience understanding", "They can support basic usage understanding so repeated flows improve over time."]
+                ],
+                faqs: [
+                    ["Why are cookies useful here?", "They reduce repeated setup friction and help the app feel more consistent across visits."],
+                    ["Can cookie behavior be updated?", "Yes, browser behavior and product needs can change how cookie-backed convenience is implemented."]
+                ],
+                aside: {
+                    title: "Cookies help with",
+                    copy: "The most visible benefits are everyday convenience and continuity.",
+                    bullets: ["Remembering app state", "Reducing repetitive setup", "Keeping the interface stable"]
+                },
+                actions: [
+                    { label: "Policy support", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Cookie%20Policy` },
+                    { label: "Privacy policy", onClick: "openFooterPage('privacy')" }
+                ]
+            },
+            privacy: {
+                group: "Legal",
+                label: "Privacy Policy",
+                meta: "Privacy",
+                title: "Privacy Policy explains what user data SnapEats collects, why it is needed, and how it supports the service.",
+                subtitle: "It covers the practical use of personal information across account creation, ordering, delivery, support, and product improvement.",
+                stats: [["Account data", "service input"], ["Order data", "service input"], ["Support data", "service input"]],
+                overview: [
+                    "Privacy policy should help people understand data use in plain language. SnapEats needs certain information to authenticate users, deliver orders, process payments, and support customers."
+                ],
+                points: [
+                    ["What is collected", "Basic identity, address, order details, and support-relevant information are common service inputs."],
+                    ["Why it is used", "Data supports sign-in, checkout, delivery fulfillment, account continuity, and issue resolution."],
+                    ["How trust is maintained", "Users should understand why specific data points exist in the system and how they serve the product."]
+                ],
+                faqs: [
+                    ["Why does SnapEats need my address?", "Address information is necessary for delivery fulfillment, ETA context, and support verification."],
+                    ["Can the policy evolve?", "Yes, as the platform adds features or operational changes, the privacy explanation may need to be updated."]
+                ],
+                aside: {
+                    title: "Core privacy principles",
+                    copy: "The most important ideas should stay understandable.",
+                    bullets: ["Collect what the service needs", "Explain why it matters", "Keep handling trustworthy"]
+                },
+                actions: [
+                    { label: "Policy support", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Privacy%20Policy` },
+                    { label: "Terms page", onClick: "openFooterPage('terms')" }
+                ]
+            },
+            refund: {
+                group: "Legal",
+                label: "Refund Policy",
+                meta: "Refunds",
+                title: "Refund Policy explains when refunds apply, what affects eligibility, and how long reversals usually take.",
+                subtitle: "It is the practical policy page for cancellations, missing items, failed payments, partial adjustments, and refund timing expectations.",
+                stats: [["3-5 days", "usual window"], ["Timing-sensitive", "cancellation logic"], ["Payment-mode based", "settlement factor"]],
+                overview: [
+                    "Refund policy matters most when an order fails to meet what was promised. This includes failed payments, missing or incorrect items, and cancellations within the allowed window."
+                ],
+                points: [
+                    ["Cancellation timing", "Refund eligibility often depends on whether the order was cancelled before restaurant preparation began."],
+                    ["Payment reversals", "Failed or duplicate payment issues may reconcile automatically, but timing still needs to be clear."],
+                    ["Partial adjustments", "Missing or incorrect items may result in partial resolutions depending on what actually happened."]
+                ],
+                faqs: [
+                    ["How long do refunds usually take?", "Most eligible refunds complete within 3-5 business days, though timing can vary by payment mode."],
+                    ["Can a prepared order still be cancelled?", "Once preparation begins, cancellation and refund options may become limited based on order state."]
+                ],
+                aside: {
+                    title: "To speed up refund review",
+                    copy: "The more precise the report, the easier it is to assess.",
+                    bullets: ["Share the order number", "Include screenshots for billing issues", "Report problems soon after delivery"]
+                },
+                actions: [
+                    { label: "Contact support", href: `mailto:${SUPPORT_EMAIL}?subject=SnapEats%20Refund%20Question` },
+                    { label: "Report an issue", onClick: "openFooterPage('issue')" }
+                ]
+            }
+        }
+    };
+}
+
+function renderFooterPage() {
+    const content = document.getElementById("footerModalContent");
+    if (!content) {
+        return;
+    }
+
+    const footerData = getFooterPageData();
+    const activePage = footerData.pages[footerActivePage] || footerData.pages["about-us"];
+    footerActivePage = Object.prototype.hasOwnProperty.call(footerData.pages, footerActivePage) ? footerActivePage : "about-us";
+
+    const navMarkup = footerData.groups.map((group) => `
+        <section class="footer-page-nav-group">
+            <h2>${escapeHtml(group.label)}</h2>
+            <div class="footer-page-nav-list">
+                ${group.items.map((pageId) => {
+                    const page = footerData.pages[pageId];
+                    if (!page) {
+                        return "";
+                    }
+                    return `
+                        <button class="footer-page-nav-item ${pageId === footerActivePage ? "active" : ""}" type="button" onclick="openFooterPage('${pageId}')">
+                            <span>${escapeHtml(page.label)}</span>
+                            <small>${escapeHtml(page.meta)}</small>
+                        </button>
+                    `;
+                }).join("")}
+            </div>
+        </section>
+    `).join("");
+
+    const statsMarkup = (activePage.stats || []).map((item) => `
+        <article class="footer-page-stat-card">
+            <strong>${escapeHtml(item[0])}</strong>
+            <span>${escapeHtml(item[1])}</span>
+        </article>
+    `).join("");
+    const overviewMarkup = (activePage.overview || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+    const pointsMarkup = (activePage.points || []).map((point) => `
+        <article class="footer-page-info-card">
+            <h3>${escapeHtml(point[0])}</h3>
+            <p>${escapeHtml(point[1])}</p>
+        </article>
+    `).join("");
+    const faqMarkup = (activePage.faqs || []).map((item) => `
+        <article class="footer-page-faq-card">
+            <h3>${escapeHtml(item[0])}</h3>
+            <p>${escapeHtml(item[1])}</p>
+        </article>
+    `).join("");
+    const actionsMarkup = (activePage.actions || []).map((action, index) => {
+        const buttonClass = index === 0 ? "primary-button" : "secondary-button";
+        if (action.onClick) {
+            return `<button class="footer-page-action ${buttonClass}" type="button" onclick="${action.onClick}">${escapeHtml(action.label)}</button>`;
+        }
+        return `<a class="footer-page-action ${buttonClass}" href="${escapeHtml(action.href || "#")}">${escapeHtml(action.label)}</a>`;
+    }).join("");
+
+    content.innerHTML = `
+        <div class="footer-page-shell">
+            <header class="footer-page-hero">
+                <div class="footer-page-hero-top">
+                    <div>
+                        <p class="footer-page-kicker">${escapeHtml(activePage.group)}</p>
+                        <h1>${escapeHtml(activePage.title)}</h1>
+                    </div>
+                    <button class="footer-page-close" type="button" onclick="closeFooterPage()">Close</button>
+                </div>
+                <p class="footer-page-subtitle">${escapeHtml(activePage.subtitle)}</p>
+                <div class="footer-page-actions">
+                    ${actionsMarkup}
+                </div>
+                <div class="footer-page-stats">
+                    ${statsMarkup}
+                </div>
+            </header>
+
+            <div class="footer-page-layout">
+                <aside class="footer-page-nav">
+                    ${navMarkup}
+                </aside>
+                <main class="footer-page-main">
+                    <section class="footer-page-panel">
+                        <p class="footer-page-panel-label">Overview</p>
+                        <div class="footer-page-prose">
+                            ${overviewMarkup}
+                        </div>
+                    </section>
+
+                    <section class="footer-page-panel">
+                        <p class="footer-page-panel-label">What This Covers</p>
+                        <div class="footer-page-card-grid">
+                            ${pointsMarkup}
+                        </div>
+                    </section>
+
+                    <section class="footer-page-lower-grid">
+                        <section class="footer-page-panel">
+                            <p class="footer-page-panel-label">Common Questions</p>
+                            <div class="footer-page-faq-grid">
+                                ${faqMarkup}
+                            </div>
+                        </section>
+                        <aside class="footer-page-panel footer-page-callout-panel">
+                            <p class="footer-page-panel-label">Quick View</p>
+                            <h2>${escapeHtml(activePage.aside?.title || "")}</h2>
+                            <p>${escapeHtml(activePage.aside?.copy || "")}</p>
+                            <ul class="footer-page-callout-list">
+                                ${(activePage.aside?.bullets || []).map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}
+                            </ul>
+                        </aside>
+                    </section>
+                </main>
+            </div>
         </div>
     `;
 }
@@ -7949,7 +8827,7 @@ function closeMenu() {
 }
 
 function anyModalOpen() {
-    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal"].some((modalId) =>
+    return ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal", "footerModal"].some((modalId) =>
         document.getElementById(modalId)?.classList.contains("open")
     );
 }
@@ -8186,7 +9064,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal"].forEach((modalId) => {
+    ["menuModal", "cartModal", "addressModal", "ordersModal", "authModal", "locationModal", "offersModal", "corporateModal", "helpModal", "footerModal"].forEach((modalId) => {
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.addEventListener("click", (event) => {
@@ -8207,6 +9085,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         closeCorporatePage();
                     } else if (modalId === "helpModal") {
                         closeHelp();
+                    } else if (modalId === "footerModal") {
+                        closeFooterPage();
                     } else {
                         closeAuthModal();
                     }
@@ -8226,6 +9106,7 @@ document.addEventListener("DOMContentLoaded", () => {
             closeOffers();
             closeCorporatePage();
             closeHelp();
+            closeFooterPage();
             closeSearchBar();
             closeDiscoveryFilterModal();
         }
