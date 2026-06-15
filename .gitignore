@@ -26,8 +26,17 @@ replay_pid*
 # Build output
 target/
 foodhub-backend/target/
+foodhub-backend/data/
 foodhub-backend/data/*.mv.db
 foodhub-backend/data/*.trace.db
+
+# Local run artifacts
+.run-logs/
+
+# Local environment files
+.env
+.env.*
+!.env.example
 
 # Editor settings
 .vscode/

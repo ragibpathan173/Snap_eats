@@ -40,6 +40,8 @@ It includes restaurant discovery, OTP-first login/signup (email or phone), cart 
 ```text
 Snap_eats/
 |-- README.md
+|-- CONTRIBUTING.md
+|-- .env.example
 |-- frontend/
 |   |-- Dockerfile
 |   |-- index.html
@@ -59,6 +61,8 @@ Snap_eats/
 ## Run With Docker
 
 Docker is the easiest way to run the separated frontend and backend together.
+
+Optional local environment values can be based on `.env.example`. Real `.env` files are ignored by git.
 
 ```bash
 docker compose up --build
@@ -258,6 +262,17 @@ otp.delivery.sms.webhook-url=https://your-sms-provider-webhook
 otp.delivery.sms.auth-token=your-token
 ```
 
+### Optional owner-admin bootstrap
+
+The backend supports an optional owner-admin bootstrap path. Leave it blank for normal development and configure it only through environment variables when a deployment explicitly needs it:
+
+```properties
+demo.owner-admin.email=${DEMO_OWNER_ADMIN_EMAIL:}
+demo.owner-admin.phone=${DEMO_OWNER_ADMIN_PHONE:}
+```
+
+Do not commit personal contact details or production secrets.
+
 ## API Snapshot
 
 Common APIs used by frontend:
@@ -282,6 +297,8 @@ Common APIs used by frontend:
 cd foodhub-backend
 mvn test
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development checklist and smoke test commands.
 
 ## Notes
 
