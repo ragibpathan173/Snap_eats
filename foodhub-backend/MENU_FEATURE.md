@@ -1,329 +1,168 @@
-# 🍽️ Menu Features Documentation
+# Menu Feature Guide
 
-Comprehensive guide to the Menu Items feature in FoodHub.
+The menu API powers restaurant menus, search, dietary filtering, stock/availability controls, and admin menu management.
 
-## 📋 Overview
+## Main Model Fields
 
-The Menu Items feature provides complete management of restaurant menus with advanced filtering, search, and dietary preference support.
+Common fields:
 
-## ✨ Key Features
-
-### 1. Basic Menu Management
-- ✅ Create, read, update, delete menu items
-- ✅ Unique item IDs for tracking
-- ✅ Restaurant association
-- ✅ Category organization
-- ✅ Active/inactive status
-- ✅ Availability toggles
-
-### 2. Pricing & Discounts
-- ✅ Base price management
-- ✅ Discount percentage
-- ✅ Auto-calculated discounted prices
-- ✅ Price range filtering
-
-### 3. Dietary Preferences
-- ✅ Vegetarian indicator
-- ✅ Vegan indicator
-- ✅ Gluten-free indicator
-- ✅ Spicy level (None, Mild, Medium, Hot, Extra Hot)
-
-### 4. Stock Management
-- ✅ Stock quantity tracking
-- ✅ Limited stock flag
-- ✅ Out-of-stock detection
-- ✅ Low stock alerts
-
-### 5. Popularity Tracking
-- ✅ Order count
-- ✅ Rating system (0-5 stars)
-- ✅ Review count
-- ✅ Best seller flag
-- ✅ Featured item flag
-
-### 6. Search & Filter
-- ✅ Text search (name, description, tags)
-- ✅ Category filtering
-- ✅ Price range filtering
-- ✅ Dietary preference filtering
-- ✅ Rating-based filtering
-- ✅ Multi-criteria filtering
-
-## 📊 Menu Item Fields
-
-### Required Fields
-```java
-- restaurantId (Long)
-- name (String, max 200 chars)
-- price (Double)
-- active (Boolean)
-- available (Boolean)
+```text
+id
+itemId
+restaurantId
+name
+description
+category
+image
+price
+discount
+discountedPrice
+active
+available
 ```
 
-### Optional Fields
-```java
-- itemId (String, auto-generated)
-- description (Text)
-- category (String, max 50 chars)
-- image (String, URL, max 1000 chars)
-- portionSize (String, max 50 chars)
-- prepTime (String, e.g., "15-20 mins")
-- calories (Integer)
-- ingredients (Text)
-- allergens (Text)
-- tags (String, comma-separated)
+Dietary fields:
+
+```text
+vegetarian
+vegan
+glutenFree
+spicy
+spiceLevel
+calories
+ingredients
+allergens
+tags
 ```
 
-### Dietary Fields
-```java
-- vegetarian (Boolean, default: false)
-- vegan (Boolean, default: false)
-- glutenFree (Boolean, default: false)
-- spicy (Boolean, default: false)
-- spiceLevel (String: None/Mild/Medium/Hot/Extra Hot)
+Merchandising and stock fields:
+
+```text
+rating
+orderCount
+reviewCount
+featured
+bestSeller
+prepTime
+portionSize
+stockQuantity
+isLimitedStock
 ```
 
-### Pricing Fields
-```java
-- price (Double, required)
-- discount (Double, percentage)
-- discountedPrice (Double, auto-calculated)
-```
+## Public Read Endpoints
 
-### Tracking Fields
-```java
-- rating (Double, 0-5)
-- orderCount (Integer)
-- reviewCount (Integer)
-- featured (Boolean)
-- bestSeller (Boolean)
-```
-
-### Stock Fields
-```java
-- stockQuantity (Integer)
-- isLimitedStock (Boolean)
-```
-
-## 🔍 API Endpoints
-
-### Basic Operations
-
-#### Get Menu Items by Restaurant
 ```http
+GET /api/menu-items
+GET /api/menu-items/{id}
+GET /api/menu-items/item/{itemId}
 GET /api/menu-items/restaurant/{restaurantId}
-```
-
-**Parameters:**
-- `activeOnly` (boolean): Filter active items only
-- `availableOnly` (boolean): Filter available items only
-- `page` (int): Page number (default: 0)
-- `size` (int): Items per page (default: 50)
-- `sortBy` (string): Sort option
-
-**Sort Options:**
-- `price_asc` - Price low to high
-- `price_desc` - Price high to low
-- `rating` - Rating high to low
-- `name` - Alphabetical
-- `popular` - Most ordered first
-
-**Example:**
-```
-GET /api/menu-items/restaurant/1?activeOnly=true&sortBy=price_asc&page=0&size=20
-```
-
-#### Create Menu Item
-```http
-POST /api/menu-items
-```
-
-**Request Body:**
-```json
-{
-  "restaurantId": 1,
-  "name": "Margherita Pizza",
-  "description": "Classic Italian pizza with fresh mozzarella",
-  "price": 12.99,
-  "category": "Pizza",
-  "vegetarian": true,
-  "active": true,
-  "available": true,
-  "prepTime": "15-20 mins",
-  "calories": 800,
-  "image": "https://example.com/pizza.jpg"
-}
-```
-
-### Dietary Filtering
-
-#### Get Vegetarian Items
-```http
-GET /api/menu-items/restaurant/{restaurantId}/vegetarian
-```
-
-#### Get Vegan Items
-```http
-GET /api/menu-items/restaurant/{restaurantId}/vegan
-```
-
-#### Get Gluten-Free Items
-```http
-GET /api/menu-items/restaurant/{restaurantId}/gluten-free
-```
-
-### Popular Items
-
-#### Get Top Rated Items
-```http
+GET /api/menu-items/restaurant-code/{restaurantCode}
+GET /api/menu-items/restaurant/{restaurantId}/category/{category}
+GET /api/menu-items/restaurant/{restaurantId}/categories
 GET /api/menu-items/restaurant/{restaurantId}/top-rated?limit=10
-```
-
-#### Get Popular Items (Most Ordered)
-```http
 GET /api/menu-items/restaurant/{restaurantId}/popular?limit=10
-```
-
-#### Get Best Sellers
-```http
-GET /api/menu-items/restaurant/{restaurantId}/best-sellers
-```
-
-#### Get Featured Items
-```http
 GET /api/menu-items/restaurant/{restaurantId}/featured
-```
-
-### Search & Filter
-
-#### Search Menu Items
-```http
-GET /api/menu-items/search?query=pizza&restaurantId=1
-```
-
-Searches in:
-- Item name
-- Description
-- Category
-- Tags
-
-#### Advanced Filter
-```http
+GET /api/menu-items/restaurant/{restaurantId}/best-sellers
+GET /api/menu-items/restaurant/{restaurantId}/vegetarian
+GET /api/menu-items/restaurant/{restaurantId}/vegan
+GET /api/menu-items/restaurant/{restaurantId}/gluten-free
+GET /api/menu-items/search?query=pizza
 GET /api/menu-items/restaurant/{restaurantId}/filter
-```
-
-**Parameters:**
-- `category` (string): Filter by category
-- `vegetarian` (boolean): Vegetarian items only
-- `vegan` (boolean): Vegan items only
-- `glutenFree` (boolean): Gluten-free items only
-- `minPrice` (double): Minimum price
-- `maxPrice` (double): Maximum price
-- `minRating` (double): Minimum rating
-- `page`, `size`: Pagination
-
-**Example:**
-```
-GET /api/menu-items/restaurant/1/filter?vegetarian=true&minPrice=10&maxPrice=20&minRating=4.0
-```
-
-### Stock Management
-
-#### Update Availability
-```http
-PATCH /api/menu-items/{id}/availability?available=true
-```
-
-#### Update Stock
-```http
-PATCH /api/menu-items/{id}/stock?quantity=50
-```
-
-### Statistics
-
-#### Get Menu Statistics
-```http
 GET /api/menu-items/restaurant/{restaurantId}/stats
 ```
 
-**Response:**
-```json
-{
-  "totalItems": 45,
-  "activeItems": 42,
-  "availableItems": 40,
-  "vegetarianItems": 15,
-  "veganItems": 8
-}
+Restaurant menu queries support:
+
+```http
+activeOnly=true
+availableOnly=true
+page=0
+size=50
+sortBy=price_asc|price_desc|rating|name|popular
 ```
 
-### Bulk Operations
+Advanced filter parameters:
 
-#### Activate All Items
 ```http
-PATCH /api/menu-items/restaurant/{restaurantId}/activate
+category=Pizza
+vegetarian=true
+vegan=true
+glutenFree=true
+minPrice=100
+maxPrice=500
+minRating=4
+page=0
+size=20
 ```
 
-#### Deactivate All Items
-```http
-PATCH /api/menu-items/restaurant/{restaurantId}/deactivate
-```
+## Admin Write Endpoints
 
-#### Delete All Items for Restaurant
+Menu writes require an admin bearer token.
+
 ```http
+POST   /api/menu-items
+PUT    /api/menu-items/{id}
+PATCH  /api/menu-items/{id}/availability?available=true
+PATCH  /api/menu-items/{id}/stock?quantity=50
+PATCH  /api/menu-items/restaurant/{restaurantId}/activate
+PATCH  /api/menu-items/restaurant/{restaurantId}/deactivate
+DELETE /api/menu-items/{id}
 DELETE /api/menu-items/restaurant/{restaurantId}
 ```
 
-## 💡 Use Cases
+Create an item:
 
-### Use Case 1: Customer Browsing
-```
-1. GET /api/menu-items/restaurant/1?activeOnly=true&sortBy=popular
-2. GET /api/menu-items/restaurant/1/vegetarian
-3. GET /api/menu-items/restaurant/1/filter?minPrice=10&maxPrice=20
-```
-
-### Use Case 2: Restaurant Owner Management
-```
-1. POST /api/menu-items (Create new item)
-2. PATCH /api/menu-items/123/availability?available=false
-3. GET /api/menu-items/restaurant/1/stats
-```
-
-### Use Case 3: Search Functionality
-```
-1. GET /api/menu-items/search?query=pizza
-2. GET /api/menu-items/restaurant/1/category/Desserts
+```bash
+curl -X POST http://localhost:8081/api/menu-items \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"restaurantId\":1,
+    \"name\":\"Margherita Pizza\",
+    \"description\":\"Classic pizza with mozzarella and basil\",
+    \"price\":199.0,
+    \"category\":\"Pizza\",
+    \"vegetarian\":true,
+    \"active\":true,
+    \"available\":true,
+    \"prepTime\":\"20 mins\"
+  }"
 ```
 
-## 🎯 Best Practices
+Update availability:
 
-### 1. Always Set itemId
-If not provided, it's auto-generated as `ITEM_{timestamp}`
+```bash
+curl -X PATCH "http://localhost:8081/api/menu-items/1/availability?available=false" \
+  -H "Authorization: Bearer <admin-token>"
+```
 
-### 2. Use Categories Consistently
-Standardize category names across your menu
+## Sorting and Pagination Response
 
-### 3. Keep Images Updated
-Use high-quality images and CDN URLs
+Paged endpoints return:
 
-### 4. Manage Stock Properly
-- Set `isLimitedStock=true` for items with inventory
-- Update `stockQuantity` regularly
-- Use availability toggle for temporary unavailability
+```json
+{
+  "items": [],
+  "currentPage": 0,
+  "totalItems": 0,
+  "totalPages": 0
+}
+```
 
-### 5. Leverage Flags
-- Mark popular items as `bestSeller`
-- Promote special items as `featured`
-- Track ratings and reviews
+## Data Loading
 
-## 🚀 Performance Tips
+Initial restaurant/category data is loaded from:
 
-1. **Pagination**: Always use pagination for large menus
-2. **Indexing**: Database indexes on `restaurantId`, `category`, `active`
-3. **Caching**: Consider caching popular/featured items
-4. **Lazy Loading**: Load images lazily in frontend
+```text
+src/main/resources/data/restaurants.json
+src/main/resources/data/categories.json
+```
 
----
+Menu records are loaded by `MenuItemDataLoader` and stored in the configured database.
 
-**Menu Feature Complete! 🍕**
+## Maintenance Notes
+
+- Keep category names consistent across restaurants so filtering stays predictable.
+- Prefer `restaurant-code/{restaurantCode}` for frontend routes because it uses the stable restaurant code.
+- Use `active=false` for retired items and `available=false` for temporary out-of-stock items.
+- Use pagination on large menus.

@@ -1,271 +1,218 @@
-# 🍔 FoodHub Backend API
+# SnapEats Backend
 
-A comprehensive food delivery platform backend built with Spring Boot 3.2.0, providing RESTful APIs for restaurant management, menu items, orders, and user management.
+Spring Boot backend for the SnapEats food ordering app. The backend exposes REST APIs for restaurant discovery, menu browsing, OTP/password authentication, checkout, orders, addresses, subscriptions, favorites, and saved payment methods.
 
-In the combined SnapEats repo, the frontend lives in the sibling `../frontend` folder and is served separately from this backend module.
+The frontend lives in the repo-level `../frontend` folder and is served separately.
 
-## 📋 Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [API Documentation](#api-documentation)
-- [Database Schema](#database-schema)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Contributing](#contributing)
+## Tech Stack
 
-## ✨ Features
+- Java 17
+- Spring Boot 3.2
+- Spring Web, Security, Data JPA, Validation, Actuator, Mail
+- Flyway migrations
+- H2 for local development
+- PostgreSQL/MySQL runtime drivers for deployment targets
+- Maven
+- Swagger/OpenAPI via springdoc
 
-### Restaurant Management
-- ✅ CRUD operations for restaurants
-- ✅ Category-based filtering
-- ✅ Search functionality
-- ✅ Rating system
-- ✅ Location-based queries
-- ✅ Auto-load from JSON data
+## Quick Start
 
-### Menu Items
-- ✅ Comprehensive menu management
-- ✅ Dietary preferences (vegetarian, vegan, gluten-free)
-- ✅ Stock management
-- ✅ Pricing & discounts
-- ✅ Search & filter by multiple criteria
-- ✅ Popularity tracking
+Prerequisites:
 
-### Order Management
-- ✅ Order creation & tracking
-- ✅ Order status management
-- ✅ Payment integration ready
-- ✅ Order history
-- ✅ Analytics & statistics
-
-### User Management
-- ✅ User registration & authentication
-- ✅ Role-based access (User, Admin, Restaurant Owner)
-- ✅ Profile management
-- ✅ Password encryption with BCrypt
-
-### Categories
-- ✅ Dynamic category system
-- ✅ 18+ predefined food categories
-- ✅ Category-based filtering
-- ✅ Active/inactive status
-
-## 🛠 Tech Stack
-
-- **Framework:** Spring Boot 3.2.0
-- **Language:** Java 17
-- **Database:** H2 (Development), MySQL (Production Ready)
-- **ORM:** Hibernate/JPA
-- **Security:** Spring Security + BCrypt
-- **Documentation:** Swagger/OpenAPI 3.0
-- **Build Tool:** Maven
-- **Authentication:** JWT (Ready to implement)
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Java 17 or higher
+- Java 17+
 - Maven 3.6+
-- IDE (IntelliJ IDEA, Eclipse, or VS Code)
 
-### Installation
+Run the backend:
 
-1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/foodhub-backend.git
 cd foodhub-backend
-```
-
-2. **Build the project**
-```bash
-mvn clean install
-```
-
-3. **Run the application**
-```bash
 mvn clean spring-boot:run
 ```
 
-4. **Access the application**
-- API Base URL: http://localhost:8081/api
-- Swagger UI: http://localhost:8081/swagger-ui.html
-- H2 Console: http://localhost:8081/h2-console
-- Health (liveness): http://localhost:8081/actuator/health/liveness
-- Health (readiness): http://localhost:8081/actuator/health/readiness
-- Frontend (repo root workflow): serve `../frontend` separately or run `docker compose up --build` from the repo root
+Open:
 
-### H2 Database Access
-- JDBC URL: `jdbc:h2:file:./data/foodhub`
-- Username: `sa`
-- Password: *(leave blank)*
+- API base: `http://localhost:8081/api`
+- Swagger UI: `http://localhost:8081/swagger-ui.html`
+- H2 console: `http://localhost:8081/h2-console`
+- Readiness: `http://localhost:8081/actuator/health/readiness`
+- Liveness: `http://localhost:8081/actuator/health/liveness`
 
-## 📚 API Documentation
+H2 login:
 
-### Categories
+```text
+JDBC URL: jdbc:h2:file:./data/foodhub
+Username: sa
+Password: leave blank
+```
+
+## Local Frontend
+
+From a second terminal in the repo root:
+
+```powershell
+cd frontend
+.\start-dev.ps1
+```
+
+The frontend runs at `http://localhost:3000/` and proxies `/api` to `http://localhost:8081/api`.
+
+## Configuration
+
+Important properties are environment-aware in `src/main/resources/application.properties`.
+
+| Purpose | Property | Environment variable | Default |
+| --- | --- | --- | --- |
+| HTTP port | `server.port` | `SERVER_PORT` or `PORT` | `8081` |
+| Database URL | `spring.datasource.url` | `SPRING_DATASOURCE_URL` | local H2 file |
+| JWT secret | `security.jwt.secret` | `SECURITY_JWT_SECRET` | dev secret |
+| JWT lifetime | `security.jwt.expiration-ms` | `SECURITY_JWT_EXPIRATION_MS` | `86400000` |
+| Return OTP in responses | `security.otp.dev-return` | `SECURITY_OTP_DEV_RETURN` | `true` |
+| Email OTP delivery | `otp.delivery.email.enabled` | `OTP_DELIVERY_EMAIL_ENABLED` | `false` |
+| SMS OTP delivery | `otp.delivery.sms.enabled` | `OTP_DELIVERY_SMS_ENABLED` | `false` |
+| Optional owner-admin email | `demo.owner-admin.email` | `DEMO_OWNER_ADMIN_EMAIL` | blank |
+| Optional owner-admin phone | `demo.owner-admin.phone` | `DEMO_OWNER_ADMIN_PHONE` | blank |
+
+Do not use the development defaults for a real public deployment. Set a strong `SECURITY_JWT_SECRET`, disable `SECURITY_OTP_DEV_RETURN`, and configure real email or SMS delivery before accepting real users.
+
+## Authentication
+
+Public auth endpoints:
+
 ```http
-GET    /api/categories              # Get all categories
-GET    /api/categories/active       # Get active categories
-GET    /api/categories/{id}         # Get category by ID
+POST /api/users/auth/otp/request
+POST /api/users/auth/otp/verify
+POST /api/users/register
+POST /api/users/login
+POST /api/users/forgot-password/request-otp
+POST /api/users/forgot-password/reset
 ```
 
-### Restaurants
+OTP request:
+
+```json
+{
+  "identifier": "customer@example.com"
+}
+```
+
+In dev mode, the response includes `devOtp`. Verify it with:
+
+```json
+{
+  "identifier": "customer@example.com",
+  "otp": "123456",
+  "name": "Customer Name"
+}
+```
+
+Successful auth returns:
+
+```json
+{
+  "token": "jwt-token",
+  "user": {
+    "id": 1,
+    "email": "customer@example.com",
+    "role": "USER"
+  }
+}
+```
+
+For protected routes, send:
+
 ```http
-GET    /api/restaurants                    # Get all restaurants
-GET    /api/restaurants/active             # Get active restaurants
-GET    /api/restaurants/{id}               # Get restaurant by ID
-GET    /api/restaurants/category/{category} # Get by category
-GET    /api/restaurants/search?query=...   # Search restaurants
-GET    /api/restaurants/top-rated          # Get top rated
+Authorization: Bearer <token>
 ```
 
-### Menu Items
+The JWT filter injects `X-User-Id` from the token when the request does not already provide it.
+
+## Core Endpoints
+
+Public catalog endpoints:
+
 ```http
-GET    /api/menu-items                              # Get all menu items
-GET    /api/menu-items/{id}                         # Get menu item by ID
-GET    /api/menu-items/restaurant/{restaurantId}   # Get by restaurant
-GET    /api/menu-items/search?query=...            # Search menu items
-POST   /api/menu-items                              # Create menu item
-PUT    /api/menu-items/{id}                         # Update menu item
-DELETE /api/menu-items/{id}                         # Delete menu item
+GET /api/categories
+GET /api/categories/active
+GET /api/restaurants/active
+GET /api/restaurants/search?query=pizza
+GET /api/restaurants/top-rated
+GET /api/menu-items/restaurant-code/{restaurantCode}
+GET /api/menu-items/search?query=pizza
 ```
 
-### Orders
+Customer/account endpoints require a bearer token:
+
 ```http
-GET    /api/orders                    # Get all orders
-GET    /api/orders/{id}               # Get order by ID
-GET    /api/orders/user/{userId}      # Get user orders
-POST   /api/orders                    # Create order
-PUT    /api/orders/{id}               # Update order
-PATCH  /api/orders/{id}/status        # Update order status
+GET    /api/users/me
+PUT    /api/users/me
+GET    /api/addresses
+POST   /api/addresses
+PUT    /api/addresses/{id}
+PATCH  /api/addresses/{id}/default
+DELETE /api/addresses/{id}
+GET    /api/orders/mine
+POST   /api/orders/checkout
+PATCH  /api/orders/mine/{id}/cancel
+GET    /api/subscriptions/plans
+GET    /api/subscriptions/me
+POST   /api/subscriptions/me/activate
+PATCH  /api/subscriptions/me/cancel
+GET    /api/payments/methods
+POST   /api/payments/methods
 ```
 
-### Users
+Admin menu write endpoints require an admin bearer token:
+
 ```http
-GET    /api/users                     # Get all users
-GET    /api/users/{id}                # Get user by ID
-POST   /api/users/register            # Register new user
-PUT    /api/users/{id}                # Update user
-DELETE /api/users/{id}                # Delete user
+POST   /api/menu-items
+PUT    /api/menu-items/{id}
+PATCH  /api/menu-items/{id}/availability
+PATCH  /api/menu-items/{id}/stock
+DELETE /api/menu-items/{id}
 ```
 
-## 🗄️ Database Schema
+## Testing
 
-### Main Entities
+Run integration tests:
 
-#### Restaurant
-- id, restaurantId, name, cuisine, rating
-- address, city, state, country
-- verified, active, category
-- deliveryFee, minimumOrderAmount
-- openingTime, closingTime
-
-#### MenuItem
-- id, itemId, restaurantId, name
-- description, price, category
-- vegetarian, vegan, glutenFree
-- available, active, rating
-- discount, stockQuantity
-
-#### Order
-- id, orderNumber, userId, restaurantId
-- totalAmount, deliveryFee, finalAmount
-- status, paymentMethod, paymentStatus
-- deliveryAddress, specialInstructions
-
-#### User
-- id, name, email, password
-- phoneNumber, address, city, state
-- role (USER, ADMIN, RESTAURANT_OWNER)
-- active
-
-## 📁 Project Structure
-```
-src/main/java/com/foodhub/
-├── FoodHubApplication.java          # Main application class
-├── config/                           # Configuration classes
-│   ├── CorsConfig.java              # CORS configuration
-│   ├── JpaConfig.java               # JPA auditing config
-│   └── SecurityConfig.java          # Security configuration
-├── controller/                       # REST controllers
-│   ├── CategoryController.java
-│   ├── MenuItemController.java
-│   ├── OrderController.java
-│   ├── RestaurantController.java
-│   └── UserController.java
-├── model/                            # Entity classes
-│   ├── Category.java
-│   ├── MenuItem.java
-│   ├── Order.java
-│   ├── Restaurant.java
-│   └── User.java
-└── repository/                       # Data repositories
-    ├── CategoryRepository.java
-    ├── MenuItemRepository.java
-    ├── OrderRepository.java
-    ├── RestaurantRepository.java
-    └── UserRepository.java
-```
-
-## ⚙️ Configuration
-
-### application.properties
-```properties
-# Server
-server.port=8081
-
-# Database (H2)
-spring.datasource.url=jdbc:h2:file:./data/foodhub;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=TRUE
-spring.jpa.hibernate.ddl-auto=update
-spring.flyway.enabled=true
-
-# For MySQL (Production)
-# spring.datasource.url=jdbc:mysql://localhost:3306/foodhub
-# spring.datasource.username=root
-# spring.datasource.password=yourpassword
-# spring.jpa.hibernate.ddl-auto=update
-```
-
-## 🧪 Testing
-
-Run tests with:
 ```bash
 mvn test
 ```
 
-## 📦 Build for Production
+Compile without running tests:
+
 ```bash
-mvn clean package
-java -jar target/foodhub-backend-1.0.0.jar
+mvn -DskipTests compile
 ```
 
-## 🤝 Contributing
+From the repo root, after starting backend and frontend:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+```powershell
+.\scripts\frontend_smoke_test.ps1 -FrontendBaseUrl http://localhost:3000 -BackendBaseUrl http://localhost:8081
+```
 
-## 📝 License
+## Data and Migrations
 
-This project is licensed under the MIT License.
+- Local H2 files are created under `foodhub-backend/data/` and are ignored by git.
+- Flyway migrations live under `src/main/resources/db/migration`.
+- PostgreSQL-specific migrations live under `src/main/resources/db/migration-postgresql`.
+- Seed catalog data lives under `src/main/resources/data`.
 
-## 👥 Authors
+## Docker
 
-- **Your Name** - *Initial work*
+From the repo root:
 
-## 🙏 Acknowledgments
+```bash
+docker compose up --build
+```
 
-- Spring Boot team for the amazing framework
-- All contributors who helped with the project
+Open:
 
-## 📧 Contact
+- Frontend: `http://localhost:8080/`
+- Swagger: `http://localhost:8081/swagger-ui.html`
 
-Your Name - your.email@example.com
+Use custom ports when needed:
 
-Project Link: https://github.com/yourusername/foodhub-backend
-
----
-
-**Built with ❤️ using Spring Boot**
+```bash
+FRONTEND_PORT=18080 BACKEND_PORT=18081 docker compose up --build
+```

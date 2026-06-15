@@ -1,376 +1,261 @@
-# 🧪 API Testing Guide
+# API Testing Guide
 
-Complete guide for testing all FoodHub API endpoints.
+This guide uses the local backend at `http://localhost:8081`.
 
-## 📋 Table of Contents
-- [Prerequisites](#prerequisites)
-- [Base URL](#base-url)
-- [Categories API](#categories-api)
-- [Restaurants API](#restaurants-api)
-- [Menu Items API](#menu-items-api)
-- [Orders API](#orders-api)
-- [Users API](#users-api)
-- [Postman Collection](#postman-collection)
+If the frontend dev server or Docker frontend is running, the same API is also available through the frontend proxy at `/api`.
 
-## Prerequisites
+## Health and Catalog Smoke Checks
 
-- Backend running on http://localhost:8081
-- Postman or cURL installed
-- Browser for GET requests
-- Optional: when using the separate frontend container, the same API is also proxied at http://localhost:8080/api
-
-## Base URL
-```
-http://localhost:8081/api
-```
-
----
-
-## 📂 Categories API
-
-### Get All Categories
 ```bash
-GET /api/categories
-```
-
-**cURL:**
-```bash
-curl http://localhost:8081/api/categories
-```
-
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "categoryId": "CAT001",
-    "name": "Food",
-    "image": "https://...",
-    "filter": "all",
-    "count": "240+ stores",
-    "active": true
-  }
-]
-```
-
-### Get Active Categories
-```bash
-GET /api/categories/active
-```
-
-**Browser:** http://localhost:8081/api/categories/active
-
----
-
-## 🍽️ Restaurants API
-
-### Get All Active Restaurants
-```bash
-GET /api/restaurants/active
-```
-
-**cURL:**
-```bash
+curl http://localhost:8081/actuator/health/readiness
+curl http://localhost:8081/api/categories/active
 curl http://localhost:8081/api/restaurants/active
-```
-
-### Get Restaurants by Category
-```bash
-GET /api/restaurants/category/{category}
-```
-
-**Example:**
-```bash
-curl http://localhost:8081/api/restaurants/category/italian
-```
-
-### Search Restaurants
-```bash
-GET /api/restaurants/search?query={searchTerm}
-```
-
-**Example:**
-```bash
 curl "http://localhost:8081/api/restaurants/search?query=pizza"
 ```
 
-### Get Top Rated Restaurants
+## Authentication Flow
+
+Request an OTP:
+
 ```bash
+curl -X POST http://localhost:8081/api/users/auth/otp/request \
+  -H "Content-Type: application/json" \
+  -d "{\"identifier\":\"customer@example.com\"}"
+```
+
+In development, the response includes `devOtp`.
+
+Verify the OTP:
+
+```bash
+curl -X POST http://localhost:8081/api/users/auth/otp/verify \
+  -H "Content-Type: application/json" \
+  -d "{\"identifier\":\"customer@example.com\",\"otp\":\"123456\",\"name\":\"Customer Name\"}"
+```
+
+The response includes `token` and `user`. Protected endpoints need:
+
+```http
+Authorization: Bearer <token>
+```
+
+Password login is also available for seeded/demo users:
+
+```bash
+curl -X POST http://localhost:8081/api/users/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"guest@snap-eats.local\",\"password\":\"guest-pass\"}"
+```
+
+## PowerShell Auth Example
+
+```powershell
+$otpResponse = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8081/api/users/auth/otp/request" `
+  -ContentType "application/json" `
+  -Body '{"identifier":"customer@example.com"}'
+
+$session = Invoke-RestMethod `
+  -Method Post `
+  -Uri "http://localhost:8081/api/users/auth/otp/verify" `
+  -ContentType "application/json" `
+  -Body (@{
+    identifier = "customer@example.com"
+    otp = $otpResponse.devOtp
+    name = "Customer Name"
+  } | ConvertTo-Json)
+
+$headers = @{ Authorization = "Bearer $($session.token)" }
+Invoke-RestMethod -Headers $headers -Uri "http://localhost:8081/api/users/me"
+```
+
+## Addresses
+
+Create an address:
+
+```bash
+curl -X POST http://localhost:8081/api/addresses \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"label\":\"Home\",
+    \"recipientName\":\"Customer Name\",
+    \"phoneNumber\":\"9876543210\",
+    \"addressLine\":\"221B Residency Road\",
+    \"landmark\":\"Near Cubbon Park\",
+    \"city\":\"Bangalore\",
+    \"state\":\"Karnataka\",
+    \"pincode\":\"560001\",
+    \"defaultAddress\":true
+  }"
+```
+
+Other useful address calls:
+
+```http
+GET    /api/addresses
+GET    /api/addresses/default
+PUT    /api/addresses/{id}
+PATCH  /api/addresses/{id}/default
+DELETE /api/addresses/{id}
+```
+
+## Restaurant and Menu Browsing
+
+```bash
+curl http://localhost:8081/api/restaurants/active
+curl "http://localhost:8081/api/restaurants/search?query=biryani"
+curl http://localhost:8081/api/menu-items/restaurant-code/REST001
+curl "http://localhost:8081/api/menu-items/search?query=paneer"
+```
+
+Restaurant routes:
+
+```http
+GET /api/restaurants
+GET /api/restaurants/active
+GET /api/restaurants/{id}
+GET /api/restaurants/restaurantId/{restaurantId}
+GET /api/restaurants/category/{category}
+GET /api/restaurants/verified
+GET /api/restaurants/rating/{minRating}
+GET /api/restaurants/search?query=...
 GET /api/restaurants/top-rated
 ```
 
-**Browser:** http://localhost:8081/api/restaurants/top-rated
+Menu browsing routes:
 
----
-
-## 🍕 Menu Items API
-
-### Get Menu Items by Restaurant
-```bash
+```http
+GET /api/menu-items
+GET /api/menu-items/{id}
+GET /api/menu-items/item/{itemId}
 GET /api/menu-items/restaurant/{restaurantId}
-```
-
-**Example:**
-```bash
-curl http://localhost:8081/api/menu-items/restaurant/1
-```
-
-**With Filters:**
-```bash
-GET /api/menu-items/restaurant/1?activeOnly=true&sortBy=price_asc&page=0&size=10
-```
-
-### Create Menu Item
-```bash
-POST /api/menu-items
-Content-Type: application/json
-```
-
-**cURL:**
-```bash
-curl -X POST http://localhost:8081/api/menu-items \
-  -H "Content-Type: application/json" \
-  -d '{
-    "restaurantId": 1,
-    "name": "Margherita Pizza",
-    "description": "Classic Italian pizza",
-    "price": 12.99,
-    "category": "Pizza",
-    "vegetarian": true,
-    "active": true,
-    "available": true
-  }'
-```
-
-### Search Menu Items
-```bash
-GET /api/menu-items/search?query={searchTerm}
-```
-
-**Example:**
-```bash
-curl "http://localhost:8081/api/menu-items/search?query=pizza"
-```
-
-### Get Vegetarian Items
-```bash
+GET /api/menu-items/restaurant-code/{restaurantCode}
+GET /api/menu-items/restaurant/{restaurantId}/category/{category}
+GET /api/menu-items/restaurant/{restaurantId}/categories
+GET /api/menu-items/restaurant/{restaurantId}/top-rated
+GET /api/menu-items/restaurant/{restaurantId}/popular
+GET /api/menu-items/restaurant/{restaurantId}/featured
+GET /api/menu-items/restaurant/{restaurantId}/best-sellers
 GET /api/menu-items/restaurant/{restaurantId}/vegetarian
+GET /api/menu-items/restaurant/{restaurantId}/vegan
+GET /api/menu-items/restaurant/{restaurantId}/gluten-free
+GET /api/menu-items/search?query=...
+GET /api/menu-items/restaurant/{restaurantId}/filter
 ```
 
-### Filter Menu Items
+## Checkout
+
+Checkout requires a bearer token and a saved default address, unless `addressId` is provided.
+
 ```bash
-GET /api/menu-items/restaurant/{restaurantId}/filter?vegetarian=true&minPrice=10&maxPrice=20
-```
-
----
-
-## 📦 Orders API
-
-### Create Order
-```bash
-POST /api/orders
-Content-Type: application/json
-```
-
-**cURL:**
-```bash
-curl -X POST http://localhost:8081/api/orders \
+curl -X POST http://localhost:8081/api/orders/checkout \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "userId": 1,
-    "restaurantId": 1,
-    "totalAmount": 50.00,
-    "deliveryFee": 5.00,
-    "discount": 0.00,
-    "paymentMethod": "CARD",
-    "deliveryAddress": "123 Main St, City",
-    "contactNumber": "+1234567890"
-  }'
+  -d "{
+    \"restaurantCode\":\"REST001\",
+    \"paymentMethod\":\"CASH\",
+    \"couponCode\":\"WELCOME50\",
+    \"items\":[
+      {\"itemId\":\"ITEM001\",\"name\":\"Margherita Pizza\",\"quantity\":2,\"price\":199.0}
+    ]
+  }"
 ```
 
-### Get User Orders
-```bash
-GET /api/orders/user/{userId}
+Useful order calls:
+
+```http
+GET   /api/orders/mine
+GET   /api/orders/mine/{id}
+PATCH /api/orders/mine/{id}/cancel
+GET   /api/orders/{id}/items
 ```
 
-**Example:**
-```bash
-curl http://localhost:8081/api/orders/user/1
+Admin/legacy order calls also exist:
+
+```http
+GET    /api/orders
+GET    /api/orders/{id}
+GET    /api/orders/order-number/{orderNumber}
+GET    /api/orders/user/{userId}
+GET    /api/orders/restaurant/{restaurantId}
+GET    /api/orders/status/{status}
+PUT    /api/orders/{id}
+PATCH  /api/orders/{id}/status?status=DELIVERED
+DELETE /api/orders/{id}
 ```
 
-### Update Order Status
+## Subscriptions
+
 ```bash
-PATCH /api/orders/{id}/status?status=CONFIRMED
+curl http://localhost:8081/api/subscriptions/plans
+curl -H "Authorization: Bearer <token>" http://localhost:8081/api/subscriptions/me
 ```
 
-**cURL:**
+Activate:
+
 ```bash
-curl -X PATCH "http://localhost:8081/api/orders/1/status?status=CONFIRMED"
-```
-
-**Available Statuses:**
-- PENDING
-- CONFIRMED
-- PREPARING
-- OUT_FOR_DELIVERY
-- DELIVERED
-- CANCELLED
-
----
-
-## 👤 Users API
-
-### Register User
-```bash
-POST /api/users/register
-Content-Type: application/json
-```
-
-**cURL:**
-```bash
-curl -X POST http://localhost:8081/api/users/register \
+curl -X POST http://localhost:8081/api/subscriptions/me/activate \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "password123",
-    "phoneNumber": "+1234567890",
-    "address": "123 Main St",
-    "city": "New York",
-    "state": "NY",
-    "pincode": "10001"
-  }'
+  -d "{\"planCode\":\"PLUS\",\"autoRenew\":true}"
 ```
 
-### Get User by ID
+Cancel:
+
 ```bash
-GET /api/users/{id}
+curl -X PATCH http://localhost:8081/api/subscriptions/me/cancel \
+  -H "Authorization: Bearer <token>"
 ```
 
-### Update User
+## Saved Payment Methods
+
+Card:
+
 ```bash
-PUT /api/users/{id}
-Content-Type: application/json
+curl -X POST http://localhost:8081/api/payments/methods \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"methodType\":\"CARD\",
+    \"cardHolderName\":\"Customer Name\",
+    \"cardNumber\":\"4111111111111111\",
+    \"expiryMonth\":\"12\",
+    \"expiryYear\":\"2030\",
+    \"defaultMethod\":true
+  }"
 ```
 
-### Search Users
+UPI:
+
 ```bash
-GET /api/users/search?query={searchTerm}
+curl -X POST http://localhost:8081/api/payments/methods \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d "{\"methodType\":\"UPI\",\"upiId\":\"customer@upi\",\"defaultMethod\":true}"
 ```
 
----
+Other payment calls:
 
-## 📊 Postman Collection
-
-### Import This Collection
-```json
-{
-  "info": {
-    "name": "FoodHub API",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Categories",
-      "item": [
-        {
-          "name": "Get Active Categories",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:8081/api/categories/active"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Restaurants",
-      "item": [
-        {
-          "name": "Get Active Restaurants",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:8081/api/restaurants/active"
-          }
-        },
-        {
-          "name": "Search Restaurants",
-          "request": {
-            "method": "GET",
-            "url": "http://localhost:8081/api/restaurants/search?query=pizza"
-          }
-        }
-      ]
-    }
-  ]
-}
+```http
+GET    /api/payments/methods
+PUT    /api/payments/methods/{id}
+PATCH  /api/payments/methods/{id}/default
+DELETE /api/payments/methods/{id}
 ```
 
----
+## Automated Checks
 
-## 🧪 Common Test Scenarios
+Backend integration tests:
 
-### Scenario 1: Browse Restaurants
-1. Get active categories
-2. Get restaurants by category
-3. View restaurant details
-4. Get restaurant menu items
-
-### Scenario 2: Place an Order
-1. Register user
-2. Browse menu items
-3. Create order
-4. Track order status
-
-### Scenario 3: Restaurant Management
-1. Create menu item
-2. Update menu item availability
-3. Get order statistics
-
----
-
-## ✅ Expected Responses
-
-### Success Response (200 OK)
-```json
-{
-  "id": 1,
-  "name": "Restaurant Name",
-  ...
-}
+```bash
+cd foodhub-backend
+mvn test
 ```
 
-### Created Response (201 Created)
-```json
-{
-  "id": 1,
-  "message": "Created successfully"
-}
+Frontend/backend smoke test from the repo root:
+
+```powershell
+.\scripts\frontend_smoke_test.ps1 -FrontendBaseUrl http://localhost:3000 -BackendBaseUrl http://localhost:8081
 ```
-
-### Error Response (400 Bad Request)
-```json
-{
-  "error": "Invalid request data"
-}
-```
-
-### Not Found (404)
-```json
-{
-  "error": "Resource not found"
-}
-```
-
----
-
-## 🔍 Testing Tips
-
-1. **Use Browser DevTools** - Network tab to inspect requests
-2. **Check Logs** - Monitor backend console for errors
-3. **Test Edge Cases** - Invalid IDs, missing fields, etc.
-4. **Verify Data** - Check H2 console after operations
-5. **Test Pagination** - Use page & size parameters
-
----
-
-**Happy Testing! 🚀**

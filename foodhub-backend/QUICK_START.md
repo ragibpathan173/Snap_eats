@@ -1,122 +1,96 @@
-# ⚡ FoodHub Quick Start Guide
+# Backend Quick Start
 
-Get FoodHub up and running in 5 minutes!
+Use this guide when you only need the backend running locally.
 
-## 🎯 Prerequisites
+## Prerequisites
 
-✅ Java 17 or higher  
-✅ Maven 3.6+  
-✅ Your favorite IDE (IntelliJ IDEA recommended)
+- Java 17+
+- Maven 3.6+
 
-## 🚀 Steps
+## Start the Backend
 
-### 1. Clone & Navigate
 ```bash
-git clone <your-repo-url>
 cd foodhub-backend
-```
-
-### 2. Build
-```bash
-mvn clean install
-```
-
-### 3. Run
-```bash
 mvn clean spring-boot:run
 ```
 
-### 4. Verify
-Open browser: http://localhost:8081/api/categories/active
+Or on Windows:
 
-You should see 18 categories loaded! 🎉
-
-## 📍 Important URLs
-
-| Service | URL |
-|---------|-----|
-| API Base | http://localhost:8081/api |
-| Swagger UI | http://localhost:8081/swagger-ui.html |
-| H2 Console | http://localhost:8081/h2-console |
-
-## 🗄️ H2 Database Login
+```powershell
+cd foodhub-backend
+.\start-dev.ps1
 ```
-JDBC URL: jdbc:h2:file:./data/foodhub
+
+## Verify It Works
+
+Open these URLs:
+
+- `http://localhost:8081/actuator/health/readiness`
+- `http://localhost:8081/swagger-ui.html`
+- `http://localhost:8081/api/categories/active`
+- `http://localhost:8081/api/restaurants/active`
+
+The local database is H2:
+
+```text
+URL: jdbc:h2:file:./data/foodhub
 Username: sa
-Password: (leave blank)
+Password: leave blank
 ```
 
-## 🧪 Quick API Tests
+## Try Dev OTP Login
 
-### Get Categories
+Request an OTP:
+
 ```bash
-curl http://localhost:8081/api/categories/active
+curl -X POST http://localhost:8081/api/users/auth/otp/request \
+  -H "Content-Type: application/json" \
+  -d "{\"identifier\":\"customer@example.com\"}"
 ```
 
-### Get Restaurants
+When `security.otp.dev-return=true`, copy `devOtp` from the response and verify:
+
 ```bash
-curl http://localhost:8081/api/restaurants/active
+curl -X POST http://localhost:8081/api/users/auth/otp/verify \
+  -H "Content-Type: application/json" \
+  -d "{\"identifier\":\"customer@example.com\",\"otp\":\"123456\",\"name\":\"Customer Name\"}"
 ```
 
-### Search Restaurants
-```bash
-curl "http://localhost:8081/api/restaurants/search?query=pizza"
+The verify response contains a JWT. Use it as:
+
+```http
+Authorization: Bearer <token>
 ```
 
-## 🎨 Connect Frontend
+## Start the Frontend Too
 
-The frontend now lives in the repo-level `frontend/` folder and is served separately from the backend.
+From the repo root, in another terminal:
 
-If you are calling the backend directly during local development, your frontend should call:
-```javascript
-const API_URL = 'http://localhost:8081/api';
-
-// Get categories
-fetch(`${API_URL}/categories/active`)
-  .then(res => res.json())
-  .then(data => console.log(data));
+```powershell
+cd frontend
+.\start-dev.ps1
 ```
 
-If you are serving `frontend/` through Docker Compose or another reverse proxy, keep the default `/api` value from `frontend/config.js`.
+Open `http://localhost:3000/`.
 
-## ✅ Verify Data Loaded
+## Common Fixes
 
-Check console output:
-```
-✅ Loaded 18 categories from JSON into database
-✅ Loaded 56 restaurants from JSON into database
-```
+Port `8081` is busy:
 
-## 🎉 You're Ready!
-
-Your backend is running with:
-- ✅ 18 Categories
-- ✅ 56 Restaurants
-- ✅ Complete REST API
-- ✅ Search & Filter
-- ✅ CORS enabled
-
-## 🔧 Common Issues
-
-### Port 8081 already in use?
-Change port in `application.properties`:
-```properties
-server.port=18081
+```powershell
+.\start-dev.ps1 -Port 18081
 ```
 
-### Database not connecting?
-Check `application.properties`:
-```properties
-spring.datasource.url=jdbc:h2:file:./data/foodhub;DB_CLOSE_ON_EXIT=FALSE
-spring.jpa.hibernate.ddl-auto=update
+Local database looks stale:
+
+```powershell
+Remove-Item -Recurse -Force .\data
 ```
 
-## 📚 Next Steps
+Only do this for local development data.
 
-1. Read [API_TESTING.md](API_TESTING.md) for testing
-2. Read [MENU_FEATURE.md](MENU_FEATURE.md) for menu management
-3. Check [README.md](README.md) for full documentation
+## Next Steps
 
----
-
-**Happy Coding! 🚀**
+- Read [README.md](README.md) for backend architecture and configuration.
+- Read [API_TESTING.md](API_TESTING.md) for request examples.
+- Read [MENU_FEATURE.md](MENU_FEATURE.md) for menu endpoint details.
