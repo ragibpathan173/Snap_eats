@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchCategories, fetchRestaurants } from "./api/client.js";
+import AppHeader from "./components/AppHeader.jsx";
 import CategoryChips from "./components/CategoryChips.jsx";
-import PreviewHeader from "./components/PreviewHeader.jsx";
+import SearchPanel from "./components/SearchPanel.jsx";
 import RestaurantGrid from "./components/RestaurantGrid.jsx";
 import "./styles.css";
 
@@ -9,6 +10,8 @@ function App() {
   const [categories, setCategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [status, setStatus] = useState("Loading live SnapEats API...");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
     let ignore = false;
@@ -24,8 +27,8 @@ function App() {
           return;
         }
 
-        setCategories(categoryData.slice(0, 8));
-        setRestaurants(restaurantData.slice(0, 6));
+        setCategories(categoryData);
+        setRestaurants(restaurantData);
         setStatus("Connected to the existing Spring Boot API");
       } catch (error) {
         if (!ignore) {
@@ -41,24 +44,56 @@ function App() {
     };
   }, []);
 
+  const filteredRestaurants = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    const normalizedCategory = activeCategory.trim().toLowerCase();
+
+    return restaurants.filter((restaurant) => {
+      const categoryMatches = normalizedCategory === "all" || restaurant.category === normalizedCategory;
+      const searchableText = [
+        restaurant.name,
+        restaurant.cuisine,
+        restaurant.locality,
+        restaurant.city
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return categoryMatches && (!normalizedSearch || searchableText.includes(normalizedSearch));
+    });
+  }, [activeCategory, restaurants, searchTerm]);
+
+  const featuredRestaurants = filteredRestaurants.slice(0, 12);
+
   return (
     <main className="react-preview-shell">
-      <PreviewHeader status={status} />
+      <AppHeader status={status} />
+
+      <SearchPanel
+        searchTerm={searchTerm}
+        onSearchTermChange={setSearchTerm}
+        resultCount={filteredRestaurants.length}
+      />
 
       <section className="preview-section">
         <div className="section-heading">
-          <p className="eyebrow">Live API</p>
-          <h2>Categories</h2>
+          <p className="eyebrow">Browse by craving</p>
+          <h2>What's on your mind?</h2>
         </div>
-        <CategoryChips categories={categories} />
+        <CategoryChips
+          activeCategory={activeCategory}
+          categories={categories}
+          onCategoryChange={setActiveCategory}
+        />
       </section>
 
       <section className="preview-section">
         <div className="section-heading">
-          <p className="eyebrow">First migrated surface</p>
-          <h2>Restaurant cards</h2>
+          <p className="eyebrow">Live restaurant catalog</p>
+          <h2>{activeCategory === "all" ? "Top restaurants near you" : `${activeCategory} restaurants`}</h2>
         </div>
-        <RestaurantGrid restaurants={restaurants} />
+        <RestaurantGrid restaurants={featuredRestaurants} />
       </section>
     </main>
   );

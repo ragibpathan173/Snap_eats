@@ -2,7 +2,7 @@ import RestaurantCard from "./RestaurantCard.jsx";
 
 function RestaurantGrid({ restaurants }) {
   if (!restaurants.length) {
-    return <p className="empty-state">Restaurants will appear here after the API responds.</p>;
+    return <p className="empty-state">No restaurants match this search yet.</p>;
   }
 
   return (
