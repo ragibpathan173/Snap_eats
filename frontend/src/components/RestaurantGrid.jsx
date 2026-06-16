@@ -1,6 +1,6 @@
 import RestaurantCard from "./RestaurantCard.jsx";
 
-function RestaurantGrid({ restaurants }) {
+function RestaurantGrid({ onRestaurantSelect, restaurants }) {
   if (!restaurants.length) {
     return <p className="empty-state">No restaurants match this search yet.</p>;
   }
@@ -8,7 +8,11 @@ function RestaurantGrid({ restaurants }) {
   return (
     <div className="restaurant-grid">
       {restaurants.map((restaurant) => (
-        <RestaurantCard restaurant={restaurant} key={restaurant.restaurantId} />
+        <RestaurantCard
+          onSelect={onRestaurantSelect}
+          restaurant={restaurant}
+          key={restaurant.restaurantId}
+        />
       ))}
     </div>
   );

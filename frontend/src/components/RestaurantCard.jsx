@@ -1,4 +1,4 @@
-function RestaurantCard({ restaurant }) {
+function RestaurantCard({ onSelect, restaurant }) {
   return (
     <article className="restaurant-card">
       <img src={restaurant.image} alt={restaurant.name} loading="lazy" />
@@ -9,6 +9,9 @@ function RestaurantCard({ restaurant }) {
           <span>{restaurant.rating} rating</span>
           <span>{restaurant.time}</span>
         </div>
+        <button className="restaurant-action" onClick={() => onSelect(restaurant)} type="button">
+          View menu
+        </button>
       </div>
     </article>
   );

@@ -17,3 +17,11 @@ export function fetchCategories() {
 export function fetchRestaurants() {
   return fetchJson("/restaurants/active");
 }
+
+export async function fetchRestaurantMenu(restaurantCode) {
+  const response = await fetchJson(
+    `/menu-items/restaurant-code/${encodeURIComponent(restaurantCode)}?activeOnly=true&availableOnly=true&size=100&sortBy=popular`
+  );
+
+  return Array.isArray(response) ? response : response.items || [];
+}

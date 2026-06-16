@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchCategories, fetchRestaurants } from "./api/client.js";
+import { fetchCategories, fetchRestaurantMenu, fetchRestaurants } from "./api/client.js";
 import AppHeader from "./components/AppHeader.jsx";
 import CategoryChips from "./components/CategoryChips.jsx";
+import MenuPanel from "./components/MenuPanel.jsx";
 import SearchPanel from "./components/SearchPanel.jsx";
 import RestaurantGrid from "./components/RestaurantGrid.jsx";
 import "./styles.css";
@@ -12,6 +13,9 @@ function App() {
   const [status, setStatus] = useState("Loading live SnapEats API...");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuStatus, setMenuStatus] = useState("idle");
 
   useEffect(() => {
     let ignore = false;
@@ -66,6 +70,20 @@ function App() {
 
   const featuredRestaurants = filteredRestaurants.slice(0, 12);
 
+  async function handleRestaurantSelect(restaurant) {
+    setSelectedRestaurant(restaurant);
+    setMenuItems([]);
+    setMenuStatus("loading");
+
+    try {
+      const items = await fetchRestaurantMenu(restaurant.restaurantId);
+      setMenuItems(items);
+      setMenuStatus("ready");
+    } catch (error) {
+      setMenuStatus(error.message || "Could not load this menu.");
+    }
+  }
+
   return (
     <main className="react-preview-shell">
       <AppHeader status={status} />
@@ -93,8 +111,15 @@ function App() {
           <p className="eyebrow">Live restaurant catalog</p>
           <h2>{activeCategory === "all" ? "Top restaurants near you" : `${activeCategory} restaurants`}</h2>
         </div>
-        <RestaurantGrid restaurants={featuredRestaurants} />
+        <RestaurantGrid restaurants={featuredRestaurants} onRestaurantSelect={handleRestaurantSelect} />
       </section>
+
+      <MenuPanel
+        menuItems={menuItems}
+        onClose={() => setSelectedRestaurant(null)}
+        restaurant={selectedRestaurant}
+        status={menuStatus}
+      />
     </main>
   );
 }
