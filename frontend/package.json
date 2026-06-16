@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "build": "npm run build:react && npm run build:static",
+    "build:react": "vite build",
+    "build:static": "node scripts/prepare-static-site.mjs",
+    "preview": "vite preview --host 127.0.0.1 --outDir dist"
   },
   "dependencies": {
     "react": "^19.2.7",

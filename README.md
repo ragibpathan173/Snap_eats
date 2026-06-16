@@ -222,6 +222,23 @@ This serves the app at `http://localhost:3000/`.
 
 In native mode, the frontend dev server proxies `/api` to the backend on `http://localhost:8081`, so you only need to open one app link: `http://localhost:3000/`.
 
+React migration preview:
+
+```powershell
+cd frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+Open `http://localhost:5173/react.html`.
+
+Production frontend builds now run through React/Vite first and then assemble `frontend/dist` with both the existing static app and the React preview:
+
+```powershell
+cd frontend
+npm.cmd run build
+```
+
 Smoke test for native mode:
 
 ```powershell

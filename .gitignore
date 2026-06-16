@@ -30,6 +30,7 @@ foodhub-backend/data/
 foodhub-backend/data/*.mv.db
 foodhub-backend/data/*.trace.db
 frontend/node_modules/
+frontend/dist/
 frontend/react-dist/
 
 # Local run artifacts
