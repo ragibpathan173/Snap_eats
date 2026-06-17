@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN", {
@@ -9,8 +9,6 @@ function formatPrice(value) {
 }
 
 function CartPanel({ items, onClear, onClose, onQuantityChange, open, total }) {
-  const [checkoutVisible, setCheckoutVisible] = useState(false);
-
   if (!open) {
     return null;
   }
@@ -72,48 +70,19 @@ function CartPanel({ items, onClear, onClose, onQuantityChange, open, total }) {
           <div className="cart-actions">
             <button
               className="secondary-action"
-              onClick={() => {
-                setCheckoutVisible(false);
-                onClear();
-              }}
+              onClick={onClear}
               type="button"
             >
               Clear
             </button>
-            <button
+            <Link
               className="primary-action"
-              onClick={() => setCheckoutVisible((visible) => !visible)}
-              type="button"
+              onClick={onClose}
+              to="/checkout"
             >
-              Checkout preview
-            </button>
+              Checkout
+            </Link>
           </div>
-
-          {checkoutVisible ? (
-            <form className="checkout-preview">
-              <label>
-                Delivery address
-                <textarea rows="3" placeholder="House, street, area, city" />
-              </label>
-
-              <label>
-                Payment method
-                <select defaultValue="CASH">
-                  <option value="CASH">Cash on delivery</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CARD">Card</option>
-                </select>
-              </label>
-
-              <div className="checkout-preview-total">
-                <span>Payable preview</span>
-                <strong>{formatPrice(total)}</strong>
-              </div>
-              <p>
-                This is a React checkout preview. Backend order placement will be migrated in a later step.
-              </p>
-            </form>
-          ) : null}
         </>
       )}
     </aside>
