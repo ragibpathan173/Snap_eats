@@ -1,6 +1,6 @@
 import MenuItemCard from "./MenuItemCard.jsx";
 
-function MenuPanel({ menuItems, onClose, restaurant, status }) {
+function MenuPanel({ getCartQuantity, menuItems, onAddToCart, onClose, restaurant, status }) {
   if (!restaurant) {
     return null;
   }
@@ -29,7 +29,12 @@ function MenuPanel({ menuItems, onClose, restaurant, status }) {
 
       <div className="menu-list">
         {menuItems.map((item) => (
-          <MenuItemCard item={item} key={item.itemId || item.id} />
+          <MenuItemCard
+            item={item}
+            key={item.itemId || item.id}
+            onAddToCart={(selectedItem) => onAddToCart(selectedItem, restaurant)}
+            quantity={getCartQuantity(item)}
+          />
         ))}
       </div>
     </section>

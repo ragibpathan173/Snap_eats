@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchCategories, fetchRestaurantMenu, fetchRestaurants } from "./api/client.js";
 import AppHeader from "./components/AppHeader.jsx";
+import CartPanel from "./components/CartPanel.jsx";
 import CategoryChips from "./components/CategoryChips.jsx";
 import MenuPanel from "./components/MenuPanel.jsx";
 import SearchPanel from "./components/SearchPanel.jsx";
@@ -16,6 +17,8 @@ function App() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [menuStatus, setMenuStatus] = useState("idle");
+  const [cartItems, setCartItems] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -69,6 +72,19 @@ function App() {
   }, [activeCategory, restaurants, searchTerm]);
 
   const featuredRestaurants = filteredRestaurants.slice(0, 12);
+  const cartSummary = useMemo(() => {
+    return cartItems.reduce(
+      (summary, lineItem) => {
+        const itemPrice = lineItem.item.discountedPrice || lineItem.item.price || 0;
+
+        return {
+          count: summary.count + lineItem.quantity,
+          total: summary.total + itemPrice * lineItem.quantity
+        };
+      },
+      { count: 0, total: 0 }
+    );
+  }, [cartItems]);
 
   async function handleRestaurantSelect(restaurant) {
     setSelectedRestaurant(restaurant);
@@ -84,9 +100,56 @@ function App() {
     }
   }
 
+  function addToCart(item, restaurant) {
+    setCartItems((currentItems) => {
+      const itemKey = item.itemId || item.id;
+      const existingItem = currentItems.find((lineItem) => lineItem.key === itemKey);
+
+      if (existingItem) {
+        return currentItems.map((lineItem) =>
+          lineItem.key === itemKey
+            ? { ...lineItem, quantity: lineItem.quantity + 1 }
+            : lineItem
+        );
+      }
+
+      return [
+        ...currentItems,
+        {
+          item,
+          key: itemKey,
+          quantity: 1,
+          restaurantName: restaurant.name
+        }
+      ];
+    });
+    setCartOpen(true);
+  }
+
+  function updateCartQuantity(itemKey, quantity) {
+    setCartItems((currentItems) => {
+      if (quantity <= 0) {
+        return currentItems.filter((lineItem) => lineItem.key !== itemKey);
+      }
+
+      return currentItems.map((lineItem) =>
+        lineItem.key === itemKey ? { ...lineItem, quantity } : lineItem
+      );
+    });
+  }
+
+  function getCartQuantity(item) {
+    const itemKey = item.itemId || item.id;
+    return cartItems.find((lineItem) => lineItem.key === itemKey)?.quantity || 0;
+  }
+
   return (
     <main className="react-preview-shell">
-      <AppHeader status={status} />
+      <AppHeader
+        cartItemCount={cartSummary.count}
+        onCartOpen={() => setCartOpen(true)}
+        status={status}
+      />
 
       <SearchPanel
         searchTerm={searchTerm}
@@ -115,10 +178,21 @@ function App() {
       </section>
 
       <MenuPanel
+        getCartQuantity={getCartQuantity}
         menuItems={menuItems}
+        onAddToCart={addToCart}
         onClose={() => setSelectedRestaurant(null)}
         restaurant={selectedRestaurant}
         status={menuStatus}
+      />
+
+      <CartPanel
+        items={cartItems}
+        onClear={() => setCartItems([])}
+        onClose={() => setCartOpen(false)}
+        onQuantityChange={updateCartQuantity}
+        open={cartOpen}
+        total={cartSummary.total}
       />
     </main>
   );

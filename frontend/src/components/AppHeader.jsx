@@ -1,4 +1,4 @@
-function AppHeader({ status }) {
+function AppHeader({ cartItemCount, onCartOpen, status }) {
   return (
     <header className="app-header">
       <a className="brand" href="snap_eats.html" aria-label="SnapEats home">
@@ -11,6 +11,9 @@ function AppHeader({ status }) {
 
       <div className="header-actions">
         <span className="status-pill">{status}</span>
+        <button className="legacy-link cart-open-button" onClick={onCartOpen} type="button">
+          Cart ({cartItemCount})
+        </button>
         <a className="legacy-link" href="snap_eats.html">Open main app</a>
       </div>
     </header>

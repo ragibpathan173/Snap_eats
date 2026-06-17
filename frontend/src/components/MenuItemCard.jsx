@@ -6,7 +6,7 @@ function formatPrice(value) {
   }).format(value || 0);
 }
 
-function MenuItemCard({ item }) {
+function MenuItemCard({ item, onAddToCart, quantity }) {
   const hasDiscount = item.discountedPrice && item.discountedPrice < item.price;
 
   return (
@@ -28,6 +28,9 @@ function MenuItemCard({ item }) {
           <strong>{formatPrice(hasDiscount ? item.discountedPrice : item.price)}</strong>
           {hasDiscount ? <span>{formatPrice(item.price)}</span> : null}
         </div>
+        <button className="add-item-button" onClick={() => onAddToCart(item)} type="button">
+          {quantity ? `Add more (${quantity} in cart)` : "Add to cart"}
+        </button>
       </div>
     </article>
   );
