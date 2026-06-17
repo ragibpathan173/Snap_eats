@@ -8,6 +8,19 @@ import SearchPanel from "./components/SearchPanel.jsx";
 import RestaurantGrid from "./components/RestaurantGrid.jsx";
 import "./styles.css";
 
+const CART_STORAGE_KEY = "snap_eats_react_cart";
+
+function readStoredCartItems() {
+  try {
+    const storedCart = window.localStorage.getItem(CART_STORAGE_KEY);
+    const parsedCart = storedCart ? JSON.parse(storedCart) : [];
+
+    return Array.isArray(parsedCart) ? parsedCart : [];
+  } catch {
+    return [];
+  }
+}
+
 function App() {
   const [categories, setCategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
@@ -17,7 +30,7 @@ function App() {
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [menuStatus, setMenuStatus] = useState("idle");
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState(readStoredCartItems);
   const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
@@ -50,6 +63,14 @@ function App() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
+    } catch {
+      // Cart persistence is a convenience; ordering flow can still work without it.
+    }
+  }, [cartItems]);
 
   const filteredRestaurants = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();

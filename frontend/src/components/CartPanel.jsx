@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
@@ -7,6 +9,8 @@ function formatPrice(value) {
 }
 
 function CartPanel({ items, onClear, onClose, onQuantityChange, open, total }) {
+  const [checkoutVisible, setCheckoutVisible] = useState(false);
+
   if (!open) {
     return null;
   }
@@ -66,13 +70,50 @@ function CartPanel({ items, onClear, onClose, onQuantityChange, open, total }) {
           </div>
 
           <div className="cart-actions">
-            <button className="secondary-action" onClick={onClear} type="button">
+            <button
+              className="secondary-action"
+              onClick={() => {
+                setCheckoutVisible(false);
+                onClear();
+              }}
+              type="button"
+            >
               Clear
             </button>
-            <button className="primary-action" type="button" disabled>
+            <button
+              className="primary-action"
+              onClick={() => setCheckoutVisible((visible) => !visible)}
+              type="button"
+            >
               Checkout preview
             </button>
           </div>
+
+          {checkoutVisible ? (
+            <form className="checkout-preview">
+              <label>
+                Delivery address
+                <textarea rows="3" placeholder="House, street, area, city" />
+              </label>
+
+              <label>
+                Payment method
+                <select defaultValue="CASH">
+                  <option value="CASH">Cash on delivery</option>
+                  <option value="UPI">UPI</option>
+                  <option value="CARD">Card</option>
+                </select>
+              </label>
+
+              <div className="checkout-preview-total">
+                <span>Payable preview</span>
+                <strong>{formatPrice(total)}</strong>
+              </div>
+              <p>
+                This is a React checkout preview. Backend order placement will be migrated in a later step.
+              </p>
+            </form>
+          ) : null}
         </>
       )}
     </aside>
