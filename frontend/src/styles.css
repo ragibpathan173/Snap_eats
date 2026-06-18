@@ -592,6 +592,8 @@ h2 {
 .checkout-line-item,
 .checkout-empty,
 .checkout-auth-callout,
+.checkout-address-empty,
+.order-success-card,
 .account-card {
   border: 1px solid #dbe4e2;
   border-radius: 8px;
@@ -620,6 +622,29 @@ h2 {
   padding: 18px;
   border: 1px solid #dbe4e2;
   background: #ffffff;
+}
+
+.checkout-route-form input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cdd8d5;
+  border-radius: 8px;
+  color: #202124;
+  font: inherit;
+}
+
+.checkout-form-note,
+.checkout-address-empty p {
+  margin-bottom: 0;
+  color: #68737a;
+  line-height: 1.45;
+}
+
+.checkout-address-empty {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  background: #f5f7f7;
 }
 
 .checkout-empty {
@@ -652,6 +677,22 @@ h2 {
 .checkout-auth-callout.signed-in {
   border-color: #c9ead8;
   background: #f2fbf6;
+}
+
+.order-success-card {
+  display: grid;
+  gap: 16px;
+  max-width: 640px;
+  padding: 20px;
+}
+
+.order-success-card h1 {
+  margin-bottom: 0;
+}
+
+.order-success-card p {
+  color: #68737a;
+  line-height: 1.5;
 }
 
 .account-page {

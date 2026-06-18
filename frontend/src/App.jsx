@@ -52,6 +52,21 @@ function App() {
   function addToCart(item, restaurant) {
     setCartItems((currentItems) => {
       const itemKey = item.itemId || item.id;
+      const restaurantCode = restaurant.restaurantId || restaurant.id;
+      const existingRestaurantCode = currentItems[0]?.restaurantCode;
+
+      if (currentItems.length && existingRestaurantCode !== restaurantCode) {
+        return [
+          {
+            item,
+            key: itemKey,
+            quantity: 1,
+            restaurantCode,
+            restaurantName: restaurant.name
+          }
+        ];
+      }
+
       const existingItem = currentItems.find((lineItem) => lineItem.key === itemKey);
 
       if (existingItem) {
@@ -68,6 +83,7 @@ function App() {
           item,
           key: itemKey,
           quantity: 1,
+          restaurantCode,
           restaurantName: restaurant.name
         }
       ];
@@ -133,7 +149,11 @@ function App() {
           path="/checkout"
           element={(
             <CheckoutPage
-              currentUser={authSession.user}
+              onOrderPlaced={(orderResponse) => {
+                setCartItems([]);
+                setStatus(`Order ${orderResponse?.order?.orderNumber || ""} placed`.trim());
+              }}
+              session={authSession}
               items={cartItems}
               onQuantityChange={updateCartQuantity}
               total={cartSummary.total}

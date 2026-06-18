@@ -80,3 +80,19 @@ export function fetchCurrentUser(userId, token) {
     userId
   });
 }
+
+export function fetchAddresses(userId, token) {
+  return fetchJson("/addresses", {
+    token,
+    userId
+  });
+}
+
+export function placeCheckoutOrder(payload, userId, token) {
+  return fetchJson("/orders/checkout", {
+    body: JSON.stringify(payload),
+    method: "POST",
+    token,
+    userId
+  });
+}
