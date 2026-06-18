@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchCategories, fetchRestaurantMenu, fetchRestaurants } from "../api/client.js";
+import AppDownloadSection from "../components/AppDownloadSection.jsx";
+import AppFooter from "../components/AppFooter.jsx";
 import CategoryChips from "../components/CategoryChips.jsx";
 import MenuPanel from "../components/MenuPanel.jsx";
 import RestaurantGrid from "../components/RestaurantGrid.jsx";
 import SearchPanel from "../components/SearchPanel.jsx";
 
-function CatalogPage({ getCartQuantity, onAddToCart, onCartQuantityChange, onStatusChange }) {
+function CatalogPage({ getCartQuantity, onAddToCart, onCartQuantityChange, onLocationSelect, onStatusChange }) {
   const [categories, setCategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -116,6 +118,9 @@ function CatalogPage({ getCartQuantity, onAddToCart, onCartQuantityChange, onSta
           </div>
         </div>
       </section>
+
+      <AppDownloadSection />
+      <AppFooter onLocationSelect={onLocationSelect} />
 
       <MenuPanel
         getCartQuantity={getCartQuantity}

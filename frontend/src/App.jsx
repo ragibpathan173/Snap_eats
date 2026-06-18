@@ -28,6 +28,7 @@ function App() {
   const [authSession, setAuthSession] = useState(readStoredAuthSession);
   const [cartItems, setCartItems] = useState(readStoredCartItems);
   const [cartOpen, setCartOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState({ label: "Other", subtitle: "" });
 
   useEffect(() => {
     try {
@@ -134,6 +135,7 @@ function App() {
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
+        selectedLocation={selectedLocation}
       />
 
       <div className={`global-api-notice ${showStatusNotice ? "visible" : ""}`} role="status" aria-live="polite">
@@ -149,6 +151,7 @@ function App() {
               getCartQuantity={getCartQuantity}
               onAddToCart={addToCart}
               onCartQuantityChange={updateCartQuantity}
+              onLocationSelect={setSelectedLocation}
               onStatusChange={setStatus}
             />
           )}

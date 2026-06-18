@@ -8,7 +8,7 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, selectedLocation }) {
   return (
     <header className="header">
       <div className="container">
@@ -26,8 +26,8 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen }) {
             <span className="logo-text">SnapEats</span>
           </NavLink>
           <div className="location-chip" role="button" tabIndex="0">
-            <span className="location-label">Other</span>
-            <span className="location-subtitle"></span>
+            <span className="location-label">{selectedLocation?.label || "Other"}</span>
+            <span className="location-subtitle">{selectedLocation?.subtitle || ""}</span>
             <span className="location-caret" aria-hidden="true">&#9662;</span>
           </div>
         </div>
