@@ -18,6 +18,7 @@ export default defineConfig({
     outDir: "react-dist",
     rollupOptions: {
       input: {
+        index: resolve(projectRoot, "index.html"),
         react: resolve(projectRoot, "react.html")
       }
     }

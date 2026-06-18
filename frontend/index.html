@@ -1,16 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SnapEats</title>
-    <meta http-equiv="refresh" content="0; url=./snap_eats.html">
-    <script>
-        window.location.replace(`./snap_eats.html${window.location.search}${window.location.hash}`);
-    </script>
-</head>
-<body>
-    <p>Redirecting to SnapEats...</p>
-</body>
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
 

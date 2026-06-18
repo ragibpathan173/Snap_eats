@@ -24,7 +24,7 @@ function AppHeader({ cartItemCount, onCartOpen, status }) {
         <button className="legacy-link cart-open-button" onClick={onCartOpen} type="button">
           Cart ({cartItemCount})
         </button>
-        <a className="legacy-link" href="snap_eats.html">Open main app</a>
+        <a className="legacy-link" href="snap_eats.html">Open legacy app</a>
       </div>
     </header>
   );

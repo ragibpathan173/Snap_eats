@@ -1,6 +1,6 @@
 # SnapEats
 
-SnapEats is a Swiggy-inspired food ordering web application with a separate Spring Boot backend and static HTML/CSS/JavaScript frontend.
+SnapEats is a Swiggy-inspired food ordering web application with a separate Spring Boot backend and a React/Vite frontend migration in progress.
 
 It includes restaurant discovery, OTP-first login/signup (email or phone), cart and checkout, addresses, offers/coupons, subscription perks, and a full account experience.
 
@@ -33,7 +33,9 @@ It includes restaurant discovery, OTP-first login/signup (email or phone), cart 
 - H2 database (dev)
 - Flyway migrations
 - Maven
-- Vanilla HTML, CSS, JavaScript
+- React
+- Vite
+- Vanilla HTML, CSS, JavaScript legacy screens
 
 ## Project Structure
 
@@ -222,7 +224,7 @@ This serves the app at `http://localhost:3000/`.
 
 In native mode, the frontend dev server proxies `/api` to the backend on `http://localhost:8081`, so you only need to open one app link: `http://localhost:3000/`.
 
-React migration preview:
+React frontend:
 
 ```powershell
 cd frontend
@@ -230,9 +232,9 @@ npm.cmd install
 npm.cmd run dev
 ```
 
-Open `http://localhost:5173/react.html`.
+Open `http://localhost:5173/`.
 
-Production frontend builds now run through React/Vite first and then assemble `frontend/dist` with both the existing static app and the React preview:
+Production frontend builds now run through React/Vite first and then assemble `frontend/dist` with the React app as the default entry and the existing static app still available at `snap_eats.html`:
 
 ```powershell
 cd frontend
