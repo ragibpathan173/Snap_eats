@@ -1,13 +1,47 @@
-const API_BASE_URL = (window.__SNAP_EATS_API_BASE_URL__ || "/api").replace(/\/$/, "");
+export const API_BASE_URL = (window.__SNAP_EATS_API_BASE_URL__ || "/api").replace(/\/$/, "");
 
-async function fetchJson(path) {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+async function readJsonResponse(response) {
+  const responseText = await response.text();
 
-  if (!response.ok) {
-    throw new Error(`API request failed with ${response.status}`);
+  if (!responseText) {
+    return null;
   }
 
-  return response.json();
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    return { message: responseText };
+  }
+}
+
+export async function fetchJson(path, options = {}) {
+  const { token, userId, ...fetchOptions } = options;
+  const headers = new Headers(fetchOptions.headers || {});
+
+  if (fetchOptions.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (userId) {
+    headers.set("X-User-Id", String(userId));
+  }
+
+  const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
+  const response = await fetch(url, {
+    ...fetchOptions,
+    headers
+  });
+  const data = await readJsonResponse(response);
+
+  if (!response.ok) {
+    throw new Error(data?.error || data?.message || `API request failed with ${response.status}`);
+  }
+
+  return data;
 }
 
 export function fetchCategories() {
@@ -24,4 +58,25 @@ export async function fetchRestaurantMenu(restaurantCode) {
   );
 
   return Array.isArray(response) ? response : response.items || [];
+}
+
+export function requestAuthOtp(identifier) {
+  return fetchJson("/users/auth/otp/request", {
+    body: JSON.stringify({ identifier }),
+    method: "POST"
+  });
+}
+
+export function verifyAuthOtp(payload) {
+  return fetchJson("/users/auth/otp/verify", {
+    body: JSON.stringify(payload),
+    method: "POST"
+  });
+}
+
+export function fetchCurrentUser(userId, token) {
+  return fetchJson("/users/me", {
+    token,
+    userId
+  });
 }

@@ -7,7 +7,7 @@ function formatPrice(value) {
   }).format(value || 0);
 }
 
-function CheckoutPage({ items, onQuantityChange, total }) {
+function CheckoutPage({ currentUser, items, onQuantityChange, total }) {
   return (
     <section className="checkout-page">
       <div className="section-heading">
@@ -23,6 +23,17 @@ function CheckoutPage({ items, onQuantityChange, total }) {
       ) : (
         <div className="checkout-layout">
           <div className="checkout-items">
+            {!currentUser ? (
+              <div className="checkout-auth-callout">
+                <p>Login before placing an order so checkout can attach the order to your account.</p>
+                <Link className="secondary-action" to="/account">Login or sign up</Link>
+              </div>
+            ) : (
+              <div className="checkout-auth-callout signed-in">
+                <p>Ordering as <strong>{currentUser.name || currentUser.email || "SnapEats customer"}</strong></p>
+              </div>
+            )}
+
             {items.map((lineItem) => {
               const itemPrice = lineItem.item.discountedPrice || lineItem.item.price || 0;
 

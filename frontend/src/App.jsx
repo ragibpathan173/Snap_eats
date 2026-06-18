@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth/session.js";
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
+import AccountPage from "./pages/AccountPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
 import "./styles.css";
@@ -21,6 +23,7 @@ function readStoredCartItems() {
 
 function App() {
   const [status, setStatus] = useState("React routes ready");
+  const [authSession, setAuthSession] = useState(readStoredAuthSession);
   const [cartItems, setCartItems] = useState(readStoredCartItems);
   const [cartOpen, setCartOpen] = useState(false);
 
@@ -89,10 +92,27 @@ function App() {
     return cartItems.find((lineItem) => lineItem.key === itemKey)?.quantity || 0;
   }
 
+  function handleAuthSuccess(authResponse) {
+    const session = saveAuthSession({
+      token: authResponse?.token || "",
+      user: authResponse?.user || null
+    });
+
+    setAuthSession(session);
+    setStatus(`Signed in as ${session.user?.name?.split(" ")[0] || "customer"}`);
+  }
+
+  function handleLogout() {
+    const session = clearAuthSession();
+    setAuthSession(session);
+    setStatus("Signed out");
+  }
+
   return (
     <main className="react-preview-shell">
       <AppHeader
         cartItemCount={cartSummary.count}
+        currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
         status={status}
       />
@@ -113,9 +133,21 @@ function App() {
           path="/checkout"
           element={(
             <CheckoutPage
+              currentUser={authSession.user}
               items={cartItems}
               onQuantityChange={updateCartQuantity}
               total={cartSummary.total}
+            />
+          )}
+        />
+        <Route
+          path="/account"
+          element={(
+            <AccountPage
+              onAuthSuccess={handleAuthSuccess}
+              onLogout={handleLogout}
+              onStatusChange={setStatus}
+              session={authSession}
             />
           )}
         />
