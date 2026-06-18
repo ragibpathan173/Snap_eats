@@ -5,6 +5,7 @@ import { fetchAddresses, placeCheckoutOrder } from "../api/client.js";
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN", {
     currency: "INR",
+    maximumFractionDigits: 0,
     style: "currency"
   }).format(value || 0);
 }
@@ -29,6 +30,33 @@ function getItemPrice(lineItem) {
   return lineItem.item.discountedPrice || lineItem.item.price || 0;
 }
 
+const paymentOptions = [
+  {
+    description: "Pay in cash or UPI when your order arrives.",
+    label: "Cash on delivery",
+    pill: "Cash",
+    value: "CASH"
+  },
+  {
+    description: "Use any UPI app for a fast payment.",
+    label: "UPI",
+    pill: "UPI",
+    value: "UPI"
+  },
+  {
+    description: "Pay securely using a credit or debit card.",
+    label: "Card",
+    pill: "Card",
+    value: "CARD"
+  },
+  {
+    description: "Use a saved wallet at checkout.",
+    label: "Wallet",
+    pill: "Wallet",
+    value: "WALLET"
+  }
+];
+
 function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }) {
   const [addresses, setAddresses] = useState([]);
   const [addressStatus, setAddressStatus] = useState("idle");
@@ -46,6 +74,16 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
   const selectedAddress = useMemo(() => {
     return addresses.find((address) => String(address.id) === String(selectedAddressId)) || null;
   }, [addresses, selectedAddressId]);
+  const itemCount = useMemo(() => {
+    return items.reduce((sum, lineItem) => sum + lineItem.quantity, 0);
+  }, [items]);
+  const restaurantName = items[0]?.restaurantName || "Restaurant";
+  const canPlaceOrder = Boolean(!submitting && currentUser?.id && selectedAddress && restaurantCode);
+  const checkoutButtonLabel = !currentUser
+    ? "Login before checkout"
+    : !selectedAddress
+      ? "Add a delivery address first"
+      : `Pay ${formatPrice(total)}`;
 
   useEffect(() => {
     let ignore = false;
@@ -139,8 +177,11 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
 
       setPlacedOrder({
         address: selectedAddress,
+        itemCount,
         paymentMethod,
-        response: orderResponse
+        restaurantName,
+        response: orderResponse,
+        total
       });
       setFeedback("Order placed successfully.");
       setFeedbackTone("success");
@@ -155,137 +196,153 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
 
   if (placedOrder) {
     const order = placedOrder.response?.order;
+    const paidTotal = order?.finalAmount || placedOrder.total;
 
     return (
-      <section className="checkout-page">
+      <section className="cart-shell order-success-shell">
         <div className="order-success-card">
-          <p className="eyebrow">Order placed</p>
-          <h1>{order?.orderNumber || "Your order is confirmed."}</h1>
-          <p>
-            Delivering to {placedOrder.address.label} using {placedOrder.paymentMethod}.
+          <div className="order-success-badge">Order placed</div>
+          <h2>{order?.restaurantName || placedOrder.restaurantName || "Your order is confirmed"}</h2>
+          <p className="order-success-copy">
+            Order <strong>{order?.orderNumber || "confirmed"}</strong> is confirmed and headed to{" "}
+            <strong>{placedOrder.address.label || "your address"}</strong>.
           </p>
-          <div className="checkout-preview-total">
-            <span>Total paid</span>
-            <strong>{formatPrice(order?.finalAmount || total)}</strong>
+
+          <div className="order-success-grid">
+            <div className="account-card">
+              <span>ETA</span>
+              <strong>35 mins</strong>
+            </div>
+            <div className="account-card">
+              <span>Payment</span>
+              <strong>{paymentOptions.find((option) => option.value === placedOrder.paymentMethod)?.label || "Cash on delivery"}</strong>
+            </div>
+            <div className="account-card">
+              <span>Total paid</span>
+              <strong>{formatPrice(paidTotal)}</strong>
+            </div>
+            <div className="account-card">
+              <span>Items</span>
+              <strong>{placedOrder.itemCount} item{placedOrder.itemCount === 1 ? "" : "s"}</strong>
+            </div>
           </div>
-          <Link className="primary-action" to="/restaurants">Order more food</Link>
+
+          <div className="order-success-actions">
+            <Link className="primary-button" to="/restaurants">Continue browsing</Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <section className="cart-shell">
+        <div className="cart-empty">
+          <h2>Your cart is empty</h2>
+          <p>Add a few dishes from a restaurant to start your order.</p>
+          <Link className="primary-button" to="/restaurants">Browse restaurants</Link>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="checkout-page">
-      <div className="section-heading">
-        <p className="eyebrow">React checkout</p>
-        <h1>Review and place your order.</h1>
-      </div>
-
-      {!items.length ? (
-        <div className="checkout-empty">
-          <p>Your cart is empty.</p>
-          <Link className="primary-action" to="/restaurants">Browse restaurants</Link>
-        </div>
-      ) : (
-        <div className="checkout-layout">
-          <div className="checkout-items">
-            {!currentUser ? (
-              <div className="checkout-auth-callout">
-                <p>Login before placing an order so checkout can attach the order to your account.</p>
-                <Link className="secondary-action" to="/account">Login or sign up</Link>
+    <form className="cart-shell checkout-form" onSubmit={handleSubmit}>
+      <div className="cart-layout">
+        <section className="checkout-main">
+          <section className="address-summary-card">
+            <div className="address-summary-head">
+              <div>
+                <p className="menu-eyebrow">Delivery address</p>
+                <h3>
+                  {selectedAddress ? selectedAddress.label : currentUser ? "No saved address selected" : "Login required"}
+                </h3>
               </div>
-            ) : (
-              <div className="checkout-auth-callout signed-in">
-                <p>Ordering as <strong>{currentUser.name || currentUser.email || "SnapEats customer"}</strong></p>
-              </div>
-            )}
+              <Link className="secondary-button" to={currentUser ? "/addresses" : "/account"}>
+                {currentUser ? "Manage addresses" : "Login or sign up"}
+              </Link>
+            </div>
 
-            {items.map((lineItem) => {
-              const itemPrice = lineItem.item.discountedPrice || lineItem.item.price || 0;
-
-              return (
-                <article className="checkout-line-item" key={lineItem.key}>
-                  <div>
-                    <p className="eyebrow">{lineItem.restaurantName}</p>
-                    <h3>{lineItem.item.name}</h3>
-                    <p>{formatPrice(itemPrice)} each</p>
-                  </div>
-
-                  <div className="quantity-control" aria-label={`${lineItem.item.name} quantity`}>
-                    <button
-                      onClick={() => onQuantityChange(lineItem.key, lineItem.quantity - 1)}
-                      type="button"
-                    >
-                      -
-                    </button>
-                    <span>{lineItem.quantity}</span>
-                    <button
-                      onClick={() => onQuantityChange(lineItem.key, lineItem.quantity + 1)}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-
-          <form className="checkout-preview checkout-route-form" onSubmit={handleSubmit}>
             {!currentUser ? (
-              <p className="checkout-form-note">Login first so React checkout can load your saved addresses.</p>
+              <p className="address-empty-note">Login before placing an order so checkout can attach the order to your account.</p>
             ) : null}
 
-            {currentUser ? (
-              <label>
-                Delivery address
-                <select
-                  disabled={addressStatus === "loading" || !addresses.length}
-                  onChange={(event) => setSelectedAddressId(event.target.value)}
-                  value={selectedAddressId}
-                >
-                  {!addresses.length ? <option value="">No saved addresses</option> : null}
-                  {addresses.map((address) => (
-                    <option key={address.id} value={address.id}>
-                      {address.defaultAddress ? "Default - " : ""}{address.label} - {formatAddress(address)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            {currentUser && addressStatus === "loading" ? (
+              <p className="address-empty-note">Loading saved addresses...</p>
             ) : null}
 
-            {addressStatus !== "idle" && addressStatus !== "loading" && addressStatus !== "ready" ? (
-              <p className="auth-feedback error">{addressStatus}</p>
+            {currentUser && addressStatus !== "idle" && addressStatus !== "loading" && addressStatus !== "ready" ? (
+              <p className="checkout-feedback error">{addressStatus}</p>
+            ) : null}
+
+            {currentUser && addresses.length ? (
+              <>
+                <label>
+                  Saved address
+                  <select
+                    disabled={addressStatus === "loading"}
+                    onChange={(event) => setSelectedAddressId(event.target.value)}
+                    value={selectedAddressId}
+                  >
+                    {addresses.map((address) => (
+                      <option key={address.id} value={address.id}>
+                        {address.defaultAddress ? "Default - " : ""}{address.label} - {formatAddress(address)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {selectedAddress ? (
+                  <>
+                    <p className="address-recipient">
+                      {[selectedAddress.recipientName, selectedAddress.phoneNumber].filter(Boolean).join(" - ")}
+                    </p>
+                    <p className="address-line">{formatAddress(selectedAddress)}</p>
+                  </>
+                ) : null}
+              </>
             ) : null}
 
             {currentUser && addressStatus === "ready" && !addresses.length ? (
-              <div className="checkout-address-empty">
-                <p>No saved address yet. Add one in React addresses, then return here to place the order.</p>
-                <Link className="secondary-action" to="/addresses">Add address</Link>
-              </div>
+              <p className="address-empty-note">Save at least one address before placing an order.</p>
             ) : null}
+          </section>
 
-            <label>
-              Payment method
-              <select onChange={(event) => setPaymentMethod(event.target.value)} value={paymentMethod}>
-                <option value="CASH">Cash on delivery</option>
-                <option value="UPI">UPI</option>
-                <option value="CARD">Card</option>
-                <option value="WALLET">Wallet</option>
-              </select>
-            </label>
+          <section className="payment-entry-card">
+            <div className="payment-entry-head">
+              <div>
+                <p className="menu-eyebrow">Payment</p>
+                <h3>Choose payment method</h3>
+              </div>
+              <Link className="secondary-button" to="/account">Manage payments</Link>
+            </div>
+            <p className="payment-entry-copy">Select your payment option and add any delivery notes before placing the order.</p>
 
-            <label>
-              Coupon code
-              <input
-                onChange={(event) => setCouponCode(event.target.value)}
-                placeholder="Optional"
-                type="text"
-                value={couponCode}
-              />
-            </label>
+            <div className="checkout-payment-section">
+              <div className="checkout-payment-list">
+                {paymentOptions.map((option) => (
+                  <label
+                    className={`checkout-payment-card ${paymentMethod === option.value ? "selected" : ""}`}
+                    key={option.value}
+                  >
+                    <input
+                      checked={paymentMethod === option.value}
+                      name="paymentMethod"
+                      onChange={() => setPaymentMethod(option.value)}
+                      type="radio"
+                      value={option.value}
+                    />
+                    <div>
+                      <strong>{option.label}</strong>
+                      <p>{option.description}</p>
+                    </div>
+                    <span className="payment-type-pill">{option.pill}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-            <label>
+            <label className="payment-notes">
               Delivery notes
               <textarea
                 onChange={(event) => setSpecialInstructions(event.target.value)}
@@ -294,25 +351,103 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
                 value={specialInstructions}
               />
             </label>
+          </section>
+        </section>
 
-            <div className="checkout-preview-total">
-              <span>Payable preview</span>
-              <strong>{formatPrice(total)}</strong>
+        <section className="checkout-panel order-summary-panel">
+          <div className="order-summary-head">
+            <p className="menu-eyebrow">Order from</p>
+            <h3>{restaurantName}</h3>
+          </div>
+
+          <section className="cart-items-list">
+            {items.map((lineItem) => {
+              const itemPrice = getItemPrice(lineItem);
+
+              return (
+                <article className="cart-item-card" key={lineItem.key}>
+                  <img
+                    className="cart-item-image"
+                    src={lineItem.item.image}
+                    alt={lineItem.item.name}
+                    loading="lazy"
+                  />
+                  <div className="cart-item-copy">
+                    <h3>{lineItem.item.name}</h3>
+                    <p>{formatPrice(itemPrice)} each</p>
+                  </div>
+                  <div className="cart-item-controls" aria-label={`${lineItem.item.name} quantity controls`}>
+                    <button
+                      onClick={() => onQuantityChange(lineItem.key, lineItem.quantity - 1)}
+                      type="button"
+                      aria-label={`Remove one ${lineItem.item.name}`}
+                    >
+                      -
+                    </button>
+                    <span>{lineItem.quantity}</span>
+                    <button
+                      onClick={() => onQuantityChange(lineItem.key, lineItem.quantity + 1)}
+                      type="button"
+                      aria-label={`Add one ${lineItem.item.name}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="cart-item-total">{formatPrice(itemPrice * lineItem.quantity)}</div>
+                </article>
+              );
+            })}
+          </section>
+
+          <div className="checkout-summary">
+            <div><span>Subtotal</span><strong>{formatPrice(total)}</strong></div>
+            <div><span>Delivery fee</span><strong>FREE</strong></div>
+            <div className="checkout-total"><span>Total</span><strong>{formatPrice(total)}</strong></div>
+          </div>
+
+          <section className="coupon-panel">
+            <div className="coupon-panel-head">
+              <div>
+                <p className="menu-eyebrow">Coupons</p>
+                <h3>Apply coupon code</h3>
+              </div>
             </div>
+            <div className="coupon-input-row">
+              <input
+                onChange={(event) => setCouponCode(event.target.value)}
+                placeholder="Enter coupon code"
+                type="text"
+                value={couponCode}
+              />
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setFeedback(couponCode.trim() ? "Coupon will be checked when you place the order." : "Enter a coupon code first.");
+                  setFeedbackTone(couponCode.trim() ? "success" : "error");
+                }}
+                type="button"
+              >
+                Apply
+              </button>
+            </div>
+          </section>
 
-            {feedback ? <p className={`auth-feedback ${feedbackTone}`}>{feedback}</p> : null}
+          {feedback ? (
+            <div className={`checkout-feedback ${feedbackTone === "error" ? "error" : ""} ${feedbackTone === "success" ? "success" : ""}`}>
+              {feedback}
+            </div>
+          ) : null}
 
-            <button
-              className="primary-action"
-              disabled={submitting || !currentUser || !selectedAddress || !restaurantCode}
-              type="submit"
-            >
-              {submitting ? "Placing order..." : "Place order"}
-            </button>
-          </form>
-        </div>
-      )}
-    </section>
+          <button
+            className="primary-button checkout-button"
+            disabled={!canPlaceOrder}
+            type="submit"
+          >
+            {submitting ? "Placing order..." : checkoutButtonLabel}
+          </button>
+        </section>
+      </div>
+    </form>
   );
 }
 
