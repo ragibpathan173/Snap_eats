@@ -21,6 +21,14 @@
   font-weight: 800;
 }
 
+.react-menu-modal {
+  z-index: 2300;
+}
+
+.react-menu-modal .close-btn {
+  z-index: 2;
+}
+
 * {
   box-sizing: border-box;
 }

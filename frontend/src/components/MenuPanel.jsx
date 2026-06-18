@@ -1,43 +1,119 @@
+import { useEffect, useMemo, useState } from "react";
 import MenuItemCard from "./MenuItemCard.jsx";
 
-function MenuPanel({ getCartQuantity, menuItems, onAddToCart, onClose, restaurant, status }) {
+function capitalize(value) {
+  const text = String(value || "");
+
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "";
+}
+
+function formatNumber(value) {
+  const numericValue = Number(value || 0);
+
+  return Number.isFinite(numericValue) ? numericValue.toFixed(1) : value;
+}
+
+function MenuPanel({ getCartQuantity, menuItems, onAddToCart, onClose, onQuantityChange, restaurant, status }) {
+  const [activeFilter, setActiveFilter] = useState("all");
+  const isLoading = status === "loading";
+  const isError = status !== "idle" && status !== "loading" && status !== "ready";
+  const menuCategories = useMemo(() => {
+    return [...new Set(menuItems.map((item) => item.category).filter(Boolean))];
+  }, [menuItems]);
+  const visibleItems = activeFilter === "all"
+    ? menuItems
+    : menuItems.filter((item) => item.category === activeFilter);
+
+  useEffect(() => {
+    if (!restaurant) {
+      return undefined;
+    }
+
+    document.body.classList.add("modal-open");
+
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [restaurant]);
+
+  useEffect(() => {
+    setActiveFilter("all");
+  }, [restaurant?.id]);
+
   if (!restaurant) {
     return null;
   }
 
-  const isLoading = status === "loading";
-  const isError = status !== "idle" && status !== "loading" && status !== "ready";
-
   return (
-    <section className="menu-panel" aria-label={`${restaurant.name} menu`}>
-      <div className="menu-panel-header">
-        <div>
-          <p className="eyebrow">{restaurant.locality}, {restaurant.city}</p>
-          <h2>{restaurant.name}</h2>
-          <p>{restaurant.cuisine}</p>
-        </div>
-        <button className="icon-button" onClick={onClose} type="button" aria-label="Close menu">
-          X
+    <div className="modal open react-menu-modal" aria-label={`${restaurant.name} menu`} role="dialog" aria-modal="true">
+      <div className="modal-content">
+        <button className="close-btn" onClick={onClose} type="button" aria-label="Close menu">
+          &times;
         </button>
-      </div>
 
-      {isLoading ? <p className="empty-state">Loading menu...</p> : null}
-      {isError ? <p className="empty-state">{status}</p> : null}
-      {!isLoading && !isError && !menuItems.length ? (
-        <p className="empty-state">No available dishes found for this restaurant.</p>
-      ) : null}
+        <section className="menu-hero">
+          <img className="menu-hero-image" src={restaurant.image} alt={restaurant.name} />
+          <div className="menu-hero-copy">
+            <p className="menu-eyebrow">{capitalize(restaurant.category || "featured")} kitchen</p>
+            <h2>{restaurant.name}</h2>
+            <p className="menu-cuisine">{restaurant.cuisine || ""}</p>
+            <div className="menu-stats">
+              <span>&#9733; {formatNumber(restaurant.rating)}</span>
+              <span>{restaurant.time || "Freshly prepared"}</span>
+              {[restaurant.locality, restaurant.city].filter(Boolean).length ? (
+                <span>{[restaurant.locality, restaurant.city].filter(Boolean).join(", ")}</span>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
-      <div className="menu-list">
-        {menuItems.map((item) => (
-          <MenuItemCard
-            item={item}
-            key={item.itemId || item.id}
-            onAddToCart={(selectedItem) => onAddToCart(selectedItem, restaurant)}
-            quantity={getCartQuantity(item)}
-          />
-        ))}
+        <section className="menu-toolbar">
+          <div className="menu-filter-row">
+            <button
+              className={`menu-chip ${activeFilter === "all" ? "active" : ""}`}
+              onClick={() => setActiveFilter("all")}
+              type="button"
+            >
+              All
+            </button>
+            {menuCategories.map((category) => (
+              <button
+                className={`menu-chip ${activeFilter === category ? "active" : ""}`}
+                key={category}
+                onClick={() => setActiveFilter(category)}
+                type="button"
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <div className="menu-toolbar-meta">
+            <p className="menu-summary">
+              {isLoading ? "Loading dishes..." : `${visibleItems.length} dishes available right now`}
+            </p>
+          </div>
+        </section>
+
+        <div className="menu-grid">
+          {isLoading ? <p className="modal-loading">Loading menu...</p> : null}
+          {isError ? <p className="modal-error">{status}</p> : null}
+          {!isLoading && !isError && !visibleItems.length ? (
+            <p className="modal-error">No available dishes found for this restaurant.</p>
+          ) : null}
+
+          {visibleItems.map((item) => (
+            <MenuItemCard
+              item={item}
+              key={item.itemId || item.id}
+              onAddToCart={(selectedItem) => onAddToCart(selectedItem, restaurant)}
+              onQuantityChange={onQuantityChange}
+              quantity={getCartQuantity(item)}
+              restaurantImage={restaurant.image}
+            />
+          ))}
+        </div>
       </div>
-    </section>
+    </div>
   );
 }
 

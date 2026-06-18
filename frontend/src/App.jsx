@@ -148,6 +148,7 @@ function App() {
             <CatalogPage
               getCartQuantity={getCartQuantity}
               onAddToCart={addToCart}
+              onCartQuantityChange={updateCartQuantity}
               onStatusChange={setStatus}
             />
           )}
