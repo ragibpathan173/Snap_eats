@@ -6,7 +6,7 @@ function RestaurantGrid({ onRestaurantSelect, restaurants }) {
   }
 
   return (
-    <div className="restaurant-grid">
+    <div className="restaurants-grid">
       {restaurants.map((restaurant) => (
         <RestaurantCard
           onSelect={onRestaurantSelect}

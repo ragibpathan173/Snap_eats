@@ -8,6 +8,7 @@ import AddressesPage from "./pages/AddressesPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
 import "./styles.css";
+import "../snap_eats.css";
 
 const CART_STORAGE_KEY = "snap_eats_react_cart";
 
@@ -125,14 +126,19 @@ function App() {
     setStatus("Signed out");
   }
 
+  const showStatusNotice = Boolean(status && /could not|failed|error/i.test(status));
+
   return (
-    <main className="react-preview-shell">
+    <>
       <AppHeader
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
-        status={status}
       />
+
+      <div className={`global-api-notice ${showStatusNotice ? "visible" : ""}`} role="status" aria-live="polite">
+        {showStatusNotice ? status : ""}
+      </div>
 
       <Routes>
         <Route path="/" element={<Navigate replace to="/restaurants" />} />
@@ -192,7 +198,7 @@ function App() {
         open={cartOpen}
         total={cartSummary.total}
       />
-    </main>
+    </>
   );
 }
 

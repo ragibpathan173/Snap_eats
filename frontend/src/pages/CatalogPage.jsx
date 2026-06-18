@@ -90,24 +90,31 @@ function CatalogPage({ getCartQuantity, onAddToCart, onStatusChange }) {
         searchTerm={searchTerm}
       />
 
-      <section className="preview-section">
-        <div className="section-heading">
-          <p className="eyebrow">Browse by craving</p>
-          <h2>What's on your mind?</h2>
+      <section className="categories-section">
+        <div className="container">
+          <h2 className="section-title">What's on your mind?</h2>
+          <div className="categories-wrapper">
+            <CategoryChips
+              activeCategory={activeCategory}
+              categories={categories}
+              onCategoryChange={setActiveCategory}
+            />
+          </div>
         </div>
-        <CategoryChips
-          activeCategory={activeCategory}
-          categories={categories}
-          onCategoryChange={setActiveCategory}
-        />
       </section>
 
-      <section className="preview-section">
-        <div className="section-heading">
-          <p className="eyebrow">Live restaurant catalog</p>
-          <h2>{activeCategory === "all" ? "Top restaurants near you" : `${activeCategory} restaurants`}</h2>
+      <div className="section-divider"></div>
+
+      <section className="restaurants-section">
+        <div className="container">
+          <h2 className="section-title">
+            {activeCategory === "all" ? "Top restaurant chains in your city" : `${activeCategory} restaurants`}
+          </h2>
+          <RestaurantGrid restaurants={featuredRestaurants} onRestaurantSelect={handleRestaurantSelect} />
+          <div className="restaurants-footer">
+            <p className="restaurants-count">Showing {featuredRestaurants.length} of {filteredRestaurants.length} restaurants</p>
+          </div>
         </div>
-        <RestaurantGrid restaurants={featuredRestaurants} onRestaurantSelect={handleRestaurantSelect} />
       </section>
 
       <MenuPanel
