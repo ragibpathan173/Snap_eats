@@ -26,12 +26,22 @@
 }
 
 .react-menu-modal .close-btn,
-.react-cart-modal .close-btn {
+.react-cart-modal .close-btn,
+.react-location-modal .close-btn {
   z-index: 2;
 }
 
 .footer-subheading {
   margin-top: 30px;
+}
+
+.react-location-card {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
 }
 
 * {

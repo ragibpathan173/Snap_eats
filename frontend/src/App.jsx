@@ -4,6 +4,7 @@ import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
 import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
+import LocationPickerModal from "./components/LocationPickerModal.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import AddressesPage from "./pages/AddressesPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
@@ -12,6 +13,7 @@ import "./styles.css";
 import "../snap_eats.css";
 
 const CART_STORAGE_KEY = "snap_eats_react_cart";
+const LOCATION_STORAGE_KEY = "snap_eats_react_location";
 
 function readStoredCartItems() {
   try {
@@ -24,12 +26,24 @@ function readStoredCartItems() {
   }
 }
 
+function readStoredLocation() {
+  try {
+    const storedLocation = window.localStorage.getItem(LOCATION_STORAGE_KEY);
+    const parsedLocation = storedLocation ? JSON.parse(storedLocation) : null;
+
+    return parsedLocation?.label ? parsedLocation : { label: "Other", subtitle: "" };
+  } catch {
+    return { label: "Other", subtitle: "" };
+  }
+}
+
 function App() {
   const [status, setStatus] = useState("React routes ready");
   const [authSession, setAuthSession] = useState(readStoredAuthSession);
   const [cartItems, setCartItems] = useState(readStoredCartItems);
   const [cartOpen, setCartOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState({ label: "Other", subtitle: "" });
+  const [selectedLocation, setSelectedLocation] = useState(readStoredLocation);
+  const [locationOpen, setLocationOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -130,6 +144,17 @@ function App() {
     setStatus("Signed out");
   }
 
+  function handleLocationSelect(location) {
+    setSelectedLocation(location);
+    setLocationOpen(false);
+
+    try {
+      window.localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(location));
+    } catch {
+      // Location selection still updates the UI even if storage is unavailable.
+    }
+  }
+
   const showStatusNotice = Boolean(status && /could not|failed|error/i.test(status));
 
   return (
@@ -138,6 +163,7 @@ function App() {
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
+        onLocationOpen={() => setLocationOpen(true)}
         onSearchToggle={() => setSearchOpen((currentOpen) => !currentOpen)}
         selectedLocation={selectedLocation}
       />
@@ -161,7 +187,7 @@ function App() {
               getCartQuantity={getCartQuantity}
               onAddToCart={addToCart}
               onCartQuantityChange={updateCartQuantity}
-              onLocationSelect={setSelectedLocation}
+              onLocationSelect={handleLocationSelect}
               onStatusChange={setStatus}
               searchTerm={searchTerm}
             />
@@ -212,6 +238,13 @@ function App() {
         onQuantityChange={updateCartQuantity}
         open={cartOpen}
         total={cartSummary.total}
+      />
+
+      <LocationPickerModal
+        onClose={() => setLocationOpen(false)}
+        onLocationSelect={handleLocationSelect}
+        open={locationOpen}
+        selectedLocation={selectedLocation}
       />
     </>
   );

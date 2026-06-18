@@ -8,7 +8,14 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen, onSearchToggle, selectedLocation }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onSearchToggle, selectedLocation }) {
+  function handleLocationKeyDown(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onLocationOpen();
+    }
+  }
+
   return (
     <header className="header">
       <div className="container">
@@ -25,7 +32,13 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, onSearchToggle, sel
             </span>
             <span className="logo-text">SnapEats</span>
           </NavLink>
-          <div className="location-chip" role="button" tabIndex="0">
+          <div
+            className="location-chip"
+            onClick={onLocationOpen}
+            onKeyDown={handleLocationKeyDown}
+            role="button"
+            tabIndex="0"
+          >
             <span className="location-label">{selectedLocation?.label || "Other"}</span>
             <span className="location-subtitle">{selectedLocation?.subtitle || ""}</span>
             <span className="location-caret" aria-hidden="true">&#9662;</span>
