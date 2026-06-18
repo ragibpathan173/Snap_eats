@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth/session.js";
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
+import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import AddressesPage from "./pages/AddressesPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
@@ -29,6 +30,8 @@ function App() {
   const [cartItems, setCartItems] = useState(readStoredCartItems);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState({ label: "Other", subtitle: "" });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     try {
@@ -135,7 +138,14 @@ function App() {
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
+        onSearchToggle={() => setSearchOpen((currentOpen) => !currentOpen)}
         selectedLocation={selectedLocation}
+      />
+
+      <HeaderSearchStrip
+        onSearchTermChange={setSearchTerm}
+        open={searchOpen}
+        searchTerm={searchTerm}
       />
 
       <div className={`global-api-notice ${showStatusNotice ? "visible" : ""}`} role="status" aria-live="polite">
@@ -153,6 +163,7 @@ function App() {
               onCartQuantityChange={updateCartQuantity}
               onLocationSelect={setSelectedLocation}
               onStatusChange={setStatus}
+              searchTerm={searchTerm}
             />
           )}
         />

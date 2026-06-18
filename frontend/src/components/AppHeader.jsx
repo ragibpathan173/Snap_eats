@@ -8,7 +8,7 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen, selectedLocation }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, onSearchToggle, selectedLocation }) {
   return (
     <header className="header">
       <div className="container">
@@ -40,7 +40,7 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, selectedLocation })
               </span>
               <span>About SnapEats</span>
             </a>
-            <NavLink className={getRouteClassName} to="/restaurants">
+            <NavLink className="nav-link" onClick={onSearchToggle} to="/restaurants">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.43 1.06-1.06-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z" /></svg>
               </span>

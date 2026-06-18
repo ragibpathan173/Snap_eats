@@ -7,10 +7,16 @@ import MenuPanel from "../components/MenuPanel.jsx";
 import RestaurantGrid from "../components/RestaurantGrid.jsx";
 import SearchPanel from "../components/SearchPanel.jsx";
 
-function CatalogPage({ getCartQuantity, onAddToCart, onCartQuantityChange, onLocationSelect, onStatusChange }) {
+function CatalogPage({
+  getCartQuantity,
+  onAddToCart,
+  onCartQuantityChange,
+  onLocationSelect,
+  onStatusChange,
+  searchTerm
+}) {
   const [categories, setCategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
@@ -87,7 +93,6 @@ function CatalogPage({ getCartQuantity, onAddToCart, onCartQuantityChange, onLoc
   return (
     <>
       <SearchPanel
-        onSearchTermChange={setSearchTerm}
         resultCount={filteredRestaurants.length}
         searchTerm={searchTerm}
       />
