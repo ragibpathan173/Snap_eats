@@ -4,6 +4,7 @@ import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
+import AddressesPage from "./pages/AddressesPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
 import "./styles.css";
@@ -166,6 +167,15 @@ function App() {
             <AccountPage
               onAuthSuccess={handleAuthSuccess}
               onLogout={handleLogout}
+              onStatusChange={setStatus}
+              session={authSession}
+            />
+          )}
+        />
+        <Route
+          path="/addresses"
+          element={(
+            <AddressesPage
               onStatusChange={setStatus}
               session={authSession}
             />

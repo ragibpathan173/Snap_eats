@@ -700,11 +700,99 @@ h2 {
   gap: 24px;
 }
 
+.addresses-page {
+  display: grid;
+  gap: 24px;
+}
+
+.addresses-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
+  gap: 24px;
+  align-items: start;
+}
+
+.address-list {
+  display: grid;
+  gap: 14px;
+}
+
+.address-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid #dbe4e2;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.address-card h3 {
+  margin-bottom: 8px;
+}
+
+.address-card p:not(.eyebrow) {
+  color: #68737a;
+  line-height: 1.45;
+}
+
+.address-card strong {
+  color: #202124;
+}
+
+.address-card-actions {
+  display: grid;
+  min-width: 140px;
+  gap: 8px;
+}
+
 .account-card {
   display: grid;
   gap: 18px;
   max-width: 720px;
   padding: 20px;
+}
+
+.address-form {
+  max-width: none;
+}
+
+.address-form h2 {
+  font-size: 1.6rem;
+}
+
+.address-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.address-form label,
+.checkbox-label {
+  display: grid;
+  gap: 8px;
+  color: #68737a;
+  font-weight: 800;
+}
+
+.address-form input,
+.address-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #cdd8d5;
+  border-radius: 8px;
+  color: #202124;
+  font: inherit;
+}
+
+.checkbox-label {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.checkbox-label input {
+  width: auto;
 }
 
 .auth-tabs {
@@ -879,6 +967,19 @@ h2 {
   .checkout-line-item {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .addresses-layout,
+  .address-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .address-card {
+    flex-direction: column;
+  }
+
+  .address-card-actions {
+    width: 100%;
   }
 
   .checkout-auth-callout,

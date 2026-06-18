@@ -24,6 +24,7 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, status }) {
         <nav className="route-nav" aria-label="React preview">
           <NavLink className={getRouteClassName} to="/restaurants">Restaurants</NavLink>
           <NavLink className={getRouteClassName} to="/checkout">Checkout</NavLink>
+          <NavLink className={getRouteClassName} to="/addresses">Addresses</NavLink>
           <NavLink className={getRouteClassName} to="/account">{getAccountLabel(currentUser)}</NavLink>
         </nav>
         <button className="legacy-link cart-open-button" onClick={onCartOpen} type="button">

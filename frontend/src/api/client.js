@@ -88,6 +88,31 @@ export function fetchAddresses(userId, token) {
   });
 }
 
+export function createAddress(payload, userId, token) {
+  return fetchJson("/addresses", {
+    body: JSON.stringify(payload),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function setDefaultAddress(addressId, userId, token) {
+  return fetchJson(`/addresses/${encodeURIComponent(addressId)}/default`, {
+    method: "PATCH",
+    token,
+    userId
+  });
+}
+
+export function deleteAddress(addressId, userId, token) {
+  return fetchJson(`/addresses/${encodeURIComponent(addressId)}`, {
+    method: "DELETE",
+    token,
+    userId
+  });
+}
+
 export function placeCheckoutOrder(payload, userId, token) {
   return fetchJson("/orders/checkout", {
     body: JSON.stringify(payload),

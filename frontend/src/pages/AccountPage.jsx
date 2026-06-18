@@ -31,6 +31,7 @@ function AccountSummary({ session, onLogout }) {
 
       <div className="account-actions">
         <Link className="primary-action" to="/checkout">Continue checkout</Link>
+        <Link className="secondary-action" to="/addresses">Manage addresses</Link>
         <button className="secondary-action" onClick={onLogout} type="button">
           Log out
         </button>

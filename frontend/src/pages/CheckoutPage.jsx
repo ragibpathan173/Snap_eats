@@ -260,8 +260,8 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
 
             {currentUser && addressStatus === "ready" && !addresses.length ? (
               <div className="checkout-address-empty">
-                <p>No saved address yet. Add one from the legacy address book, then return here to place the order.</p>
-                <a className="secondary-action" href="snap_eats.html">Open legacy address book</a>
+                <p>No saved address yet. Add one in React addresses, then return here to place the order.</p>
+                <Link className="secondary-action" to="/addresses">Add address</Link>
               </div>
             ) : null}
 
