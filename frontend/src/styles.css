@@ -29,7 +29,8 @@
 .react-cart-modal .close-btn,
 .react-location-modal .close-btn,
 .react-offers-modal .close-btn,
-.react-help-modal .close-btn {
+.react-help-modal .close-btn,
+.react-corporate-modal .close-btn {
   z-index: 2;
 }
 
@@ -38,6 +39,10 @@
 }
 
 .react-help-modal {
+  z-index: 2300;
+}
+
+.react-corporate-modal {
   z-index: 2300;
 }
 

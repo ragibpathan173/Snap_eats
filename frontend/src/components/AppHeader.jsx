@@ -8,7 +8,7 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen, onHelpOpen, onLocationOpen, onOffersOpen, onSearchToggle, selectedLocation }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, onCorporateOpen, onHelpOpen, onLocationOpen, onOffersOpen, onSearchToggle, selectedLocation }) {
   function handleLocationKeyDown(event) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -47,12 +47,12 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, onHelpOpen, onLocat
 
         <div className="header-actions">
           <nav className="nav-links" aria-label="SnapEats">
-            <a className="nav-link" href="company.html#about-us">
+            <button className="nav-link nav-button" onClick={onCorporateOpen} type="button">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M7 7.5A2.5 2.5 0 0 1 9.5 5h5A2.5 2.5 0 0 1 17 7.5V9h1.5A1.5 1.5 0 0 1 20 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9H7V7.5Zm2.5-1A1.5 1.5 0 0 0 8 8v1h8V8a1.5 1.5 0 0 0-1.5-1.5h-5Z" /></svg>
               </span>
               <span>About SnapEats</span>
-            </a>
+            </button>
             <NavLink className="nav-link" onClick={onSearchToggle} to="/restaurants">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M10.5 4a6.5 6.5 0 1 0 4.03 11.6l4.43 4.43 1.06-1.06-4.43-4.43A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z" /></svg>

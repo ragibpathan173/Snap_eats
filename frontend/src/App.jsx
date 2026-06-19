@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth/session.js";
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
+import CorporateModal from "./components/CorporateModal.jsx";
 import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
 import HelpModal from "./components/HelpModal.jsx";
 import LocationPickerModal from "./components/LocationPickerModal.jsx";
@@ -48,6 +49,7 @@ function App() {
   const [locationOpen, setLocationOpen] = useState(false);
   const [offersOpen, setOffersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [corporateOpen, setCorporateOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -182,6 +184,7 @@ function App() {
 
   function openOffers() {
     setCartOpen(false);
+    setCorporateOpen(false);
     setHelpOpen(false);
     setLocationOpen(false);
     setOffersOpen(true);
@@ -190,7 +193,17 @@ function App() {
 
   function openHelp() {
     setCartOpen(false);
+    setCorporateOpen(false);
     setHelpOpen(true);
+    setLocationOpen(false);
+    setOffersOpen(false);
+    setSearchOpen(false);
+  }
+
+  function openCorporate() {
+    setCartOpen(false);
+    setCorporateOpen(true);
+    setHelpOpen(false);
     setLocationOpen(false);
     setOffersOpen(false);
     setSearchOpen(false);
@@ -204,6 +217,7 @@ function App() {
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
+        onCorporateOpen={openCorporate}
         onHelpOpen={openHelp}
         onLocationOpen={() => setLocationOpen(true)}
         onOffersOpen={openOffers}
@@ -312,6 +326,8 @@ function App() {
         }}
         open={helpOpen}
       />
+
+      <CorporateModal onClose={() => setCorporateOpen(false)} open={corporateOpen} />
     </>
   );
 }
