@@ -8,7 +8,7 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onOffersOpen, onSearchToggle, selectedLocation }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, onHelpOpen, onLocationOpen, onOffersOpen, onSearchToggle, selectedLocation }) {
   function handleLocationKeyDown(event) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -65,12 +65,12 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onO
               </span>
               <span>Offers</span>
             </button>
-            <a className="nav-link" href="contact.html#help-support">
+            <button className="nav-link nav-button" onClick={onHelpOpen} type="button">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 8.96 8.96 0 0 0 2.29 6l-1.04 3.34 3.47-.94A9 9 0 1 0 12 3Zm0 1.5a7.5 7.5 0 1 1 0 15 7.44 7.44 0 0 1-3.71-.98l-.28-.16-1.95.53.6-1.92-.19-.29A7.46 7.46 0 0 1 4.5 12 7.5 7.5 0 0 1 12 4.5Zm-.75 3v5.19l4.11 2.37.75-1.3-3.36-1.94V7.5h-1.5Z" /></svg>
               </span>
               <span>Help</span>
-            </a>
+            </button>
           </nav>
 
           <div className="nav-top-actions">

@@ -4,6 +4,7 @@ import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
 import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
+import HelpModal from "./components/HelpModal.jsx";
 import LocationPickerModal from "./components/LocationPickerModal.jsx";
 import OffersModal from "./components/OffersModal.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
@@ -46,6 +47,7 @@ function App() {
   const [selectedLocation, setSelectedLocation] = useState(readStoredLocation);
   const [locationOpen, setLocationOpen] = useState(false);
   const [offersOpen, setOffersOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -180,8 +182,17 @@ function App() {
 
   function openOffers() {
     setCartOpen(false);
+    setHelpOpen(false);
     setLocationOpen(false);
     setOffersOpen(true);
+    setSearchOpen(false);
+  }
+
+  function openHelp() {
+    setCartOpen(false);
+    setHelpOpen(true);
+    setLocationOpen(false);
+    setOffersOpen(false);
     setSearchOpen(false);
   }
 
@@ -193,6 +204,7 @@ function App() {
         cartItemCount={cartSummary.count}
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
+        onHelpOpen={openHelp}
         onLocationOpen={() => setLocationOpen(true)}
         onOffersOpen={openOffers}
         onSearchToggle={() => setSearchOpen((currentOpen) => !currentOpen)}
@@ -290,6 +302,15 @@ function App() {
           setCartOpen(true);
         }}
         open={offersOpen}
+      />
+
+      <HelpModal
+        onClose={() => setHelpOpen(false)}
+        onOpenCart={() => {
+          setHelpOpen(false);
+          setCartOpen(true);
+        }}
+        open={helpOpen}
       />
     </>
   );

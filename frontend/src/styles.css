@@ -28,11 +28,16 @@
 .react-menu-modal .close-btn,
 .react-cart-modal .close-btn,
 .react-location-modal .close-btn,
-.react-offers-modal .close-btn {
+.react-offers-modal .close-btn,
+.react-help-modal .close-btn {
   z-index: 2;
 }
 
 .react-offers-modal {
+  z-index: 2300;
+}
+
+.react-help-modal {
   z-index: 2300;
 }
 
