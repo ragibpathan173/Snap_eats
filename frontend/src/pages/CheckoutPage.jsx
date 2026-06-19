@@ -57,12 +57,11 @@ const paymentOptions = [
   }
 ];
 
-function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }) {
+function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, onQuantityChange, session, total }) {
   const [addresses, setAddresses] = useState([]);
   const [addressStatus, setAddressStatus] = useState("idle");
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [couponCode, setCouponCode] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [feedback, setFeedback] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("neutral");
@@ -414,7 +413,7 @@ function CheckoutPage({ items, onOrderPlaced, onQuantityChange, session, total }
             </div>
             <div className="coupon-input-row">
               <input
-                onChange={(event) => setCouponCode(event.target.value)}
+                onChange={(event) => onCouponCodeChange(event.target.value.toUpperCase())}
                 placeholder="Enter coupon code"
                 type="text"
                 value={couponCode}

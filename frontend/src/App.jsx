@@ -5,6 +5,7 @@ import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
 import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
 import LocationPickerModal from "./components/LocationPickerModal.jsx";
+import OffersModal from "./components/OffersModal.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import AddressesPage from "./pages/AddressesPage.jsx";
 import CatalogPage from "./pages/CatalogPage.jsx";
@@ -44,8 +45,10 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(readStoredLocation);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [offersOpen, setOffersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
     try {
@@ -155,6 +158,33 @@ function App() {
     }
   }
 
+  function handleCouponApply(coupon) {
+    if (!cartItems.length) {
+      return { message: "Add items to your cart before applying a coupon.", type: "error" };
+    }
+
+    if (cartSummary.total < coupon.minOrder) {
+      return {
+        message: `Coupon requires a minimum order of Rs ${coupon.minOrder}.`,
+        type: "error"
+      };
+    }
+
+    setCouponCode(coupon.code);
+
+    return {
+      message: `Coupon ${coupon.code} added to checkout.`,
+      type: "success"
+    };
+  }
+
+  function openOffers() {
+    setCartOpen(false);
+    setLocationOpen(false);
+    setOffersOpen(true);
+    setSearchOpen(false);
+  }
+
   const showStatusNotice = Boolean(status && /could not|failed|error/i.test(status));
 
   return (
@@ -164,6 +194,7 @@ function App() {
         currentUser={authSession.user}
         onCartOpen={() => setCartOpen(true)}
         onLocationOpen={() => setLocationOpen(true)}
+        onOffersOpen={openOffers}
         onSearchToggle={() => setSearchOpen((currentOpen) => !currentOpen)}
         selectedLocation={selectedLocation}
       />
@@ -199,8 +230,11 @@ function App() {
             <CheckoutPage
               onOrderPlaced={(orderResponse) => {
                 setCartItems([]);
+                setCouponCode("");
                 setStatus(`Order ${orderResponse?.order?.orderNumber || ""} placed`.trim());
               }}
+              couponCode={couponCode}
+              onCouponCodeChange={setCouponCode}
               session={authSession}
               items={cartItems}
               onQuantityChange={updateCartQuantity}
@@ -245,6 +279,17 @@ function App() {
         onLocationSelect={handleLocationSelect}
         open={locationOpen}
         selectedLocation={selectedLocation}
+      />
+
+      <OffersModal
+        appliedCouponCode={couponCode}
+        onApplyCoupon={handleCouponApply}
+        onClose={() => setOffersOpen(false)}
+        onOpenCart={() => {
+          setOffersOpen(false);
+          setCartOpen(true);
+        }}
+        open={offersOpen}
       />
     </>
   );

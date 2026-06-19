@@ -8,7 +8,7 @@ function getAccountLabel(currentUser) {
   return currentUser?.name ? currentUser.name.trim().split(/\s+/)[0] : "Account";
 }
 
-function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onSearchToggle, selectedLocation }) {
+function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onOffersOpen, onSearchToggle, selectedLocation }) {
   function handleLocationKeyDown(event) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -59,12 +59,12 @@ function AppHeader({ cartItemCount, currentUser, onCartOpen, onLocationOpen, onS
               </span>
               <span>Search</span>
             </NavLink>
-            <a className="nav-link" href="snap_eats.html#offers">
+            <button className="nav-link nav-button" onClick={onOffersOpen} type="button">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2 9.2 7.63 3 8.53l4.5 4.39-1.06 6.2L12 16.2l5.56 2.92-1.06-6.2L21 8.53l-6.2-.9L12 2Zm0 3.24 1.66 3.35.19.39.43.06 3.7.54-2.67 2.61-.31.3.07.43.63 3.69-3.31-1.74L12 14.7l-.39.21-3.31 1.74.63-3.69.07-.43-.31-.3-2.67-2.61 3.7-.54.43-.06.19-.39L12 5.24Z" /></svg>
               </span>
               <span>Offers</span>
-            </a>
+            </button>
             <a className="nav-link" href="contact.html#help-support">
               <span className="nav-link-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9 8.96 8.96 0 0 0 2.29 6l-1.04 3.34 3.47-.94A9 9 0 1 0 12 3Zm0 1.5a7.5 7.5 0 1 1 0 15 7.44 7.44 0 0 1-3.71-.98l-.28-.16-1.95.53.6-1.92-.19-.29A7.46 7.46 0 0 1 4.5 12 7.5 7.5 0 0 1 12 4.5Zm-.75 3v5.19l4.11 2.37.75-1.3-3.36-1.94V7.5h-1.5Z" /></svg>
