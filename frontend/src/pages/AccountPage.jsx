@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   activateSubscription,
   cancelMyOrder,
@@ -123,10 +123,10 @@ function AccountNavIcon({ section }) {
   return <span className="account-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={paths[section] || paths.orders} /></svg></span>;
 }
 
-function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
+function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChange, session }) {
   const user = session.user;
   const displayName = user?.name || user?.email || user?.phoneNumber || "SnapEats customer";
-  const [activeSection, setActiveSection] = useState("orders");
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [orders, setOrders] = useState([]);
   const [ordersFeedback, setOrdersFeedback] = useState("");
   const [ordersFeedbackTone, setOrdersFeedbackTone] = useState("neutral");
@@ -146,6 +146,10 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+  useEffect(() => {
+    setActiveSection(initialSection);
+  }, [initialSection]);
 
   useEffect(() => {
     loadOrders();
@@ -555,6 +559,7 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
 }
 
 function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, session }) {
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState("form");
   const [identifier, setIdentifier] = useState("");
@@ -568,6 +573,8 @@ function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, se
   const [forceSignup, setForceSignup] = useState(false);
 
   const isSignup = mode === "signup";
+  const requestedSection = searchParams.get("section");
+  const initialSection = accountNavItems.some((item) => item.id === requestedSection) ? requestedSection : "orders";
   const identifierIsEmail = useMemo(() => identifier.includes("@"), [identifier]);
 
   useEffect(() => {
@@ -672,7 +679,7 @@ function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, se
   }
 
   if (session.user && session.token) {
-    return <AccountDashboard onLogout={onLogout} onOrdersOpen={onOrdersOpen} onStatusChange={onStatusChange} session={session} />;
+    return <AccountDashboard initialSection={initialSection} onLogout={onLogout} onOrdersOpen={onOrdersOpen} onStatusChange={onStatusChange} session={session} />;
   }
 
   return (

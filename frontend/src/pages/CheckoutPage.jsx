@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchAddresses, placeCheckoutOrder } from "../api/client.js";
+import { fetchAddresses, fetchPaymentMethods, placeCheckoutOrder } from "../api/client.js";
 
 function formatPrice(value) {
   return new Intl.NumberFormat("en-IN", {
@@ -28,6 +28,39 @@ function formatAddress(address) {
 
 function getItemPrice(lineItem) {
   return lineItem.item.discountedPrice || lineItem.item.price || 0;
+}
+
+function formatSavedPaymentMethodLabel(method) {
+  if (method?.label) {
+    return method.label;
+  }
+
+  if (method?.methodType === "CARD") {
+    return `${method.cardBrand || "Card"} ending ${method.cardLast4 || ""}`.trim();
+  }
+
+  if (method?.methodType === "UPI") {
+    return `UPI - ${method.upiId || ""}`.trim();
+  }
+
+  return `Wallet - ${method?.walletProvider || ""}`.trim();
+}
+
+function formatSavedPaymentMethodSubtitle(method) {
+  if (method?.methodType === "CARD") {
+    const expiry = [method.expiryMonth, method.expiryYear].filter(Boolean).join("/");
+    return [method.cardHolderName, expiry ? `Expires ${expiry}` : ""].filter(Boolean).join(" - ") || "Saved card";
+  }
+
+  if (method?.methodType === "UPI") {
+    return "Instant UPI payment using this saved ID";
+  }
+
+  return "Saved wallet for faster checkout";
+}
+
+function formatSavedPaymentMethodType(methodType) {
+  return String(methodType || "CARD").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 const paymentOptions = [
@@ -61,7 +94,10 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
   const [addresses, setAddresses] = useState([]);
   const [addressStatus, setAddressStatus] = useState("idle");
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentStatus, setPaymentStatus] = useState("idle");
   const [paymentMethod, setPaymentMethod] = useState("CASH");
+  const [selectedSavedPaymentMethodId, setSelectedSavedPaymentMethodId] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [feedback, setFeedback] = useState("");
   const [feedbackTone, setFeedbackTone] = useState("neutral");
@@ -73,10 +109,16 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
   const selectedAddress = useMemo(() => {
     return addresses.find((address) => String(address.id) === String(selectedAddressId)) || null;
   }, [addresses, selectedAddressId]);
+  const selectedSavedPaymentMethod = useMemo(() => {
+    return paymentMethods.find((method) => String(method.id) === String(selectedSavedPaymentMethodId)) || null;
+  }, [paymentMethods, selectedSavedPaymentMethodId]);
   const itemCount = useMemo(() => {
     return items.reduce((sum, lineItem) => sum + lineItem.quantity, 0);
   }, [items]);
   const restaurantName = items[0]?.restaurantName || "Restaurant";
+  const selectedPaymentLabel = selectedSavedPaymentMethod
+    ? formatSavedPaymentMethodLabel(selectedSavedPaymentMethod)
+    : paymentOptions.find((option) => option.value === paymentMethod)?.label || "Cash on delivery";
   const canPlaceOrder = Boolean(!submitting && currentUser?.id && selectedAddress && restaurantCode);
   const checkoutButtonLabel = !currentUser
     ? "Login before checkout"
@@ -128,6 +170,56 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
     };
   }, [currentUser?.id, session.token]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadPaymentMethods() {
+      if (!currentUser?.id || !session.token) {
+        setPaymentMethods([]);
+        setSelectedSavedPaymentMethodId("");
+        setPaymentStatus("idle");
+        return;
+      }
+
+      setPaymentStatus("loading");
+
+      try {
+        const methods = await fetchPaymentMethods(currentUser.id, session.token);
+
+        if (ignore) {
+          return;
+        }
+
+        const nextMethods = Array.isArray(methods) ? methods : [];
+        setPaymentMethods(nextMethods);
+        setSelectedSavedPaymentMethodId((currentMethodId) => (
+          nextMethods.some((method) => String(method.id) === String(currentMethodId)) ? currentMethodId : ""
+        ));
+        setPaymentStatus("ready");
+      } catch (error) {
+        if (!ignore) {
+          setPaymentStatus(error.message || "Could not load saved payment methods.");
+        }
+      }
+    }
+
+    loadPaymentMethods();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentUser?.id, session.token]);
+
+  function selectPaymentOption(methodType) {
+    setPaymentMethod(methodType);
+    setSelectedSavedPaymentMethodId("");
+  }
+
+  function selectSavedPaymentMethod(method) {
+    setPaymentMethod(method.methodType);
+    setSelectedSavedPaymentMethodId(String(method.id));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -177,6 +269,7 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
       setPlacedOrder({
         address: selectedAddress,
         itemCount,
+        paymentLabel: selectedPaymentLabel,
         paymentMethod,
         restaurantName,
         response: orderResponse,
@@ -214,7 +307,7 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
             </div>
             <div className="account-card">
               <span>Payment</span>
-              <strong>{paymentOptions.find((option) => option.value === placedOrder.paymentMethod)?.label || "Cash on delivery"}</strong>
+              <strong>{placedOrder.paymentLabel}</strong>
             </div>
             <div className="account-card">
               <span>Total paid</span>
@@ -313,21 +406,24 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
                 <p className="menu-eyebrow">Payment</p>
                 <h3>Choose payment method</h3>
               </div>
-              <Link className="secondary-button" to="/account">Manage payments</Link>
+              <Link className="secondary-button" to="/account?section=payments">Manage payments</Link>
             </div>
             <p className="payment-entry-copy">Select your payment option and add any delivery notes before placing the order.</p>
 
             <div className="checkout-payment-section">
+              {currentUser && paymentStatus === "loading" ? <p className="payment-empty-note">Loading saved payment methods...</p> : null}
+              {currentUser && paymentStatus !== "idle" && paymentStatus !== "loading" && paymentStatus !== "ready" ? <p className="checkout-feedback error">{paymentStatus}</p> : null}
+              {paymentMethods.length ? <section className="payment-section"><h3>Saved payment methods</h3><div className="payment-method-list">{paymentMethods.map((method) => <label className={`checkout-payment-card ${String(method.id) === String(selectedSavedPaymentMethodId) ? "selected" : ""}`} key={method.id}><input checked={String(method.id) === String(selectedSavedPaymentMethodId)} name="paymentMethod" onChange={() => selectSavedPaymentMethod(method)} type="radio" value={`saved:${method.id}`} /><div><strong>{formatSavedPaymentMethodLabel(method)}</strong><p>{formatSavedPaymentMethodSubtitle(method)}</p></div><span className="payment-type-pill">{formatSavedPaymentMethodType(method.methodType)}</span></label>)}</div></section> : null}
               <div className="checkout-payment-list">
                 {paymentOptions.map((option) => (
                   <label
-                    className={`checkout-payment-card ${paymentMethod === option.value ? "selected" : ""}`}
+                    className={`checkout-payment-card ${!selectedSavedPaymentMethodId && paymentMethod === option.value ? "selected" : ""}`}
                     key={option.value}
                   >
                     <input
-                      checked={paymentMethod === option.value}
+                      checked={!selectedSavedPaymentMethodId && paymentMethod === option.value}
                       name="paymentMethod"
-                      onChange={() => setPaymentMethod(option.value)}
+                      onChange={() => selectPaymentOption(option.value)}
                       type="radio"
                       value={option.value}
                     />
