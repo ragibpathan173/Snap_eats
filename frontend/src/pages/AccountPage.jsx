@@ -4,14 +4,18 @@ import {
   activateSubscription,
   cancelMyOrder,
   cancelSubscription,
+  createPaymentMethod,
+  deletePaymentMethod,
   fetchCurrentSubscription,
   fetchFavoriteMenuItems,
   fetchFavoriteRestaurants,
   fetchMyOrders,
+  fetchPaymentMethods,
   fetchSubscriptionPlans,
   removeFavoriteMenuItem,
   removeFavoriteRestaurant,
   requestAuthOtp,
+  setDefaultPaymentMethod,
   verifyAuthOtp
 } from "../api/client.js";
 
@@ -49,6 +53,52 @@ function formatStatus(status) {
 
 function getStatusClass(status) {
   return `status-${String(status || "PENDING").toLowerCase()}`;
+}
+
+function createPaymentForm(methodType = "CARD", defaultMethod = false) {
+  return {
+    cardHolderName: "",
+    cardNumber: "",
+    defaultMethod,
+    expiryMonth: "",
+    expiryYear: "",
+    methodType,
+    upiId: "",
+    walletProvider: ""
+  };
+}
+
+function formatPaymentMethodLabel(method) {
+  if (method?.label) {
+    return method.label;
+  }
+
+  if (method?.methodType === "CARD") {
+    return `${method.cardBrand || "Card"} ending ${method.cardLast4 || ""}`.trim();
+  }
+
+  if (method?.methodType === "UPI") {
+    return `UPI - ${method.upiId || ""}`.trim();
+  }
+
+  return `Wallet - ${method?.walletProvider || ""}`.trim();
+}
+
+function formatPaymentMethodSubtitle(method) {
+  if (method?.methodType === "CARD") {
+    const expiry = [method.expiryMonth, method.expiryYear].filter(Boolean).join("/");
+    return [method.cardHolderName, expiry ? `Expires ${expiry}` : ""].filter(Boolean).join(" - ") || "Saved card";
+  }
+
+  if (method?.methodType === "UPI") {
+    return "Instant UPI payments at checkout";
+  }
+
+  return "Saved wallet for faster checkout";
+}
+
+function formatPaymentMethodType(methodType) {
+  return String(methodType || "CARD").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 const accountNavItems = [
@@ -90,6 +140,11 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   const [subscriptionFeedbackTone, setSubscriptionFeedbackTone] = useState("neutral");
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+  const [paymentFeedback, setPaymentFeedback] = useState("");
+  const [paymentFeedbackTone, setPaymentFeedbackTone] = useState("neutral");
+  const [paymentForm, setPaymentForm] = useState(createPaymentForm);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   useEffect(() => {
@@ -105,6 +160,12 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   useEffect(() => {
     if (activeSection === "favorites") {
       loadFavorites();
+    }
+  }, [activeSection, session.token, user?.id]);
+
+  useEffect(() => {
+    if (activeSection === "payments") {
+      loadPaymentMethods();
     }
   }, [activeSection, session.token, user?.id]);
 
@@ -277,6 +338,102 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
     }
   }
 
+  async function loadPaymentMethods() {
+    if (!user?.id || !session.token) {
+      setPaymentMethods([]);
+      setPaymentLoading(false);
+      return;
+    }
+
+    setPaymentLoading(true);
+
+    try {
+      const methods = await fetchPaymentMethods(user.id, session.token);
+      const nextMethods = Array.isArray(methods) ? methods : [];
+      setPaymentMethods(nextMethods);
+      setPaymentForm((currentForm) => ({
+        ...currentForm,
+        defaultMethod: nextMethods.length === 0 ? true : currentForm.defaultMethod
+      }));
+    } catch (error) {
+      const message = error.message || "Could not load payment methods.";
+      setPaymentFeedback(message);
+      setPaymentFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setPaymentLoading(false);
+    }
+  }
+
+  function updatePaymentForm(field, value) {
+    setPaymentForm((currentForm) => ({ ...currentForm, [field]: value }));
+  }
+
+  function handlePaymentTypeChange(methodType) {
+    setPaymentForm((currentForm) => createPaymentForm(methodType, currentForm.defaultMethod));
+  }
+
+  async function handleSavePaymentMethod(event) {
+    event.preventDefault();
+    setPaymentLoading(true);
+    setPaymentFeedback("");
+    setPaymentFeedbackTone("neutral");
+
+    try {
+      await createPaymentMethod(paymentForm, user.id, session.token);
+      setPaymentFeedback("Payment method saved successfully.");
+      setPaymentFeedbackTone("success");
+      setPaymentForm(createPaymentForm());
+      await loadPaymentMethods();
+    } catch (error) {
+      const message = error.message || "Could not save payment method.";
+      setPaymentFeedback(message);
+      setPaymentFeedbackTone("error");
+      onStatusChange(message);
+      setPaymentLoading(false);
+    }
+  }
+
+  async function handleSetDefaultPaymentMethod(methodId) {
+    setPaymentLoading(true);
+    setPaymentFeedback("");
+
+    try {
+      await setDefaultPaymentMethod(methodId, user.id, session.token);
+      setPaymentFeedback("Default payment method updated.");
+      setPaymentFeedbackTone("success");
+      await loadPaymentMethods();
+    } catch (error) {
+      const message = error.message || "Could not update default payment method.";
+      setPaymentFeedback(message);
+      setPaymentFeedbackTone("error");
+      onStatusChange(message);
+      setPaymentLoading(false);
+    }
+  }
+
+  async function handleDeletePaymentMethod(method) {
+    if (!window.confirm(`Remove ${formatPaymentMethodLabel(method)}?`)) {
+      return;
+    }
+
+    setPaymentLoading(true);
+    setPaymentFeedback("");
+
+    try {
+      await deletePaymentMethod(method.id, user.id, session.token);
+      setPaymentFeedback("Payment method removed.");
+      setPaymentFeedbackTone("success");
+      await loadPaymentMethods();
+    } catch (error) {
+      const message = error.message || "Could not remove payment method.";
+      setPaymentFeedback(message);
+      setPaymentFeedbackTone("error");
+      onStatusChange(message);
+      setPaymentLoading(false);
+    }
+  }
+
   function renderPanel() {
     if (activeSection === "subscription") {
       const hasActiveSubscription = Boolean(subscription?.active);
@@ -319,14 +476,35 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
     }
 
     if (activeSection === "payments") {
+      const defaultMethod = paymentMethods.find((method) => method.defaultMethod);
+      const savedCardsCount = paymentMethods.filter((method) => method.methodType === "CARD").length;
+
       return (
         <section className="account-panel">
           <div className="account-panel-head"><div><p className="menu-eyebrow">Payments</p><h3>Payment methods</h3><p className="account-panel-copy">Save cards, wallets, and UPI handles so checkout is faster.</p></div></div>
+          {paymentFeedback ? <p className={`checkout-feedback ${paymentFeedbackTone === "error" ? "error" : paymentFeedbackTone === "success" ? "success" : ""}`}>{paymentFeedback}</p> : null}
           <div className="account-stat-grid">
-            <div className="account-card"><span>Default method</span><strong>Cash on delivery</strong></div>
-            <div className="account-card"><span>Saved methods</span><strong>0 total</strong></div>
+            <div className="account-card"><span>Default method</span><strong>{defaultMethod ? formatPaymentMethodLabel(defaultMethod) : "Cash on delivery"}</strong></div>
+            <div className="account-card"><span>Saved methods</span><strong>{paymentMethods.length} total - {savedCardsCount} cards</strong></div>
           </div>
-          <div className="account-placeholder-card compact"><strong>No digital methods saved</strong><p>Your saved methods will appear here and during checkout.</p><Link className="primary-button" to="/checkout">Open checkout</Link></div>
+          <div className="payment-management-grid">
+            <section className="payment-method-list">
+              {paymentLoading && !paymentMethods.length ? <div className="account-placeholder-card compact"><strong>Loading payment methods...</strong></div> : null}
+              {!paymentLoading && !paymentMethods.length ? <div className="account-placeholder-card compact"><strong>No digital methods saved</strong><p>Add a card, UPI ID, or wallet here and it will show up during checkout too.</p></div> : null}
+              {paymentMethods.map((method) => <article className={`payment-method-card ${method.defaultMethod ? "default" : ""}`} key={method.id}><div className="payment-method-top"><div><div className="payment-method-label-row"><h4>{formatPaymentMethodLabel(method)}</h4><span className="payment-type-pill">{formatPaymentMethodType(method.methodType)}</span></div><p>{formatPaymentMethodSubtitle(method)}</p></div>{method.defaultMethod ? <span className="address-default-pill">Default</span> : null}</div><div className="payment-method-actions">{!method.defaultMethod ? <button className="secondary-button" disabled={paymentLoading} onClick={() => handleSetDefaultPaymentMethod(method.id)} type="button">Set default</button> : null}<button className="text-button danger-button" disabled={paymentLoading} onClick={() => handleDeletePaymentMethod(method)} type="button">Remove</button></div></article>)}
+            </section>
+            <section className="payment-form-panel">
+              <div className="payment-form-header"><strong>Add a payment method</strong><p>Only masked card details are stored. Full card numbers are never saved.</p></div>
+              <form className="account-settings-form payment-settings-form" onSubmit={handleSavePaymentMethod}>
+                <label className="account-form-field account-form-field-full"><span>Method type</span><select disabled={paymentLoading} onChange={(event) => handlePaymentTypeChange(event.target.value)} value={paymentForm.methodType}><option value="CARD">Card</option><option value="UPI">UPI</option><option value="WALLET">Wallet</option></select></label>
+                {paymentForm.methodType === "CARD" ? <><label className="account-form-field"><span>Card holder</span><input disabled={paymentLoading} onChange={(event) => updatePaymentForm("cardHolderName", event.target.value)} placeholder="Name on card" required type="text" value={paymentForm.cardHolderName} /></label><label className="account-form-field"><span>Card number</span><input disabled={paymentLoading} inputMode="numeric" maxLength="19" onChange={(event) => updatePaymentForm("cardNumber", event.target.value)} placeholder="1234 5678 9012 3456" required type="text" value={paymentForm.cardNumber} /></label><label className="account-form-field"><span>Expiry month</span><input disabled={paymentLoading} inputMode="numeric" maxLength="2" onChange={(event) => updatePaymentForm("expiryMonth", event.target.value)} placeholder="MM" required type="text" value={paymentForm.expiryMonth} /></label><label className="account-form-field"><span>Expiry year</span><input disabled={paymentLoading} inputMode="numeric" maxLength="4" onChange={(event) => updatePaymentForm("expiryYear", event.target.value)} placeholder="YYYY" required type="text" value={paymentForm.expiryYear} /></label></> : null}
+                {paymentForm.methodType === "UPI" ? <label className="account-form-field account-form-field-full"><span>UPI ID</span><input disabled={paymentLoading} onChange={(event) => updatePaymentForm("upiId", event.target.value)} placeholder="name@upi" required type="text" value={paymentForm.upiId} /></label> : null}
+                {paymentForm.methodType === "WALLET" ? <label className="account-form-field account-form-field-full"><span>Wallet provider</span><input disabled={paymentLoading} onChange={(event) => updatePaymentForm("walletProvider", event.target.value)} placeholder="Paytm, PhonePe, Amazon Pay..." required type="text" value={paymentForm.walletProvider} /></label> : null}
+                <label className="address-default-toggle payment-default-toggle account-form-field-full"><input checked={paymentForm.defaultMethod} disabled={paymentLoading} onChange={(event) => updatePaymentForm("defaultMethod", event.target.checked)} type="checkbox" /><span>Make this my default digital method</span></label>
+                <button className="primary-button" disabled={paymentLoading} type="submit">{paymentLoading ? "Saving..." : "Save payment method"}</button>
+              </form>
+            </section>
+          </div>
         </section>
       );
     }

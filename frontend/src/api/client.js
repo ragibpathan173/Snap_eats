@@ -211,6 +211,38 @@ export function removeFavoriteMenuItem(itemId, userId, token) {
   });
 }
 
+export function fetchPaymentMethods(userId, token) {
+  return fetchJson("/payments/methods", {
+    token,
+    userId
+  });
+}
+
+export function createPaymentMethod(payload, userId, token) {
+  return fetchJson("/payments/methods", {
+    body: JSON.stringify(payload),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function setDefaultPaymentMethod(methodId, userId, token) {
+  return fetchJson(`/payments/methods/${encodeURIComponent(methodId)}/default`, {
+    method: "PATCH",
+    token,
+    userId
+  });
+}
+
+export function deletePaymentMethod(methodId, userId, token) {
+  return fetchJson(`/payments/methods/${encodeURIComponent(methodId)}`, {
+    method: "DELETE",
+    token,
+    userId
+  });
+}
+
 export function placeCheckoutOrder(payload, userId, token) {
   return fetchJson("/orders/checkout", {
     body: JSON.stringify(payload),
