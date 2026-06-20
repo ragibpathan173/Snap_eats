@@ -90,6 +90,24 @@ export function updateCurrentUser(payload, userId, token) {
   });
 }
 
+export function requestAccountDeletionOtp(channel, userId, token) {
+  return fetchJson("/users/me/delete/request-otp", {
+    body: JSON.stringify({ channel }),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function confirmAccountDeletion(channel, otp, userId, token) {
+  return fetchJson("/users/me/delete/confirm", {
+    body: JSON.stringify({ channel, otp }),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
 export function fetchAddresses(userId, token) {
   return fetchJson("/addresses", {
     token,

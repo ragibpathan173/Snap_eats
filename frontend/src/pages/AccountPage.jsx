@@ -4,6 +4,7 @@ import {
   activateSubscription,
   cancelMyOrder,
   cancelSubscription,
+  confirmAccountDeletion,
   createPaymentMethod,
   deletePaymentMethod,
   fetchCurrentSubscription,
@@ -15,6 +16,7 @@ import {
   removeFavoriteMenuItem,
   removeFavoriteRestaurant,
   requestAuthOtp,
+  requestAccountDeletionOtp,
   setDefaultPaymentMethod,
   updateCurrentUser,
   verifyAuthOtp
@@ -110,6 +112,25 @@ function createProfileForm(user) {
   };
 }
 
+function getDeleteAccountChannels(user) {
+  const channels = [];
+  const email = String(user?.email || "").trim();
+  const phone = String(user?.phoneNumber || "").trim();
+  const phoneDigits = phone.replace(/\D/g, "");
+
+  if (email) {
+    const [localPart, domain = ""] = email.split("@");
+    const maskedLocalPart = localPart.length <= 2 ? `${localPart.charAt(0)}***` : `${localPart.slice(0, 2)}***`;
+    channels.push({ id: "email", label: `Email (${maskedLocalPart}${domain ? `@${domain}` : ""})` });
+  }
+
+  if (phoneDigits.length >= 10) {
+    channels.push({ id: "phone", label: `Phone (***${phoneDigits.slice(-4)})` });
+  }
+
+  return channels;
+}
+
 const accountNavItems = [
   { id: "orders", label: "Orders" },
   { id: "subscription", label: "SnapEatPro" },
@@ -154,11 +175,22 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   const [paymentForm, setPaymentForm] = useState(createPaymentForm);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [deleteAccountChannel, setDeleteAccountChannel] = useState("");
+  const [deleteAccountDevOtp, setDeleteAccountDevOtp] = useState("");
+  const [deleteAccountFeedback, setDeleteAccountFeedback] = useState("");
+  const [deleteAccountFeedbackTone, setDeleteAccountFeedbackTone] = useState("neutral");
+  const [deleteAccountOtp, setDeleteAccountOtp] = useState("");
+  const [deleteAccountOtpCooldown, setDeleteAccountOtpCooldown] = useState(0);
+  const [deleteAccountOtpRequested, setDeleteAccountOtpRequested] = useState(false);
+  const [deleteAccountPanelOpen, setDeleteAccountPanelOpen] = useState(false);
+  const [deleteAccountPending, setDeleteAccountPending] = useState(false);
+  const [deleteAccountPendingChannel, setDeleteAccountPendingChannel] = useState("");
   const [profileFeedback, setProfileFeedback] = useState("");
   const [profileFeedbackTone, setProfileFeedbackTone] = useState("neutral");
   const [profileForm, setProfileForm] = useState(() => createProfileForm(user));
   const [profileSaving, setProfileSaving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const deleteAccountChannels = useMemo(() => getDeleteAccountChannels(user), [user?.email, user?.phoneNumber]);
 
   useEffect(() => {
     setActiveSection(initialSection);
@@ -167,6 +199,26 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   useEffect(() => {
     setProfileForm(createProfileForm(user));
   }, [user?.email, user?.id, user?.name, user?.phoneNumber]);
+
+  useEffect(() => {
+    setDeleteAccountChannel((currentChannel) => (
+      deleteAccountChannels.some((channel) => channel.id === currentChannel)
+        ? currentChannel
+        : deleteAccountChannels[0]?.id || ""
+    ));
+  }, [deleteAccountChannels]);
+
+  useEffect(() => {
+    if (!deleteAccountOtpCooldown) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      setDeleteAccountOtpCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [deleteAccountOtpCooldown]);
 
   useEffect(() => {
     loadOrders();
@@ -489,6 +541,93 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
     }
   }
 
+  function openDeleteAccountPanel() {
+    setDeleteAccountPanelOpen(true);
+    setDeleteAccountOtpRequested(false);
+    setDeleteAccountPendingChannel("");
+    setDeleteAccountOtp("");
+    setDeleteAccountDevOtp("");
+    setDeleteAccountFeedback("");
+    setDeleteAccountFeedbackTone("neutral");
+    setDeleteAccountOtpCooldown(0);
+  }
+
+  function handleDeleteAccountChannelChange(channel) {
+    setDeleteAccountChannel(channel);
+    setDeleteAccountOtpRequested(false);
+    setDeleteAccountPendingChannel("");
+    setDeleteAccountOtp("");
+    setDeleteAccountDevOtp("");
+    setDeleteAccountFeedback("");
+    setDeleteAccountFeedbackTone("neutral");
+    setDeleteAccountOtpCooldown(0);
+  }
+
+  async function handleRequestDeleteAccountOtp() {
+    if (!deleteAccountChannel) {
+      setDeleteAccountFeedback("Add a valid email or phone number in your profile first.");
+      setDeleteAccountFeedbackTone("error");
+      return;
+    }
+
+    setDeleteAccountPending(true);
+    setDeleteAccountFeedback(`Sending verification code to your registered ${deleteAccountChannel}...`);
+    setDeleteAccountFeedbackTone("neutral");
+
+    try {
+      const response = await requestAccountDeletionOtp(deleteAccountChannel, user.id, session.token);
+      setDeleteAccountPendingChannel(deleteAccountChannel);
+      setDeleteAccountOtpRequested(true);
+      setDeleteAccountDevOtp(String(response?.devOtp || ""));
+      setDeleteAccountFeedback(response?.message || "Verification code sent.");
+      setDeleteAccountFeedbackTone("success");
+      setDeleteAccountOtpCooldown(30);
+    } catch (error) {
+      const message = error.message || "Could not send verification code.";
+      setDeleteAccountFeedback(message);
+      setDeleteAccountFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setDeleteAccountPending(false);
+    }
+  }
+
+  async function handleConfirmDeleteAccount() {
+    const channel = deleteAccountPendingChannel || deleteAccountChannel;
+
+    if (!channel) {
+      setDeleteAccountFeedback("Select a valid verification channel first.");
+      setDeleteAccountFeedbackTone("error");
+      return;
+    }
+
+    if (!deleteAccountOtp.trim()) {
+      setDeleteAccountFeedback("Enter the verification code first.");
+      setDeleteAccountFeedbackTone("error");
+      return;
+    }
+
+    if (!window.confirm("This will permanently delete your SnapEats account and data. Continue?")) {
+      return;
+    }
+
+    setDeleteAccountPending(true);
+    setDeleteAccountFeedback("Verifying code and deleting account...");
+    setDeleteAccountFeedbackTone("neutral");
+
+    try {
+      const response = await confirmAccountDeletion(channel, deleteAccountOtp.trim(), user.id, session.token);
+      window.alert(response?.message || "Your account has been deleted.");
+      onLogout();
+    } catch (error) {
+      const message = error.message || "Could not delete account.";
+      setDeleteAccountFeedback(message);
+      setDeleteAccountFeedbackTone("error");
+      onStatusChange(message);
+      setDeleteAccountPending(false);
+    }
+  }
+
   function renderPanel() {
     if (activeSection === "subscription") {
       const hasActiveSubscription = Boolean(subscription?.active);
@@ -586,7 +725,14 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
             <div className="auth-actions"><button className="primary-button" disabled={profileSaving} type="submit">{profileSaving ? "Saving..." : "Save profile"}</button><button className="text-button danger-button" onClick={onLogout} type="button">Log out</button></div>
             {profileFeedback ? <p className={`checkout-feedback ${profileFeedbackTone === "error" ? "error" : profileFeedbackTone === "success" ? "success" : ""}`}>{profileFeedback}</p> : null}
           </form>
-          <section className="account-danger-zone"><div className="account-panel-head account-panel-head-compact"><div><h4>Delete account</h4><p className="account-panel-note">Secure account deletion is not available in the React flow yet.</p></div></div></section>
+          <section className="account-danger-zone">
+            <div className="account-panel-head account-panel-head-compact"><div><h4>Delete account</h4><p className="account-panel-note">This permanently removes your account and saved profile data.</p></div></div>
+            <div className="auth-actions"><button className="primary-button danger-solid-button" onClick={openDeleteAccountPanel} type="button">Delete account</button></div>
+            {deleteAccountPanelOpen ? <>
+              {deleteAccountChannels.length ? <><div className="delete-account-channel-group">{deleteAccountChannels.map((channel) => <label className="delete-account-channel-option" key={channel.id}><input checked={deleteAccountChannel === channel.id} disabled={deleteAccountPending} name="deleteAccountChannel" onChange={() => handleDeleteAccountChannelChange(channel.id)} type="radio" value={channel.id} /><span>{channel.label}</span></label>)}</div><div className="auth-actions"><button className="secondary-button" disabled={deleteAccountPending || deleteAccountOtpCooldown > 0} onClick={handleRequestDeleteAccountOtp} type="button">{deleteAccountPending ? "Sending..." : deleteAccountOtpRequested && deleteAccountOtpCooldown > 0 ? `Resend in ${deleteAccountOtpCooldown}s` : deleteAccountOtpRequested ? "Resend verification code" : "Send verification code"}</button></div>{deleteAccountOtpRequested ? <><label className="account-form-field account-form-field-full"><span>Verification code</span><input disabled={deleteAccountPending} inputMode="numeric" maxLength="6" onChange={(event) => setDeleteAccountOtp(event.target.value)} placeholder="Enter 6-digit code" type="text" value={deleteAccountOtp} /></label>{deleteAccountDevOtp ? <p className="account-panel-note">Dev OTP: <strong>{deleteAccountDevOtp}</strong></p> : null}<div className="auth-actions"><button className="primary-button danger-solid-button" disabled={deleteAccountPending} onClick={handleConfirmDeleteAccount} type="button">{deleteAccountPending ? "Deleting..." : "Delete account permanently"}</button></div></> : null}</> : <p className="account-panel-note">Add a valid email or phone number in your profile first to enable secure account deletion.</p>}
+            </> : null}
+            {deleteAccountFeedback ? <p className={`checkout-feedback ${deleteAccountFeedbackTone === "error" ? "error" : deleteAccountFeedbackTone === "success" ? "success" : ""}`}>{deleteAccountFeedback}</p> : null}
+          </section>
         </section>
       );
     }
