@@ -4,7 +4,7 @@ function formatNumber(value) {
   return Number.isFinite(numericValue) ? numericValue.toFixed(1) : value;
 }
 
-function RestaurantCard({ onSelect, restaurant }) {
+function RestaurantCard({ isFavorite, onFavoriteToggle, onSelect, restaurant }) {
   return (
     <article
       className="restaurant-card"
@@ -22,12 +22,15 @@ function RestaurantCard({ onSelect, restaurant }) {
         <img src={restaurant.image} alt={restaurant.name} loading="lazy" />
         {restaurant.discount ? <div className="discount-badge">{restaurant.discount}</div> : null}
         <button
-          className="favorite-toggle"
-          onClick={(event) => event.stopPropagation()}
+          className={`favorite-toggle ${isFavorite ? "active" : ""}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onFavoriteToggle(restaurant);
+          }}
           type="button"
-          aria-label="Add to favorites"
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
-          &#9825;
+          {isFavorite ? "\u2665" : "\u2661"}
         </button>
       </div>
       <div className="restaurant-info">

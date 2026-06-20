@@ -1,6 +1,6 @@
 import RestaurantCard from "./RestaurantCard.jsx";
 
-function RestaurantGrid({ onRestaurantSelect, restaurants }) {
+function RestaurantGrid({ favoriteRestaurantIds, onFavoriteToggle, onRestaurantSelect, restaurants }) {
   if (!restaurants.length) {
     return <p className="empty-state">No restaurants match this search yet.</p>;
   }
@@ -9,6 +9,8 @@ function RestaurantGrid({ onRestaurantSelect, restaurants }) {
     <div className="restaurants-grid">
       {restaurants.map((restaurant) => (
         <RestaurantCard
+          isFavorite={favoriteRestaurantIds.includes(restaurant.restaurantId || restaurant.id)}
+          onFavoriteToggle={onFavoriteToggle}
           onSelect={onRestaurantSelect}
           restaurant={restaurant}
           key={restaurant.restaurantId}

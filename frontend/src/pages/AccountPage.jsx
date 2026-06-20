@@ -5,8 +5,12 @@ import {
   cancelMyOrder,
   cancelSubscription,
   fetchCurrentSubscription,
+  fetchFavoriteMenuItems,
+  fetchFavoriteRestaurants,
   fetchMyOrders,
   fetchSubscriptionPlans,
+  removeFavoriteMenuItem,
+  removeFavoriteRestaurant,
   requestAuthOtp,
   verifyAuthOtp
 } from "../api/client.js";
@@ -77,6 +81,10 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   const [ordersFeedback, setOrdersFeedback] = useState("");
   const [ordersFeedbackTone, setOrdersFeedbackTone] = useState("neutral");
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [favoriteMenuItems, setFavoriteMenuItems] = useState([]);
+  const [favoriteRestaurants, setFavoriteRestaurants] = useState([]);
+  const [favoritesFeedback, setFavoritesFeedback] = useState("");
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
   const [subscription, setSubscription] = useState(null);
   const [subscriptionFeedback, setSubscriptionFeedback] = useState("");
   const [subscriptionFeedbackTone, setSubscriptionFeedbackTone] = useState("neutral");
@@ -91,6 +99,12 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   useEffect(() => {
     if (activeSection === "subscription") {
       loadSubscription();
+    }
+  }, [activeSection, session.token, user?.id]);
+
+  useEffect(() => {
+    if (activeSection === "favorites") {
+      loadFavorites();
     }
   }, [activeSection, session.token, user?.id]);
 
@@ -214,6 +228,55 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
     }
   }
 
+  async function loadFavorites() {
+    if (!user?.id || !session.token) {
+      setFavoriteRestaurants([]);
+      setFavoriteMenuItems([]);
+      setFavoritesLoading(false);
+      return;
+    }
+
+    setFavoritesLoading(true);
+
+    try {
+      const [restaurants, menuItems] = await Promise.all([
+        fetchFavoriteRestaurants(user.id, session.token),
+        fetchFavoriteMenuItems(user.id, session.token)
+      ]);
+      setFavoriteRestaurants(Array.isArray(restaurants) ? restaurants : []);
+      setFavoriteMenuItems(Array.isArray(menuItems) ? menuItems : []);
+      setFavoritesFeedback("");
+    } catch (error) {
+      const message = error.message || "Could not load favorites.";
+      setFavoritesFeedback(message);
+      onStatusChange(message);
+    } finally {
+      setFavoritesLoading(false);
+    }
+  }
+
+  async function handleRemoveFavoriteRestaurant(restaurantId) {
+    try {
+      await removeFavoriteRestaurant(restaurantId, user.id, session.token);
+      setFavoriteRestaurants((currentRestaurants) => currentRestaurants.filter((restaurant) => restaurant.restaurantId !== restaurantId));
+    } catch (error) {
+      const message = error.message || "Could not remove favorite restaurant.";
+      setFavoritesFeedback(message);
+      onStatusChange(message);
+    }
+  }
+
+  async function handleRemoveFavoriteMenuItem(itemId) {
+    try {
+      await removeFavoriteMenuItem(itemId, user.id, session.token);
+      setFavoriteMenuItems((currentItems) => currentItems.filter((item) => item.itemId !== itemId));
+    } catch (error) {
+      const message = error.message || "Could not remove favorite dish.";
+      setFavoritesFeedback(message);
+      onStatusChange(message);
+    }
+  }
+
   function renderPanel() {
     if (activeSection === "subscription") {
       const hasActiveSubscription = Boolean(subscription?.active);
@@ -247,7 +310,10 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
           <p className="menu-eyebrow">Favorites</p>
           <h3>Your favorite picks</h3>
           <p className="account-panel-copy">Save restaurants and dishes you love so they stay one tap away.</p>
-          <div className="account-placeholder-card"><strong>No favorites saved yet</strong><p>Tap the heart on any restaurant or dish to save it here.</p><Link className="primary-button" to="/restaurants">Explore restaurants</Link></div>
+          {favoritesFeedback ? <p className="checkout-feedback error">{favoritesFeedback}</p> : null}
+          {favoritesLoading ? <div className="account-placeholder-card"><strong>Loading favorites...</strong></div> : null}
+          {!favoritesLoading && !favoriteRestaurants.length && !favoriteMenuItems.length ? <div className="account-placeholder-card"><strong>No favorites saved yet</strong><p>Tap the heart on any restaurant or dish to save it here.</p><Link className="primary-button" to="/restaurants">Explore restaurants</Link></div> : null}
+          {!favoritesLoading && (favoriteRestaurants.length || favoriteMenuItems.length) ? <><div className="favorite-restaurant-grid">{favoriteRestaurants.map((restaurant) => <article className="favorite-restaurant-card" key={restaurant.restaurantId}><img alt={restaurant.name} className="favorite-restaurant-image" src={restaurant.image} /><div className="favorite-restaurant-copy"><h4>{restaurant.name}</h4><p>{restaurant.cuisine || ""}</p><div className="favorite-restaurant-meta"><span>&#9733; {Number(restaurant.rating || 0).toFixed(1)}</span><span>{restaurant.time || ""}</span></div></div><div className="favorite-restaurant-actions"><Link className="secondary-button" to={`/restaurants?restaurant=${encodeURIComponent(restaurant.restaurantId)}`}>Open menu</Link><button className="text-button danger-button" onClick={() => handleRemoveFavoriteRestaurant(restaurant.restaurantId)} type="button">Remove</button></div></article>)}</div>{favoriteMenuItems.length ? <><div className="favorite-section-divider"></div><div className="favorite-dish-grid">{favoriteMenuItems.map((item) => <article className="favorite-dish-card" key={item.itemId}><img alt={item.name} className="favorite-dish-image" src={item.image || item.restaurantImage || ""} /><div className="favorite-dish-copy"><p className="favorite-dish-restaurant">{item.restaurantName || "Restaurant"}</p><h4>{item.name}</h4><p>{item.description || "Saved favorite dish"}</p><div className="favorite-dish-meta"><span>{formatCurrency(item.price)}</span>{item.vegetarian ? <span className="diet-pill">Veg</span> : null}{item.vegan ? <span className="diet-pill">Vegan</span> : null}</div></div><div className="favorite-dish-actions"><Link className="secondary-button" to={`/restaurants?restaurant=${encodeURIComponent(item.restaurantId)}`}>Open restaurant</Link><button className="text-button danger-button" onClick={() => handleRemoveFavoriteMenuItem(item.itemId)} type="button">Remove</button></div></article>)}</div></> : null}</> : null}
         </section>
       );
     }

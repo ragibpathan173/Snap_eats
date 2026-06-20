@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { fetchCategories, fetchRestaurantMenu, fetchRestaurants } from "../api/client.js";
+import { useSearchParams } from "react-router-dom";
+import {
+  addFavoriteMenuItem,
+  addFavoriteRestaurant,
+  fetchCategories,
+  fetchFavoriteMenuItems,
+  fetchFavoriteRestaurants,
+  fetchRestaurantMenu,
+  fetchRestaurants,
+  removeFavoriteMenuItem,
+  removeFavoriteRestaurant
+} from "../api/client.js";
 import AppDownloadSection from "../components/AppDownloadSection.jsx";
 import AppFooter from "../components/AppFooter.jsx";
 import CategoryChips from "../components/CategoryChips.jsx";
@@ -13,7 +24,8 @@ function CatalogPage({
   onCartQuantityChange,
   onLocationSelect,
   onStatusChange,
-  searchTerm
+  searchTerm,
+  session
 }) {
   const [categories, setCategories] = useState([]);
   const [restaurants, setRestaurants] = useState([]);
@@ -21,6 +33,10 @@ function CatalogPage({
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [menuStatus, setMenuStatus] = useState("idle");
+  const [favoriteMenuItemIds, setFavoriteMenuItemIds] = useState([]);
+  const [favoriteRestaurantIds, setFavoriteRestaurantIds] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const canManageFavorites = Boolean(session.user?.id && session.token);
 
   useEffect(() => {
     let ignore = false;
@@ -53,6 +69,40 @@ function CatalogPage({
       ignore = true;
     };
   }, [onStatusChange]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadFavorites() {
+      if (!canManageFavorites) {
+        setFavoriteRestaurantIds([]);
+        setFavoriteMenuItemIds([]);
+        return;
+      }
+
+      try {
+        const [restaurants, menuItems] = await Promise.all([
+          fetchFavoriteRestaurants(session.user.id, session.token),
+          fetchFavoriteMenuItems(session.user.id, session.token)
+        ]);
+
+        if (!ignore) {
+          setFavoriteRestaurantIds((Array.isArray(restaurants) ? restaurants : []).map((restaurant) => restaurant.restaurantId));
+          setFavoriteMenuItemIds((Array.isArray(menuItems) ? menuItems : []).map((item) => item.itemId));
+        }
+      } catch (error) {
+        if (!ignore) {
+          onStatusChange(error.message || "Could not load favorites.");
+        }
+      }
+    }
+
+    loadFavorites();
+
+    return () => {
+      ignore = true;
+    };
+  }, [canManageFavorites, onStatusChange, session.token, session.user?.id]);
 
   const filteredRestaurants = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -90,6 +140,74 @@ function CatalogPage({
     }
   }
 
+  async function handleRestaurantFavorite(restaurant) {
+    if (!canManageFavorites) {
+      onStatusChange("Login to save favorite restaurants");
+      return;
+    }
+
+    const restaurantId = restaurant.restaurantId || restaurant.id;
+    const isFavorite = favoriteRestaurantIds.includes(restaurantId);
+
+    try {
+      if (isFavorite) {
+        await removeFavoriteRestaurant(restaurantId, session.user.id, session.token);
+        setFavoriteRestaurantIds((currentIds) => currentIds.filter((id) => id !== restaurantId));
+      } else {
+        await addFavoriteRestaurant(restaurantId, session.user.id, session.token);
+        setFavoriteRestaurantIds((currentIds) => [...currentIds, restaurantId]);
+      }
+    } catch (error) {
+      onStatusChange(error.message || "Could not update favorite restaurant.");
+    }
+  }
+
+  async function handleMenuItemFavorite(item) {
+    if (!canManageFavorites) {
+      onStatusChange("Login to save favorite dishes");
+      return;
+    }
+
+    const itemId = item.itemId || item.id;
+    const isFavorite = favoriteMenuItemIds.includes(itemId);
+
+    try {
+      if (isFavorite) {
+        await removeFavoriteMenuItem(itemId, session.user.id, session.token);
+        setFavoriteMenuItemIds((currentIds) => currentIds.filter((id) => id !== itemId));
+      } else {
+        await addFavoriteMenuItem(itemId, session.user.id, session.token);
+        setFavoriteMenuItemIds((currentIds) => [...currentIds, itemId]);
+      }
+    } catch (error) {
+      onStatusChange(error.message || "Could not update favorite dish.");
+    }
+  }
+
+  useEffect(() => {
+    const restaurantId = searchParams.get("restaurant");
+
+    if (!restaurantId || !restaurants.length || selectedRestaurant?.restaurantId === restaurantId) {
+      return;
+    }
+
+    const restaurant = restaurants.find((entry) => entry.restaurantId === restaurantId);
+
+    if (restaurant) {
+      handleRestaurantSelect(restaurant);
+    }
+  }, [restaurants, searchParams, selectedRestaurant?.restaurantId]);
+
+  function closeMenu() {
+    setSelectedRestaurant(null);
+
+    if (searchParams.has("restaurant")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("restaurant");
+      setSearchParams(nextParams);
+    }
+  }
+
   return (
     <>
       <SearchPanel
@@ -117,7 +235,12 @@ function CatalogPage({
           <h2 className="section-title">
             {activeCategory === "all" ? "Top restaurant chains in your city" : `${activeCategory} restaurants`}
           </h2>
-          <RestaurantGrid restaurants={featuredRestaurants} onRestaurantSelect={handleRestaurantSelect} />
+          <RestaurantGrid
+            favoriteRestaurantIds={favoriteRestaurantIds}
+            onFavoriteToggle={handleRestaurantFavorite}
+            onRestaurantSelect={handleRestaurantSelect}
+            restaurants={featuredRestaurants}
+          />
           <div className="restaurants-footer">
             <p className="restaurants-count">Showing {featuredRestaurants.length} of {filteredRestaurants.length} restaurants</p>
           </div>
@@ -129,10 +252,12 @@ function CatalogPage({
 
       <MenuPanel
         getCartQuantity={getCartQuantity}
+        favoriteMenuItemIds={favoriteMenuItemIds}
         menuItems={menuItems}
         onAddToCart={onAddToCart}
+        onFavoriteToggle={handleMenuItemFavorite}
         onQuantityChange={onCartQuantityChange}
-        onClose={() => setSelectedRestaurant(null)}
+        onClose={closeMenu}
         restaurant={selectedRestaurant}
         status={menuStatus}
       />

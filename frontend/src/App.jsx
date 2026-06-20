@@ -294,6 +294,7 @@ function App() {
               onLocationSelect={handleLocationSelect}
               onStatusChange={setStatus}
               searchTerm={searchTerm}
+              session={authSession}
             />
           )}
         />

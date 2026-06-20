@@ -13,7 +13,7 @@ function formatNumber(value) {
   return Number.isFinite(numericValue) ? numericValue.toFixed(1) : value;
 }
 
-function MenuPanel({ getCartQuantity, menuItems, onAddToCart, onClose, onQuantityChange, restaurant, status }) {
+function MenuPanel({ favoriteMenuItemIds, getCartQuantity, menuItems, onAddToCart, onClose, onFavoriteToggle, onQuantityChange, restaurant, status }) {
   const [activeFilter, setActiveFilter] = useState("all");
   const isLoading = status === "loading";
   const isError = status !== "idle" && status !== "loading" && status !== "ready";
@@ -103,9 +103,11 @@ function MenuPanel({ getCartQuantity, menuItems, onAddToCart, onClose, onQuantit
 
           {visibleItems.map((item) => (
             <MenuItemCard
+              isFavorite={favoriteMenuItemIds.includes(item.itemId || item.id)}
               item={item}
               key={item.itemId || item.id}
               onAddToCart={(selectedItem) => onAddToCart(selectedItem, restaurant)}
+              onFavoriteToggle={onFavoriteToggle}
               onQuantityChange={onQuantityChange}
               quantity={getCartQuantity(item)}
               restaurantImage={restaurant.image}

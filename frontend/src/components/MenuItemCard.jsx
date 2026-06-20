@@ -6,7 +6,7 @@ function formatPrice(value) {
   }).format(value || 0);
 }
 
-function MenuItemCard({ item, onAddToCart, onQuantityChange, quantity, restaurantImage }) {
+function MenuItemCard({ isFavorite, item, onAddToCart, onFavoriteToggle, onQuantityChange, quantity, restaurantImage }) {
   const hasDiscount = item.discountedPrice && item.discountedPrice < item.price;
   const itemKey = item.itemId || item.id;
 
@@ -16,8 +16,8 @@ function MenuItemCard({ item, onAddToCart, onQuantityChange, quantity, restauran
         <div className="menu-item-topline">
           <span className="menu-item-category">{item.category || "Special"}</span>
           {item.bestSeller ? <span className="menu-badge">Popular</span> : null}
-          <button className="menu-favorite-toggle" type="button" aria-label="Add to favorites">
-            &#9825;
+          <button className={`menu-favorite-toggle ${isFavorite ? "active" : ""}`} onClick={() => onFavoriteToggle(item)} type="button" aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}>
+            {isFavorite ? "\u2665" : "\u2661"}
           </button>
         </div>
         <h3>{item.name}</h3>

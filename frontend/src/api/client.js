@@ -165,6 +165,52 @@ export function cancelSubscription(userId, token) {
   });
 }
 
+export function fetchFavoriteRestaurants(userId, token) {
+  return fetchJson("/favorites/restaurants", {
+    token,
+    userId
+  });
+}
+
+export function addFavoriteRestaurant(restaurantId, userId, token) {
+  return fetchJson(`/favorites/restaurants/${encodeURIComponent(restaurantId)}`, {
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function removeFavoriteRestaurant(restaurantId, userId, token) {
+  return fetchJson(`/favorites/restaurants/${encodeURIComponent(restaurantId)}`, {
+    method: "DELETE",
+    token,
+    userId
+  });
+}
+
+export function fetchFavoriteMenuItems(userId, token) {
+  return fetchJson("/favorites/menu-items", {
+    token,
+    userId
+  });
+}
+
+export function addFavoriteMenuItem(itemId, userId, token) {
+  return fetchJson(`/favorites/menu-items/${encodeURIComponent(itemId)}`, {
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function removeFavoriteMenuItem(itemId, userId, token) {
+  return fetchJson(`/favorites/menu-items/${encodeURIComponent(itemId)}`, {
+    method: "DELETE",
+    token,
+    userId
+  });
+}
+
 export function placeCheckoutOrder(payload, userId, token) {
   return fetchJson("/orders/checkout", {
     body: JSON.stringify(payload),
