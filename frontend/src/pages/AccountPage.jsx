@@ -60,7 +60,7 @@ function AccountNavIcon({ section }) {
   return <span className="account-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={paths[section] || paths.orders} /></svg></span>;
 }
 
-function AccountDashboard({ onLogout, onStatusChange, session }) {
+function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   const user = session.user;
   const displayName = user?.name || user?.email || user?.phoneNumber || "SnapEats customer";
   const [activeSection, setActiveSection] = useState("orders");
@@ -191,7 +191,7 @@ function AccountDashboard({ onLogout, onStatusChange, session }) {
 
     return (
       <section className="account-panel account-panel-orders">
-        <div className="account-panel-head"><div><p className="menu-eyebrow">Orders</p><h3>Your recent orders</h3><p className="account-panel-copy">Your SnapEats orders will be listed here.</p></div><button className="secondary-button" disabled={ordersLoading} onClick={loadOrders} type="button">{ordersLoading ? "Refreshing..." : "Refresh"}</button></div>
+        <div className="account-panel-head"><div><p className="menu-eyebrow">Orders</p><h3>Your recent orders</h3><p className="account-panel-copy">Your SnapEats orders will be listed here.</p></div><button className="secondary-button" onClick={onOrdersOpen} type="button">Open full orders</button></div>
         {ordersFeedback ? <p className={`checkout-feedback ${ordersFeedbackTone === "error" ? "error" : ordersFeedbackTone === "success" ? "success" : ""}`}>{ordersFeedback}</p> : null}
         {ordersLoading ? <div className="account-empty-state"><p>Loading your recent orders...</p></div> : null}
         {!ordersLoading && !orders.length ? <div className="account-empty-state"><p className="account-empty-note">Go ahead and find some awesome restaurants near you.</p><h3>No Orders</h3><p>You haven't placed any order yet.</p><Link className="primary-button" to="/restaurants">Explore restaurants</Link></div> : null}
@@ -208,7 +208,7 @@ function AccountDashboard({ onLogout, onStatusChange, session }) {
   );
 }
 
-function AccountPage({ onAuthSuccess, onLogout, onStatusChange, session }) {
+function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, session }) {
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState("form");
   const [identifier, setIdentifier] = useState("");
@@ -326,7 +326,7 @@ function AccountPage({ onAuthSuccess, onLogout, onStatusChange, session }) {
   }
 
   if (session.user && session.token) {
-    return <AccountDashboard onLogout={onLogout} onStatusChange={onStatusChange} session={session} />;
+    return <AccountDashboard onLogout={onLogout} onOrdersOpen={onOrdersOpen} onStatusChange={onStatusChange} session={session} />;
   }
 
   return (

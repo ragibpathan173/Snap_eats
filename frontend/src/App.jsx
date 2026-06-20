@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { clearAuthSession, readStoredAuthSession, saveAuthSession } from "./auth/session.js";
+import { fetchRestaurantMenu } from "./api/client.js";
 import AppHeader from "./components/AppHeader.jsx";
 import CartPanel from "./components/CartPanel.jsx";
 import CorporateModal from "./components/CorporateModal.jsx";
 import HeaderSearchStrip from "./components/HeaderSearchStrip.jsx";
 import HelpModal from "./components/HelpModal.jsx";
 import LocationPickerModal from "./components/LocationPickerModal.jsx";
+import OrdersModal from "./components/OrdersModal.jsx";
 import OffersModal from "./components/OffersModal.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import AddressesPage from "./pages/AddressesPage.jsx";
@@ -50,6 +52,7 @@ function App() {
   const [offersOpen, setOffersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [corporateOpen, setCorporateOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -182,6 +185,50 @@ function App() {
     };
   }
 
+  async function handleReorder(order) {
+    if (!order?.restaurantId || !Array.isArray(order.items) || !order.items.length) {
+      throw new Error("This order cannot be added to the cart again.");
+    }
+
+    if (cartItems.length && cartItems[0]?.restaurantCode !== order.restaurantId) {
+      const shouldReplace = window.confirm(`Your cart has items from ${cartItems[0]?.restaurantName || "another restaurant"}. Replace them with this previous order?`);
+
+      if (!shouldReplace) {
+        return { cancelled: true };
+      }
+    }
+
+    const menuItems = await fetchRestaurantMenu(order.restaurantId);
+    const nextCartItems = order.items.map((orderItem, index) => {
+      const itemName = orderItem.itemName || orderItem.name || "Menu item";
+      const menuItem = menuItems.find((candidate) => candidate.name === itemName);
+      const quantity = Math.max(1, Number(orderItem.quantity) || 1);
+      const orderedPrice = Number(orderItem.price) || Number(orderItem.totalPrice) / quantity || 0;
+      const itemKey = menuItem?.itemId || menuItem?.id || `reorder-${order.id}-${orderItem.id || index}`;
+      const itemPrice = menuItem?.discountedPrice || menuItem?.price || orderedPrice;
+
+      return {
+        item: {
+          ...menuItem,
+          discountedPrice: itemPrice,
+          image: menuItem?.image || order.restaurantImage || "",
+          itemId: itemKey,
+          name: itemName,
+          price: menuItem?.price || orderedPrice
+        },
+        key: itemKey,
+        quantity,
+        restaurantCode: order.restaurantId,
+        restaurantName: order.restaurantName || "Restaurant"
+      };
+    });
+
+    setCartItems(nextCartItems);
+    setStatus("Previous order added to your cart");
+
+    return { success: true };
+  }
+
   function openOffers() {
     setCartOpen(false);
     setCorporateOpen(false);
@@ -274,6 +321,7 @@ function App() {
             <AccountPage
               onAuthSuccess={handleAuthSuccess}
               onLogout={handleLogout}
+              onOrdersOpen={() => setOrdersOpen(true)}
               onStatusChange={setStatus}
               session={authSession}
             />
@@ -298,6 +346,18 @@ function App() {
         onQuantityChange={updateCartQuantity}
         open={cartOpen}
         total={cartSummary.total}
+      />
+
+      <OrdersModal
+        onClose={() => setOrdersOpen(false)}
+        onOpenCart={() => {
+          setOrdersOpen(false);
+          setCartOpen(true);
+        }}
+        onReorder={handleReorder}
+        onStatusChange={setStatus}
+        open={ordersOpen}
+        session={authSession}
       />
 
       <LocationPickerModal
