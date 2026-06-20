@@ -122,6 +122,21 @@ export function deleteAddress(addressId, userId, token) {
   });
 }
 
+export function fetchMyOrders(userId, token) {
+  return fetchJson("/orders/mine", {
+    token,
+    userId
+  });
+}
+
+export function cancelMyOrder(orderId, userId, token) {
+  return fetchJson(`/orders/mine/${encodeURIComponent(orderId)}/cancel`, {
+    method: "PATCH",
+    token,
+    userId
+  });
+}
+
 export function placeCheckoutOrder(payload, userId, token) {
   return fetchJson("/orders/checkout", {
     body: JSON.stringify(payload),

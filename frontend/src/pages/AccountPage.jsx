@@ -1,9 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { requestAuthOtp, verifyAuthOtp } from "../api/client.js";
+import { cancelMyOrder, fetchMyOrders, requestAuthOtp, verifyAuthOtp } from "../api/client.js";
 
 function getFirstName(user) {
   return user?.name ? user.name.trim().split(/\s+/)[0] : "";
+}
+
+function formatCurrency(value) {
+  return `Rs ${Number(value || 0).toFixed(2)}`;
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "Order time unavailable";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
+}
+
+function formatStatus(status) {
+  return String(status || "PENDING")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getStatusClass(status) {
+  return `status-${String(status || "PENDING").toLowerCase()}`;
 }
 
 const accountNavItems = [
@@ -28,10 +60,68 @@ function AccountNavIcon({ section }) {
   return <span className="account-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={paths[section] || paths.orders} /></svg></span>;
 }
 
-function AccountDashboard({ onLogout, session }) {
+function AccountDashboard({ onLogout, onStatusChange, session }) {
   const user = session.user;
   const displayName = user?.name || user?.email || user?.phoneNumber || "SnapEats customer";
   const [activeSection, setActiveSection] = useState("orders");
+  const [orders, setOrders] = useState([]);
+  const [ordersFeedback, setOrdersFeedback] = useState("");
+  const [ordersFeedbackTone, setOrdersFeedbackTone] = useState("neutral");
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+  useEffect(() => {
+    loadOrders();
+  }, [session.token, user?.id]);
+
+  async function loadOrders() {
+    if (!user?.id || !session.token) {
+      setOrders([]);
+      setOrdersLoading(false);
+      return;
+    }
+
+    setOrdersLoading(true);
+
+    try {
+      const orderData = await fetchMyOrders(user.id, session.token);
+      setOrders(Array.isArray(orderData) ? orderData : []);
+      setOrdersFeedback("");
+      setOrdersFeedbackTone("neutral");
+    } catch (error) {
+      const message = error.message || "Could not load your orders.";
+      setOrdersFeedback(message);
+      setOrdersFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
+
+  async function handleCancelOrder(order) {
+    if (!window.confirm(`Cancel order ${order.orderNumber}?`)) {
+      return;
+    }
+
+    setUpdatingOrderId(order.id);
+    setOrdersFeedback("");
+    setOrdersFeedbackTone("neutral");
+
+    try {
+      await cancelMyOrder(order.id, user.id, session.token);
+      setOrdersFeedback("Order cancelled successfully.");
+      setOrdersFeedbackTone("success");
+      onStatusChange("Order cancelled");
+      await loadOrders();
+    } catch (error) {
+      const message = error.message || "Could not cancel this order.";
+      setOrdersFeedback(message);
+      setOrdersFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  }
 
   function renderPanel() {
     if (activeSection === "subscription") {
@@ -101,8 +191,11 @@ function AccountDashboard({ onLogout, session }) {
 
     return (
       <section className="account-panel account-panel-orders">
-        <div className="account-panel-head"><div><p className="menu-eyebrow">Orders</p><h3>Your orders</h3><p className="account-panel-copy">Review recent meals, delivery progress, and order details here.</p></div><Link className="secondary-button" to="/restaurants">Order food</Link></div>
-        <div className="account-empty-state"><h3>No orders placed yet</h3><p>Your completed orders will appear here after checkout.</p><Link className="primary-button" to="/restaurants">Explore restaurants</Link></div>
+        <div className="account-panel-head"><div><p className="menu-eyebrow">Orders</p><h3>Your recent orders</h3><p className="account-panel-copy">Your SnapEats orders will be listed here.</p></div><button className="secondary-button" disabled={ordersLoading} onClick={loadOrders} type="button">{ordersLoading ? "Refreshing..." : "Refresh"}</button></div>
+        {ordersFeedback ? <p className={`checkout-feedback ${ordersFeedbackTone === "error" ? "error" : ordersFeedbackTone === "success" ? "success" : ""}`}>{ordersFeedback}</p> : null}
+        {ordersLoading ? <div className="account-empty-state"><p>Loading your recent orders...</p></div> : null}
+        {!ordersLoading && !orders.length ? <div className="account-empty-state"><p className="account-empty-note">Go ahead and find some awesome restaurants near you.</p><h3>No Orders</h3><p>You haven't placed any order yet.</p><Link className="primary-button" to="/restaurants">Explore restaurants</Link></div> : null}
+        {!ordersLoading && orders.length ? <div className="account-order-list">{orders.slice(0, 3).map((order) => <article className="account-order-card" key={order.id}><div><strong>{order.restaurantName || "Restaurant"}</strong><p>{order.orderNumber || "Order"} - {formatDateTime(order.createdAt)}</p></div><div className="account-order-meta"><span className={`order-status-badge ${getStatusClass(order.status)}`}>{formatStatus(order.status)}</span><strong>{formatCurrency(order.finalAmount)}</strong>{order.canCancel ? <button className="text-button" disabled={updatingOrderId === order.id} onClick={() => handleCancelOrder(order)} type="button">{updatingOrderId === order.id ? "Cancelling..." : "Cancel order"}</button> : null}</div></article>)}</div> : null}
       </section>
     );
   }
@@ -233,7 +326,7 @@ function AccountPage({ onAuthSuccess, onLogout, onStatusChange, session }) {
   }
 
   if (session.user && session.token) {
-    return <AccountDashboard onLogout={onLogout} session={session} />;
+    return <AccountDashboard onLogout={onLogout} onStatusChange={onStatusChange} session={session} />;
   }
 
   return (
