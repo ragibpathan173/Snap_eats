@@ -137,6 +137,34 @@ export function cancelMyOrder(orderId, userId, token) {
   });
 }
 
+export function fetchSubscriptionPlans() {
+  return fetchJson("/subscriptions/plans");
+}
+
+export function fetchCurrentSubscription(userId, token) {
+  return fetchJson("/subscriptions/me", {
+    token,
+    userId
+  });
+}
+
+export function activateSubscription(planCode, userId, token) {
+  return fetchJson("/subscriptions/me/activate", {
+    body: JSON.stringify({ autoRenew: true, planCode }),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function cancelSubscription(userId, token) {
+  return fetchJson("/subscriptions/me/cancel", {
+    method: "PATCH",
+    token,
+    userId
+  });
+}
+
 export function placeCheckoutOrder(payload, userId, token) {
   return fetchJson("/orders/checkout", {
     body: JSON.stringify(payload),

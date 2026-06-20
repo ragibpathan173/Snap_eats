@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { cancelMyOrder, fetchMyOrders, requestAuthOtp, verifyAuthOtp } from "../api/client.js";
+import {
+  activateSubscription,
+  cancelMyOrder,
+  cancelSubscription,
+  fetchCurrentSubscription,
+  fetchMyOrders,
+  fetchSubscriptionPlans,
+  requestAuthOtp,
+  verifyAuthOtp
+} from "../api/client.js";
 
 function getFirstName(user) {
   return user?.name ? user.name.trim().split(/\s+/)[0] : "";
@@ -68,11 +77,22 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
   const [ordersFeedback, setOrdersFeedback] = useState("");
   const [ordersFeedbackTone, setOrdersFeedbackTone] = useState("neutral");
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [subscription, setSubscription] = useState(null);
+  const [subscriptionFeedback, setSubscriptionFeedback] = useState("");
+  const [subscriptionFeedbackTone, setSubscriptionFeedbackTone] = useState("neutral");
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   useEffect(() => {
     loadOrders();
   }, [session.token, user?.id]);
+
+  useEffect(() => {
+    if (activeSection === "subscription") {
+      loadSubscription();
+    }
+  }, [activeSection, session.token, user?.id]);
 
   async function loadOrders() {
     if (!user?.id || !session.token) {
@@ -123,18 +143,100 @@ function AccountDashboard({ onLogout, onOrdersOpen, onStatusChange, session }) {
     }
   }
 
+  async function loadSubscription() {
+    if (!user?.id || !session.token) {
+      setSubscription(null);
+      setSubscriptionPlans([]);
+      setSubscriptionLoading(false);
+      return;
+    }
+
+    setSubscriptionLoading(true);
+
+    try {
+      const [plans, currentSubscription] = await Promise.all([
+        fetchSubscriptionPlans(),
+        fetchCurrentSubscription(user.id, session.token)
+      ]);
+      setSubscriptionPlans(Array.isArray(plans) ? plans : []);
+      setSubscription(currentSubscription && typeof currentSubscription === "object" ? currentSubscription : null);
+    } catch (error) {
+      const message = error.message || "Could not load membership plans.";
+      setSubscriptionPlans([]);
+      setSubscription(null);
+      setSubscriptionFeedback(message);
+      setSubscriptionFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  }
+
+  async function handleActivateSubscription(planCode) {
+    setSubscriptionLoading(true);
+    setSubscriptionFeedback("");
+
+    try {
+      await activateSubscription(planCode, user.id, session.token);
+      setSubscriptionFeedback("Membership activated successfully.");
+      setSubscriptionFeedbackTone("success");
+      onStatusChange("Membership activated");
+      await loadSubscription();
+    } catch (error) {
+      const message = error.message || "Could not activate this plan.";
+      setSubscriptionFeedback(message);
+      setSubscriptionFeedbackTone("error");
+      onStatusChange(message);
+      setSubscriptionLoading(false);
+    }
+  }
+
+  async function handleCancelSubscription() {
+    if (!window.confirm("Cancel your active membership?")) {
+      return;
+    }
+
+    setSubscriptionLoading(true);
+    setSubscriptionFeedback("");
+
+    try {
+      await cancelSubscription(user.id, session.token);
+      setSubscriptionFeedback("Membership cancelled. You can reactivate anytime.");
+      setSubscriptionFeedbackTone("success");
+      onStatusChange("Membership cancelled");
+      await loadSubscription();
+    } catch (error) {
+      const message = error.message || "Could not cancel membership.";
+      setSubscriptionFeedback(message);
+      setSubscriptionFeedbackTone("error");
+      onStatusChange(message);
+      setSubscriptionLoading(false);
+    }
+  }
+
   function renderPanel() {
     if (activeSection === "subscription") {
+      const hasActiveSubscription = Boolean(subscription?.active);
+      const activePlanCode = String(subscription?.planCode || "").toUpperCase();
+
       return (
         <section className="account-panel">
           <p className="menu-eyebrow">SnapEatPro</p>
           <h3>Membership plans</h3>
           <p className="account-panel-copy">Choose a plan and save more on every order with free delivery and member discounts.</p>
-          <div className="account-stat-grid">
-            <div className="account-card"><span>Current status</span><strong>Not subscribed</strong></div>
-            <div className="account-card"><span>Monthly fee</span><strong>Choose a plan</strong></div>
-          </div>
-          <div className="account-placeholder-card compact"><strong>No active plan yet</strong><p>Membership plans and benefits will appear here when available.</p></div>
+          {subscriptionFeedback ? <p className={`checkout-feedback ${subscriptionFeedbackTone === "error" ? "error" : subscriptionFeedbackTone === "success" ? "success" : ""}`}>{subscriptionFeedback}</p> : null}
+          {subscriptionLoading ? <div className="account-placeholder-card"><strong>Loading plans...</strong></div> : <>
+            <div className="account-stat-grid">
+              <div className="account-card"><span>Current status</span><strong>{hasActiveSubscription ? subscription.planName || "Active" : "Not subscribed"}</strong></div>
+              <div className="account-card"><span>Monthly fee</span><strong>{hasActiveSubscription ? `${formatCurrency(subscription.monthlyPrice)}/month` : "Choose a plan"}</strong></div>
+            </div>
+            {hasActiveSubscription ? <div className="subscription-current-card"><div><strong>{subscription.planName || "Membership active"}</strong><p>{subscription.description || "Membership perks are active on your account."}</p><p className="subscription-current-meta">Renews {subscription.nextBillingAt ? formatDateTime(subscription.nextBillingAt) : "every 30 days"}</p></div><button className="text-button danger-button" onClick={handleCancelSubscription} type="button">Cancel plan</button></div> : <div className="account-placeholder-card compact"><strong>No active plan yet</strong><p>Select any plan below to unlock member savings on checkout.</p></div>}
+            <div className="subscription-plan-grid">{subscriptionPlans.length ? subscriptionPlans.map((plan) => {
+              const isCurrentPlan = hasActiveSubscription && String(plan.planCode || "").toUpperCase() === activePlanCode;
+
+              return <article className={`subscription-plan-card ${isCurrentPlan ? "active" : ""}`} key={plan.planCode}><span className="subscription-highlight-pill">{plan.highlight || "Member plan"}</span><h4>{plan.name}</h4><p>{plan.description || ""}</p><div className="subscription-plan-price">{formatCurrency(plan.monthlyPrice)}<small>/month</small></div><div className="subscription-plan-meta"><span>{plan.discountPercent || 0}% off</span><span>Up to {formatCurrency(plan.maxDiscountPerOrder)} off/order</span><span>Free delivery above {formatCurrency(plan.minOrderForFreeDelivery)}</span></div><div className="subscription-plan-actions"><button className={isCurrentPlan ? "secondary-button" : "primary-button"} disabled={isCurrentPlan} onClick={() => handleActivateSubscription(plan.planCode)} type="button">{isCurrentPlan ? "Current plan" : "Activate plan"}</button></div></article>;
+            }) : <div className="account-placeholder-card"><strong>Plan catalog unavailable</strong><p>Try refreshing this section in a moment.</p></div>}</div>
+          </>}
         </section>
       );
     }
