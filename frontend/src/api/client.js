@@ -81,6 +81,15 @@ export function fetchCurrentUser(userId, token) {
   });
 }
 
+export function updateCurrentUser(payload, userId, token) {
+  return fetchJson("/users/me", {
+    body: JSON.stringify(payload),
+    method: "PUT",
+    token,
+    userId
+  });
+}
+
 export function fetchAddresses(userId, token) {
   return fetchJson("/addresses", {
     token,

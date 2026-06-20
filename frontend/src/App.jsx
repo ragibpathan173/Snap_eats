@@ -154,6 +154,16 @@ function App() {
     setStatus("Signed out");
   }
 
+  function handleUserUpdated(updatedUser) {
+    const session = saveAuthSession({
+      token: authSession.token,
+      user: { ...authSession.user, ...updatedUser }
+    });
+
+    setAuthSession(session);
+    setStatus("Profile updated");
+  }
+
   function handleLocationSelect(location) {
     setSelectedLocation(location);
     setLocationOpen(false);
@@ -324,6 +334,7 @@ function App() {
               onLogout={handleLogout}
               onOrdersOpen={() => setOrdersOpen(true)}
               onStatusChange={setStatus}
+              onUserUpdated={handleUserUpdated}
               session={authSession}
             />
           )}

@@ -16,6 +16,7 @@ import {
   removeFavoriteRestaurant,
   requestAuthOtp,
   setDefaultPaymentMethod,
+  updateCurrentUser,
   verifyAuthOtp
 } from "../api/client.js";
 
@@ -101,6 +102,14 @@ function formatPaymentMethodType(methodType) {
   return String(methodType || "CARD").toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
+function createProfileForm(user) {
+  return {
+    email: user?.email || "",
+    name: user?.name || "",
+    phoneNumber: user?.phoneNumber || ""
+  };
+}
+
 const accountNavItems = [
   { id: "orders", label: "Orders" },
   { id: "subscription", label: "SnapEatPro" },
@@ -123,7 +132,7 @@ function AccountNavIcon({ section }) {
   return <span className="account-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={paths[section] || paths.orders} /></svg></span>;
 }
 
-function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChange, session }) {
+function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChange, onUserUpdated, session }) {
   const user = session.user;
   const displayName = user?.name || user?.email || user?.phoneNumber || "SnapEats customer";
   const [activeSection, setActiveSection] = useState(initialSection);
@@ -145,11 +154,19 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   const [paymentForm, setPaymentForm] = useState(createPaymentForm);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [profileFeedback, setProfileFeedback] = useState("");
+  const [profileFeedbackTone, setProfileFeedbackTone] = useState("neutral");
+  const [profileForm, setProfileForm] = useState(() => createProfileForm(user));
+  const [profileSaving, setProfileSaving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   useEffect(() => {
     setActiveSection(initialSection);
   }, [initialSection]);
+
+  useEffect(() => {
+    setProfileForm(createProfileForm(user));
+  }, [user?.email, user?.id, user?.name, user?.phoneNumber]);
 
   useEffect(() => {
     loadOrders();
@@ -438,6 +455,40 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
     }
   }
 
+  function updateProfileForm(field, value) {
+    setProfileForm((currentForm) => ({ ...currentForm, [field]: value }));
+  }
+
+  async function handleSaveProfile(event) {
+    event.preventDefault();
+    setProfileSaving(true);
+    setProfileFeedback("Saving profile...");
+    setProfileFeedbackTone("neutral");
+
+    try {
+      const updatedUser = await updateCurrentUser(
+        {
+          email: profileForm.email.trim(),
+          name: profileForm.name.trim(),
+          phoneNumber: profileForm.phoneNumber.trim()
+        },
+        user.id,
+        session.token
+      );
+      onUserUpdated(updatedUser);
+      setProfileForm(createProfileForm(updatedUser));
+      setProfileFeedback("Profile updated successfully.");
+      setProfileFeedbackTone("success");
+    } catch (error) {
+      const message = error.message || "Could not update profile.";
+      setProfileFeedback(message);
+      setProfileFeedbackTone("error");
+      onStatusChange(message);
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   function renderPanel() {
     if (activeSection === "subscription") {
       const hasActiveSubscription = Boolean(subscription?.active);
@@ -526,14 +577,15 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
       return (
         <section className="account-panel">
           <div className="account-panel-head"><div><p className="menu-eyebrow">Settings</p><h3>Profile and app settings</h3></div></div>
-          <div className="account-settings-form">
+          <form className="account-settings-form" onSubmit={handleSaveProfile}>
             <div className="account-stat-grid">
-              <label className="account-form-field"><span>Name</span><input readOnly value={user?.name || "Not added"} /></label>
-              <label className="account-form-field"><span>Email</span><input readOnly value={user?.email || "Not added"} /></label>
-              <label className="account-form-field"><span>Phone</span><input readOnly value={user?.phoneNumber || "Not added"} /></label>
+              <label className="account-form-field"><span>Name</span><input disabled={profileSaving} onChange={(event) => updateProfileForm("name", event.target.value)} required type="text" value={profileForm.name} /></label>
+              <label className="account-form-field"><span>Email</span><input disabled={profileSaving} onChange={(event) => updateProfileForm("email", event.target.value)} required type="email" value={profileForm.email} /></label>
+              <label className="account-form-field"><span>Phone</span><input disabled={profileSaving} onChange={(event) => updateProfileForm("phoneNumber", event.target.value)} type="tel" value={profileForm.phoneNumber} /></label>
             </div>
-            <div className="auth-actions"><button className="text-button danger-button" onClick={onLogout} type="button">Log out</button></div>
-          </div>
+            <div className="auth-actions"><button className="primary-button" disabled={profileSaving} type="submit">{profileSaving ? "Saving..." : "Save profile"}</button><button className="text-button danger-button" onClick={onLogout} type="button">Log out</button></div>
+            {profileFeedback ? <p className={`checkout-feedback ${profileFeedbackTone === "error" ? "error" : profileFeedbackTone === "success" ? "success" : ""}`}>{profileFeedback}</p> : null}
+          </form>
           <section className="account-danger-zone"><div className="account-panel-head account-panel-head-compact"><div><h4>Delete account</h4><p className="account-panel-note">Secure account deletion is not available in the React flow yet.</p></div></div></section>
         </section>
       );
@@ -558,7 +610,7 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   );
 }
 
-function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, session }) {
+function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, onUserUpdated, session }) {
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState("login");
   const [step, setStep] = useState("form");
@@ -679,7 +731,7 @@ function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, se
   }
 
   if (session.user && session.token) {
-    return <AccountDashboard initialSection={initialSection} onLogout={onLogout} onOrdersOpen={onOrdersOpen} onStatusChange={onStatusChange} session={session} />;
+    return <AccountDashboard initialSection={initialSection} onLogout={onLogout} onOrdersOpen={onOrdersOpen} onStatusChange={onStatusChange} onUserUpdated={onUserUpdated} session={session} />;
   }
 
   return (
