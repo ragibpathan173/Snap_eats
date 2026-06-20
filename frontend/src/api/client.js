@@ -97,6 +97,15 @@ export function createAddress(payload, userId, token) {
   });
 }
 
+export function updateAddress(addressId, payload, userId, token) {
+  return fetchJson(`/addresses/${encodeURIComponent(addressId)}`, {
+    body: JSON.stringify(payload),
+    method: "PUT",
+    token,
+    userId
+  });
+}
+
 export function setDefaultAddress(addressId, userId, token) {
   return fetchJson(`/addresses/${encodeURIComponent(addressId)}/default`, {
     method: "PATCH",

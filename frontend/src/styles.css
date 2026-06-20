@@ -46,6 +46,12 @@
   z-index: 2300;
 }
 
+.react-address-map-frame {
+  width: 100%;
+  height: 330px;
+  border: 0;
+}
+
 .footer-subheading {
   margin-top: 30px;
 }
