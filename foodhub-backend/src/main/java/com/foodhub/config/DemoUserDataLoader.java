@@ -4,6 +4,7 @@ import com.foodhub.model.User;
 import com.foodhub.model.UserAddress;
 import com.foodhub.repository.UserAddressRepository;
 import com.foodhub.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,19 +17,23 @@ public class DemoUserDataLoader {
 
     public static final String DEMO_USER_EMAIL = "guest@snap-eats.local";
     public static final String DEMO_ADMIN_EMAIL = "admin@snap-eats.local";
-    public static final String OWNER_ADMIN_EMAIL = "ragibpathan00@gmail.com";
-    public static final String OWNER_ADMIN_PHONE = "9660966829";
 
     private final UserRepository userRepository;
     private final UserAddressRepository userAddressRepository;
     private final PasswordEncoder passwordEncoder;
+    private final String ownerAdminEmail;
+    private final String ownerAdminPhone;
 
     public DemoUserDataLoader(UserRepository userRepository,
                               UserAddressRepository userAddressRepository,
-                              PasswordEncoder passwordEncoder) {
+                              PasswordEncoder passwordEncoder,
+                              @Value("${demo.owner-admin.email:}") String ownerAdminEmail,
+                              @Value("${demo.owner-admin.phone:}") String ownerAdminPhone) {
         this.userRepository = userRepository;
         this.userAddressRepository = userAddressRepository;
         this.passwordEncoder = passwordEncoder;
+        this.ownerAdminEmail = normalizeEmail(ownerAdminEmail);
+        this.ownerAdminPhone = normalizePhoneNumber(ownerAdminPhone);
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -95,14 +100,20 @@ public class DemoUserDataLoader {
     }
 
     private void ensureOwnerAdminAccounts() {
-        User ownerByEmail = userRepository.findByEmail(OWNER_ADMIN_EMAIL).orElse(null);
-        User ownerByPhone = userRepository.findByPhoneNumber(OWNER_ADMIN_PHONE).orElse(null);
+        if (ownerAdminEmail.isBlank() && ownerAdminPhone.isBlank()) {
+            return;
+        }
+
+        User ownerByEmail = ownerAdminEmail.isBlank() ? null : userRepository.findByEmail(ownerAdminEmail).orElse(null);
+        User ownerByPhone = ownerAdminPhone.isBlank() ? null : userRepository.findByPhoneNumber(ownerAdminPhone).orElse(null);
 
         if (ownerByEmail == null && ownerByPhone == null) {
             User ownerAdmin = new User();
-            ownerAdmin.setName("Ragib Pathan");
-            ownerAdmin.setEmail(OWNER_ADMIN_EMAIL);
-            ownerAdmin.setPhoneNumber(OWNER_ADMIN_PHONE);
+            ownerAdmin.setName("Owner Admin");
+            ownerAdmin.setEmail(resolveOwnerAdminEmail());
+            if (!ownerAdminPhone.isBlank()) {
+                ownerAdmin.setPhoneNumber(ownerAdminPhone);
+            }
             ownerAdmin.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
             ownerAdmin.setRole(User.Role.ADMIN);
             ownerAdmin.setActive(true);
@@ -131,17 +142,42 @@ public class DemoUserDataLoader {
             changed = true;
         }
         if (user.getEmail() == null || user.getEmail().isBlank()) {
-            user.setEmail(OWNER_ADMIN_EMAIL);
+            user.setEmail(resolveOwnerAdminEmail());
             changed = true;
         }
-        if (user.getPhoneNumber() == null || user.getPhoneNumber().isBlank()) {
-            user.setPhoneNumber(OWNER_ADMIN_PHONE);
+        if ((user.getPhoneNumber() == null || user.getPhoneNumber().isBlank()) && !ownerAdminPhone.isBlank()) {
+            user.setPhoneNumber(ownerAdminPhone);
             changed = true;
         }
 
         if (changed) {
             userRepository.save(user);
         }
+    }
+
+    private String resolveOwnerAdminEmail() {
+        if (!ownerAdminEmail.isBlank()) {
+            return ownerAdminEmail;
+        }
+        return "owner-admin+" + ownerAdminPhone + "@snap-eats.local";
+    }
+
+    private static String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
+    }
+
+    private static String normalizePhoneNumber(String phone) {
+        if (phone == null) {
+            return "";
+        }
+        String digits = phone.replaceAll("[^0-9]", "");
+        if (digits.startsWith("0") && digits.length() == 11) {
+            digits = digits.substring(1);
+        }
+        if (digits.startsWith("91") && digits.length() >= 12) {
+            digits = digits.substring(digits.length() - 10);
+        }
+        return digits;
     }
 
     private UserAddress createAddress(Long userId,

@@ -92,6 +92,12 @@ public class UserController {
     @Value("${security.otp.dev-return:true}")
     private boolean otpDevReturn;
 
+    @Value("${demo.owner-admin.email:}")
+    private String ownerAdminEmail;
+
+    @Value("${demo.owner-admin.phone:}")
+    private String ownerAdminPhone;
+
     // ===== CREATE =====
     
     @PostMapping("/register")
@@ -958,12 +964,20 @@ public class UserController {
             return Optional.empty();
         }
 
-        Optional<User> byEmail = userRepository.findByEmail(DemoUserDataLoader.OWNER_ADMIN_EMAIL);
-        if (byEmail.isPresent()) {
-            return byEmail;
+        String configuredEmail = normalizeEmail(ownerAdminEmail);
+        if (!configuredEmail.isBlank()) {
+            Optional<User> byEmail = userRepository.findByEmail(configuredEmail);
+            if (byEmail.isPresent()) {
+                return byEmail;
+            }
         }
 
-        return userRepository.findByPhoneNumber(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+        String configuredPhone = normalizePhoneNumber(ownerAdminPhone);
+        if (!configuredPhone.isBlank()) {
+            return userRepository.findByPhoneNumber(configuredPhone);
+        }
+
+        return Optional.empty();
     }
 
     private User ensureOwnerAdminAccess(User user, ParsedIdentifier parsedIdentifier, String requestedEmail) {
@@ -980,15 +994,20 @@ public class UserController {
             user.setActive(true);
             changed = true;
         }
-        if ((user.getEmail() == null || user.getEmail().isBlank()) && matchesOwnerAdminEmail(requestedEmail)) {
-            user.setEmail(DemoUserDataLoader.OWNER_ADMIN_EMAIL);
+        String configuredEmail = normalizeEmail(ownerAdminEmail);
+        if ((user.getEmail() == null || user.getEmail().isBlank())
+                && !configuredEmail.isBlank()
+                && matchesOwnerAdminEmail(requestedEmail)) {
+            user.setEmail(configuredEmail);
             changed = true;
         }
+        String configuredPhone = normalizePhoneNumber(ownerAdminPhone);
         if ((user.getPhoneNumber() == null || user.getPhoneNumber().isBlank())
+                && !configuredPhone.isBlank()
                 && parsedIdentifier != null
                 && !parsedIdentifier.email()
                 && matchesOwnerAdminPhone(parsedIdentifier.value())) {
-            user.setPhoneNumber(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+            user.setPhoneNumber(configuredPhone);
             changed = true;
         }
 
@@ -1015,14 +1034,23 @@ public class UserController {
     }
 
     private boolean matchesOwnerAdminEmail(String email) {
-        return email != null && DemoUserDataLoader.OWNER_ADMIN_EMAIL.equalsIgnoreCase(email.trim());
+        String configuredEmail = normalizeEmail(ownerAdminEmail);
+        return !configuredEmail.isBlank() && email != null && configuredEmail.equals(normalizeEmail(email));
     }
 
     private boolean matchesOwnerAdminPhone(String phone) {
-        return phone != null && normalizePhoneNumber(phone).equals(DemoUserDataLoader.OWNER_ADMIN_PHONE);
+        String configuredPhone = normalizePhoneNumber(ownerAdminPhone);
+        return !configuredPhone.isBlank() && phone != null && normalizePhoneNumber(phone).equals(configuredPhone);
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 
     private String normalizePhoneNumber(String phone) {
+        if (phone == null) {
+            return "";
+        }
         String digits = phone.replaceAll("[^0-9]", "");
         if (digits.startsWith("0") && digits.length() == 11) {
             digits = digits.substring(1);

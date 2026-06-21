@@ -247,9 +247,9 @@ public class SavedPaymentMethodController {
             return brand + " ending " + lastFour(digits);
         }
         if (methodType == SavedPaymentMethod.MethodType.UPI) {
-            return "UPI · " + request.upiId.trim().toLowerCase(Locale.ROOT);
+            return "UPI - " + request.upiId.trim().toLowerCase(Locale.ROOT);
         }
-        return "Wallet · " + request.walletProvider.trim();
+        return "Wallet - " + request.walletProvider.trim();
     }
 
     private String resolveCardBrand(String digits, String fallbackBrand) {

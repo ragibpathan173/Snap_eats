@@ -15,7 +15,7 @@ class AuthOtpIntegrationTest extends IntegrationTestBase {
 
     @Test
     void shouldRequestAndVerifyOtpForPhoneIdentifier() throws Exception {
-        String identifier = "9660966829";
+        String identifier = "9000012345";
         MvcResult requestOtpResult = mockMvc.perform(post("/api/users/auth/otp/request")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("identifier", identifier))))
@@ -68,4 +68,3 @@ class AuthOtpIntegrationTest extends IntegrationTestBase {
         Assertions.assertFalse(verifyResponse.path("token").asText("").isBlank());
     }
 }
-
