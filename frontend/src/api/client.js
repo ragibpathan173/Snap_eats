@@ -127,6 +127,48 @@ export function fetchAdminUsers(query, userId, token) {
   });
 }
 
+export function fetchAdminRestaurants(userId, token) {
+  return fetchJson("/restaurants/active", {
+    token,
+    userId
+  });
+}
+
+export async function fetchAdminMenuItems(restaurantId, userId, token) {
+  const response = await fetchJson(
+    `/menu-items/restaurant/${encodeURIComponent(restaurantId)}?activeOnly=false&availableOnly=false&page=0&size=300`,
+    { token, userId }
+  );
+
+  return Array.isArray(response) ? response : response?.items || [];
+}
+
+export function createAdminMenuItem(payload, userId, token) {
+  return fetchJson("/menu-items", {
+    body: JSON.stringify(payload),
+    method: "POST",
+    token,
+    userId
+  });
+}
+
+export function updateAdminMenuItem(menuItemId, payload, userId, token) {
+  return fetchJson(`/menu-items/${encodeURIComponent(menuItemId)}`, {
+    body: JSON.stringify(payload),
+    method: "PUT",
+    token,
+    userId
+  });
+}
+
+export function deleteAdminMenuItem(menuItemId, userId, token) {
+  return fetchJson(`/menu-items/${encodeURIComponent(menuItemId)}`, {
+    method: "DELETE",
+    token,
+    userId
+  });
+}
+
 export function fetchAddresses(userId, token) {
   return fetchJson("/addresses", {
     token,
