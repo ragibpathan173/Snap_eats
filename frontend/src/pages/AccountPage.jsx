@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import AdminPanel from "../components/AdminPanel.jsx";
 import {
   activateSubscription,
   cancelMyOrder,
@@ -131,7 +132,7 @@ function getDeleteAccountChannels(user) {
   return channels;
 }
 
-const accountNavItems = [
+const standardAccountNavItems = [
   { id: "orders", label: "Orders" },
   { id: "subscription", label: "SnapEatPro" },
   { id: "favorites", label: "Favorites" },
@@ -140,9 +141,20 @@ const accountNavItems = [
   { id: "settings", label: "Settings" }
 ];
 
+function getAccountNavItems(user) {
+  const items = [...standardAccountNavItems];
+
+  if (String(user?.role || "").toUpperCase() === "ADMIN") {
+    items.splice(1, 0, { id: "admin", label: "Admin" });
+  }
+
+  return items;
+}
+
 function AccountNavIcon({ section }) {
   const paths = {
     addresses: "M12 2C7.58 2 4 5.58 4 10c0 5.25 6.12 11.39 7.38 12.59a1 1 0 0 0 1.24 0C13.88 21.39 20 15.25 20 10c0-4.42-3.58-8-8-8Zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z",
+    admin: "M12 2 4 5v6c0 5.25 3.4 10.15 8 11.85 4.6-1.7 8-6.6 8-11.85V5l-8-3Zm3.72 8.84-4.12 4.12a1 1 0 0 1-1.41 0l-1.91-1.91 1.41-1.41 1.2 1.2 3.42-3.42 1.41 1.42Z",
     favorites: "M12 21.35 10.55 20.03C5.4 15.36 2 12.27 2 8.5A4.5 4.5 0 0 1 6.5 4c1.74 0 3.41.81 4.5 2.09A6.03 6.03 0 0 1 15.5 4 4.5 4.5 0 0 1 20 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z",
     orders: "M7 7.5A2.5 2.5 0 0 1 9.5 5h5A2.5 2.5 0 0 1 17 7.5V9h1.5A1.5 1.5 0 0 1 20 10.5v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-8A1.5 1.5 0 0 1 5.5 9H7V7.5Zm2.5-1A1.5 1.5 0 0 0 8 8v1h8V8a1.5 1.5 0 0 0-1.5-1.5h-5Z",
     payments: "M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2H3V6Zm0 4h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8Zm4 5v2h4v-2H7Z",
@@ -190,6 +202,7 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   const [profileForm, setProfileForm] = useState(() => createProfileForm(user));
   const [profileSaving, setProfileSaving] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState(null);
+  const accountNavItems = useMemo(() => getAccountNavItems(user), [user?.role]);
   const deleteAccountChannels = useMemo(() => getDeleteAccountChannels(user), [user?.email, user?.phoneNumber]);
 
   useEffect(() => {
@@ -629,6 +642,10 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
   }
 
   function renderPanel() {
+    if (activeSection === "admin") {
+      return <AdminPanel onStatusChange={onStatusChange} session={session} />;
+    }
+
     if (activeSection === "subscription") {
       const hasActiveSubscription = Boolean(subscription?.active);
       const activePlanCode = String(subscription?.planCode || "").toUpperCase();
@@ -772,7 +789,7 @@ function AccountPage({ onAuthSuccess, onLogout, onOrdersOpen, onStatusChange, on
 
   const isSignup = mode === "signup";
   const requestedSection = searchParams.get("section");
-  const initialSection = accountNavItems.some((item) => item.id === requestedSection) ? requestedSection : "orders";
+  const initialSection = getAccountNavItems(session.user).some((item) => item.id === requestedSection) ? requestedSection : "orders";
   const identifierIsEmail = useMemo(() => identifier.includes("@"), [identifier]);
 
   useEffect(() => {

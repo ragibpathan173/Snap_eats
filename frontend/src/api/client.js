@@ -108,6 +108,25 @@ export function confirmAccountDeletion(channel, otp, userId, token) {
   });
 }
 
+export function fetchAdminUserStats(userId, token) {
+  return fetchJson("/users/stats", {
+    token,
+    userId
+  });
+}
+
+export function fetchAdminUsers(query, userId, token) {
+  const normalizedQuery = String(query || "").trim();
+  const path = normalizedQuery
+    ? `/users/search?query=${encodeURIComponent(normalizedQuery)}`
+    : "/users";
+
+  return fetchJson(path, {
+    token,
+    userId
+  });
+}
+
 export function fetchAddresses(userId, token) {
   return fetchJson("/addresses", {
     token,
