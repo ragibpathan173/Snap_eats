@@ -225,8 +225,11 @@ export function cancelMyOrder(orderId, userId, token) {
   });
 }
 
-export function fetchSubscriptionPlans() {
-  return fetchJson("/subscriptions/plans");
+export function fetchSubscriptionPlans(userId, token) {
+  return fetchJson("/subscriptions/plans", {
+    token,
+    userId
+  });
 }
 
 export function fetchCurrentSubscription(userId, token) {

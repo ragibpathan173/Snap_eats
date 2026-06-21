@@ -316,7 +316,7 @@ function AccountDashboard({ initialSection, onLogout, onOrdersOpen, onStatusChan
 
     try {
       const [plans, currentSubscription] = await Promise.all([
-        fetchSubscriptionPlans(),
+        fetchSubscriptionPlans(user.id, session.token),
         fetchCurrentSubscription(user.id, session.token)
       ]);
       setSubscriptionPlans(Array.isArray(plans) ? plans : []);
