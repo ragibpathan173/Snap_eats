@@ -12244,7 +12244,7 @@ body {
 
 @media (max-width: 1180px) {
     .restaurants-section > .container {
-        width: min(calc(100% - 40px), 1560px) !important;
+        width: min(var(--layout-content-max), calc(100% - 40px)) !important;
     }
 
     .restaurants-section .restaurant-scroll-region .restaurants-grid {
