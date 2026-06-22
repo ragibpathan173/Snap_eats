@@ -34,20 +34,28 @@ function RestaurantCard({ isFavorite, onFavoriteToggle, onSelect, restaurant }) 
         </button>
       </div>
       <div className="restaurant-info">
-        <div className="restaurant-name">
-          {restaurant.name}
-          {restaurant.verified ? <span className="verified-mark">Verified</span> : null}
+        <div className="restaurant-title-row">
+          <h3 className="restaurant-name">{restaurant.name}</h3>
+          {restaurant.verified ? (
+            <span className="verified-mark" title="Verified restaurant" aria-label="Verified restaurant">
+              &#10003;
+            </span>
+          ) : null}
         </div>
-        <div className="restaurant-cuisine">{restaurant.cuisine || ""}</div>
-        {restaurant.locality || restaurant.city ? (
-          <div className="restaurant-serving">
-            Serves {[restaurant.locality, restaurant.city].filter(Boolean).join(", ")}
-          </div>
-        ) : null}
         <div className="restaurant-meta">
-          <div className="rating">&#9733; {formatNumber(restaurant.rating)}</div>
+          <div className="rating">
+            <span className="restaurant-rating-star" aria-hidden="true">&#9733;</span>
+            <span>{formatNumber(restaurant.rating)}</span>
+          </div>
+          <span className="restaurant-meta-separator" aria-hidden="true">&bull;</span>
           <div className="delivery-time">{restaurant.time || ""}</div>
         </div>
+        <div className="restaurant-cuisine" title={restaurant.cuisine || ""}>{restaurant.cuisine || ""}</div>
+        {restaurant.locality || restaurant.city ? (
+          <div className="restaurant-serving">
+            {[restaurant.locality, restaurant.city].filter(Boolean).join(", ")}
+          </div>
+        ) : null}
       </div>
     </article>
   );
