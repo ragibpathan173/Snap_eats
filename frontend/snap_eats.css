@@ -12193,3 +12193,91 @@ body {
         min-width: 0 !important;
     }
 }
+
+/* Centered restaurant viewport with clean side gutters and internal scrolling. */
+.restaurants-section {
+    overflow: hidden;
+    background: #fff;
+}
+
+.restaurants-section > .container {
+    width: min(calc(100% - 64px), 1560px) !important;
+    max-width: 1560px !important;
+    margin-inline: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.restaurants-section .section-title {
+    padding-inline: 8px;
+}
+
+.restaurant-scroll-region {
+    max-height: min(760px, calc(100vh - 170px));
+    min-height: 440px;
+    margin-inline: -8px;
+    padding: 0 8px 28px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.restaurant-scroll-region::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.restaurants-section .restaurant-scroll-region .restaurants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 34px 24px !important;
+}
+
+.restaurants-section .restaurant-scroll-region .restaurants-footer {
+    padding: 20px 4px 4px !important;
+}
+
+@media (max-width: 1180px) {
+    .restaurants-section > .container {
+        width: min(calc(100% - 40px), 1560px) !important;
+    }
+
+    .restaurants-section .restaurant-scroll-region .restaurants-grid {
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+        gap: 28px 18px !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .restaurants-section > .container {
+        width: calc(100% - 28px) !important;
+    }
+
+    .restaurants-section .section-title {
+        padding-inline: 0 !important;
+    }
+
+    .restaurant-scroll-region {
+        max-height: calc(100vh - 150px);
+        min-height: 420px;
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+
+    .restaurants-section .restaurant-scroll-region .restaurants-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 24px 12px !important;
+        padding-inline: 0 !important;
+    }
+}
+
+@media (max-width: 520px) {
+    .restaurants-section .restaurant-scroll-region .restaurants-grid {
+        grid-template-columns: 1fr !important;
+    }
+}

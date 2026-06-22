@@ -235,14 +235,16 @@ function CatalogPage({
           <h2 className="section-title">
             {activeCategory === "all" ? "Top restaurant chains in your city" : `${activeCategory} restaurants`}
           </h2>
-          <RestaurantGrid
-            favoriteRestaurantIds={favoriteRestaurantIds}
-            onFavoriteToggle={handleRestaurantFavorite}
-            onRestaurantSelect={handleRestaurantSelect}
-            restaurants={featuredRestaurants}
-          />
-          <div className="restaurants-footer">
-            <p className="restaurants-count">Showing {featuredRestaurants.length} of {filteredRestaurants.length} restaurants</p>
+          <div className="restaurant-scroll-region" role="region" aria-label="Restaurant results">
+            <RestaurantGrid
+              favoriteRestaurantIds={favoriteRestaurantIds}
+              onFavoriteToggle={handleRestaurantFavorite}
+              onRestaurantSelect={handleRestaurantSelect}
+              restaurants={featuredRestaurants}
+            />
+            <div className="restaurants-footer">
+              <p className="restaurants-count">Showing {featuredRestaurants.length} of {filteredRestaurants.length} restaurants</p>
+            </div>
           </div>
         </div>
       </section>
