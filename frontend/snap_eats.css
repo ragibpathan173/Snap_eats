@@ -12201,8 +12201,8 @@ body {
 }
 
 .restaurants-section > .container {
-    width: min(calc(100% - 64px), 1560px) !important;
-    max-width: 1560px !important;
+    width: min(var(--layout-content-max), calc(100% - 64px)) !important;
+    max-width: var(--layout-content-max) !important;
     margin-inline: auto !important;
     padding: 0 !important;
     border: 0 !important;
