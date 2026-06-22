@@ -7584,7 +7584,7 @@ body {
 /* Global side spacing (uniform left/right gutters like Swiggy) */
 :root {
     --layout-side-gap: 32px;
-    --layout-content-max: 1380px;
+    --layout-content-max: 1200px;
     --layout-shell-max: 1540px;
 }
 
@@ -7978,7 +7978,7 @@ html {
 /* Global continuous layout: uniform side spacing + no boxed sections */
 :root {
     --layout-side-gap: 32px;
-    --layout-content-max: 1380px;
+    --layout-content-max: 1200px;
     --layout-shell-max: var(--layout-content-max);
 }
 
