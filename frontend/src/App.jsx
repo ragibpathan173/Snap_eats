@@ -118,7 +118,6 @@ function App() {
         }
       ];
     });
-    setCartOpen(true);
   }
 
   function updateCartQuantity(itemKey, quantity) {
