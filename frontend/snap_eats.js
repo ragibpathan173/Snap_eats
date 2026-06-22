@@ -1478,7 +1478,7 @@ function applyFooterLocation(label, subtitle) {
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
     }
-    window.location.assign("snap_eats.html");
+    window.location.assign("index.html");
 }
 
 function handleLocationChipKeydown(event) {
@@ -3944,12 +3944,12 @@ function goHome(event) {
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     const currentPath = String(window.location.pathname || "").toLowerCase();
-    if (currentPath === "/" || currentPath.endsWith("/snap_eats.html")) {
+    if (currentPath === "/" || currentPath.endsWith("/index.html")) {
         window.location.reload();
         return;
     }
 
-    window.location.assign("snap_eats.html");
+    window.location.assign("index.html");
 }
 
 function openLocationPicker(event) {
