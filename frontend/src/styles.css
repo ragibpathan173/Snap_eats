@@ -1050,3 +1050,208 @@ h2 {
     flex-direction: column;
   }
 }
+
+/* Swiggy Style Menu Items */
+.react-menu-modal .menu-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 10px 28px 28px !important;
+  background: #fff !important;
+}
+
+.react-menu-modal .menu-item-card {
+  display: grid !important;
+  grid-template-columns: 1fr 140px !important;
+  gap: 24px !important;
+  align-items: flex-start !important;
+  padding: 24px 0 !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.react-menu-modal .menu-item-card:last-child {
+  border-bottom: none !important;
+}
+
+.react-menu-modal .menu-item-card .menu-item-copy {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.react-menu-modal .menu-item-card .menu-item-topline {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 6px !important;
+}
+
+.react-menu-modal .menu-item-card .bestseller-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #ee5e37 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.react-menu-modal .menu-item-card h3 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #3e4152 !important;
+  margin: 0 0 4px 0 !important;
+}
+
+.react-menu-modal .menu-item-card .menu-favorite-toggle {
+  margin-left: 10px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 999px !important;
+  background: #fff !important;
+  color: #27303f !important;
+  font-size: 14px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.react-menu-modal .menu-item-card .menu-favorite-toggle.active {
+  color: #cb202d !important;
+  border-color: rgba(203, 32, 45, 0.24) !important;
+}
+
+.react-menu-modal .menu-item-card .menu-price-row {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: #3e4152 !important;
+  margin-bottom: 6px !important;
+}
+
+.react-menu-modal .menu-item-card .menu-rating-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #0f8a4f !important;
+  margin-bottom: 8px !important;
+}
+
+.react-menu-modal .menu-item-card .menu-rating-row .star-icon {
+  font-size: 14px !important;
+}
+
+.react-menu-modal .menu-item-card .menu-rating-row .rating-count {
+  color: #7e808c !important;
+  font-weight: 500 !important;
+}
+
+.react-menu-modal .menu-item-card p {
+  font-size: 13px !important;
+  color: #7e808c !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+}
+
+.react-menu-modal .menu-item-card .menu-item-aside {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 6px !important;
+  justify-self: center !important;
+  position: relative !important;
+  padding: 0 !important;
+}
+
+.react-menu-modal .menu-item-card .menu-item-img-wrapper {
+  position: relative !important;
+  width: 120px !important;
+  height: 96px !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+}
+
+.react-menu-modal .menu-item-card .menu-item-image {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 12px !important;
+}
+
+.react-menu-modal .menu-item-card .menu-btn-overlay {
+  position: absolute !important;
+  bottom: -12px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10 !important;
+}
+
+/* Swiggy Button Styling */
+.react-menu-modal .menu-item-card .swiggy-add-btn,
+.react-menu-modal .menu-item-card .swiggy-stepper {
+  width: 96px !important;
+  height: 34px !important;
+  background: #fff !important;
+  border: 1px solid #d4d5d9 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 800 !important;
+  font-size: 13px !important;
+  color: #60b246 !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+}
+
+.react-menu-modal .menu-item-card .swiggy-add-btn:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.react-menu-modal .menu-item-card .swiggy-stepper {
+  justify-content: space-between !important;
+  padding: 0 8px !important;
+}
+
+.react-menu-modal .menu-item-card .swiggy-stepper button {
+  border: none !important;
+  background: transparent !important;
+  color: #60b246 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  padding: 0 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.react-menu-modal .menu-item-card .swiggy-stepper .stepper-count {
+  color: #60b246 !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+.react-menu-modal .menu-item-card .menu-cart-note {
+  font-size: 10px !important;
+  color: #8a8c94 !important;
+  margin-top: 14px !important;
+  text-align: center !important;
+}
+
