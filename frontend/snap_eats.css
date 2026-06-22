@@ -12216,15 +12216,8 @@ body {
 }
 
 .restaurant-scroll-region {
-    max-height: min(760px, calc(100vh - 170px));
-    min-height: 440px;
     margin-inline: -8px;
     padding: 0 8px 28px;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
 .restaurant-scroll-region::-webkit-scrollbar {
@@ -12263,8 +12256,6 @@ body {
     }
 
     .restaurant-scroll-region {
-        max-height: calc(100vh - 150px);
-        min-height: 420px;
         margin-inline: 0;
         padding-inline: 0;
     }
