@@ -1248,7 +1248,7 @@ h2 {
   height: 100%;
   border: none;
   background: transparent;
-  color: #60b246;
+  color: #b42331;
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
@@ -1262,7 +1262,7 @@ h2 {
 .se-cart-stepper-count {
   font-size: 13px;
   font-weight: 800;
-  color: #60b246;
+  color: #b42331;
 }
 
 .se-cart-item-total {
@@ -1321,7 +1321,7 @@ h2 {
 .se-cart-checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #60b246;
+  accent-color: #b42331;
   cursor: pointer;
 }
 
@@ -1453,7 +1453,7 @@ h2 {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  background: #60b246;
+  background: #b42331;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -1465,7 +1465,7 @@ h2 {
 }
 
 .se-cart-checkout-btn:hover {
-  background: #52a33a;
+  background: #9c1b27;
   transform: translateY(-1px);
 }
 
@@ -1672,7 +1672,7 @@ h2 {
   justify-content: center !important;
   font-weight: 800 !important;
   font-size: 13px !important;
-  color: #60b246 !important;
+  color: #b42331 !important;
   cursor: pointer !important;
   box-sizing: border-box !important;
 }
@@ -1689,7 +1689,7 @@ h2 {
 .react-menu-modal .menu-item-card .swiggy-stepper button {
   border: none !important;
   background: transparent !important;
-  color: #60b246 !important;
+  color: #b42331 !important;
   font-size: 18px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
@@ -1700,7 +1700,7 @@ h2 {
 }
 
 .react-menu-modal .menu-item-card .swiggy-stepper .stepper-count {
-  color: #60b246 !important;
+  color: #b42331 !important;
   font-size: 13px !important;
   font-weight: 800 !important;
 }
@@ -2221,7 +2221,7 @@ h2 {
 .checkout-item-stepper button {
   border: none;
   background: transparent;
-  color: #60b246;
+  color: #b42331;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -2232,7 +2232,7 @@ h2 {
 }
 
 .checkout-item-stepper .stepper-value {
-  color: #60b246;
+  color: #b42331;
   font-size: 12px;
   font-weight: 800;
 }
@@ -2467,6 +2467,13 @@ h2 {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Header Cart Count Brand Color Override */
+.cart-count {
+  background: #b42331 !important;
+  color: #ffffff !important;
+  border-color: #b42331 !important;
 }
 
 
