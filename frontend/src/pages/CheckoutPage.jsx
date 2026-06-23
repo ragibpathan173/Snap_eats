@@ -90,6 +90,38 @@ const paymentOptions = [
   }
 ];
 
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ffffff' }}>
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const HomeIcon = () => (
+  <span style={{ fontSize: '16px', marginRight: '4px' }}>🏠</span>
+);
+
+const WorkIcon = () => (
+  <span style={{ fontSize: '16px', marginRight: '4px' }}>💼</span>
+);
+
+const PinIcon = () => (
+  <span style={{ fontSize: '16px', marginRight: '4px' }}>📍</span>
+);
+
+const VegIcon = () => (
+  <svg viewBox="0 0 14 14" width="14" height="14" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
+    <rect x="0.5" y="0.5" width="13" height="13" rx="2" fill="none" stroke="#0f8a4f" strokeWidth="1.2" />
+    <circle cx="7" cy="7" r="3.2" fill="#0f8a4f" />
+  </svg>
+);
+
+const NonVegIcon = () => (
+  <svg viewBox="0 0 14 14" width="14" height="14" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: '6px' }}>
+    <rect x="0.5" y="0.5" width="13" height="13" rx="2" fill="none" stroke="#e43b4f" strokeWidth="1.2" />
+    <polygon points="7,3 11.5,11 2.5,11" fill="#e43b4f" />
+  </svg>
+);
+
 function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, onQuantityChange, session, total }) {
   const [addresses, setAddresses] = useState([]);
   const [addressStatus, setAddressStatus] = useState("idle");
@@ -120,11 +152,22 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
     ? formatSavedPaymentMethodLabel(selectedSavedPaymentMethod)
     : paymentOptions.find((option) => option.value === paymentMethod)?.label || "Cash on delivery";
   const canPlaceOrder = Boolean(!submitting && currentUser?.id && selectedAddress && restaurantCode);
+
+  const deliveryFee = 0;
+  const platformFee = total > 0 ? 5 : 0;
+  const gstCharges = total > 0 ? Math.round(total * 0.05) : 0;
+  const grandTotal = total + deliveryFee + platformFee + gstCharges;
+  const savings = items.reduce((acc, li) => {
+    const original = li.item.price || 0;
+    const discounted = li.item.discountedPrice || original;
+    return acc + (original - discounted) * li.quantity;
+  }, 0);
+
   const checkoutButtonLabel = !currentUser
     ? "Login before checkout"
     : !selectedAddress
       ? "Add a delivery address first"
-      : `Pay ${formatPrice(total)}`;
+      : `Pay ${formatPrice(grandTotal)}`;
 
   useEffect(() => {
     let ignore = false;
@@ -288,39 +331,41 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
 
   if (placedOrder) {
     const order = placedOrder.response?.order;
-    const paidTotal = order?.finalAmount || placedOrder.total;
+    const paidTotal = order?.finalAmount || grandTotal;
 
     return (
-      <section className="cart-shell order-success-shell">
-        <div className="order-success-card">
-          <div className="order-success-badge">Order placed</div>
-          <h2>{order?.restaurantName || placedOrder.restaurantName || "Your order is confirmed"}</h2>
-          <p className="order-success-copy">
+      <section className="placed-order-success-container">
+        <div className="placed-order-success-card">
+          <div className="success-check-illustration">✓</div>
+          <h2 className="success-restaurant-title">{order?.restaurantName || placedOrder.restaurantName || "Your order is confirmed"}</h2>
+          <p className="success-order-msg">
             Order <strong>{order?.orderNumber || "confirmed"}</strong> is confirmed and headed to{" "}
             <strong>{placedOrder.address.label || "your address"}</strong>.
           </p>
 
-          <div className="order-success-grid">
-            <div className="account-card">
+          <div className="success-details-grid">
+            <div className="success-detail-box">
               <span>ETA</span>
               <strong>35 mins</strong>
             </div>
-            <div className="account-card">
+            <div className="success-detail-box">
               <span>Payment</span>
               <strong>{placedOrder.paymentLabel}</strong>
             </div>
-            <div className="account-card">
+            <div className="success-detail-box">
               <span>Total paid</span>
               <strong>{formatPrice(paidTotal)}</strong>
             </div>
-            <div className="account-card">
+            <div className="success-detail-box">
               <span>Items</span>
               <strong>{placedOrder.itemCount} item{placedOrder.itemCount === 1 ? "" : "s"}</strong>
             </div>
           </div>
 
           <div className="order-success-actions">
-            <Link className="primary-button" to="/restaurants">Continue browsing</Link>
+            <Link className="checkout-submit-action" to="/restaurants" style={{ textDecoration: 'none' }}>
+              Continue browsing
+            </Link>
           </div>
         </div>
       </section>
@@ -329,221 +374,373 @@ function CheckoutPage({ couponCode, items, onCouponCodeChange, onOrderPlaced, on
 
   if (!items.length) {
     return (
-      <section className="cart-shell">
-        <div className="cart-empty">
+      <div className="checkout-wrapper">
+        <div className="placed-order-success-card" style={{ margin: '40px auto' }}>
           <h2>Your cart is empty</h2>
-          <p>Add a few dishes from a restaurant to start your order.</p>
-          <Link className="primary-button" to="/restaurants">Browse restaurants</Link>
+          <p className="success-order-msg">Add a few delicious dishes from a restaurant to start your order.</p>
+          <Link className="checkout-submit-action" to="/restaurants" style={{ textDecoration: 'none' }}>
+            Browse restaurants
+          </Link>
         </div>
-      </section>
+      </div>
     );
   }
 
   return (
-    <form className="cart-shell checkout-form" onSubmit={handleSubmit}>
-      <div className="cart-layout">
-        <section className="checkout-main">
-          <section className="address-summary-card">
-            <div className="address-summary-head">
-              <div>
-                <p className="menu-eyebrow">Delivery address</p>
-                <h3>
-                  {selectedAddress ? selectedAddress.label : currentUser ? "No saved address selected" : "Login required"}
-                </h3>
+    <div className="checkout-wrapper">
+      <form className="checkout-grid" onSubmit={handleSubmit}>
+        <div className="checkout-steps-container">
+          
+          {/* Step 1: Account (Always completed if session loaded) */}
+          <div className="checkout-step-card completed">
+            <div className="checkout-step-header">
+              <div className="checkout-step-badge">
+                <CheckIcon />
               </div>
-              <Link className="secondary-button" to={currentUser ? "/addresses" : "/account"}>
-                {currentUser ? "Manage addresses" : "Login or sign up"}
-              </Link>
-            </div>
-
-            {!currentUser ? (
-              <p className="address-empty-note">Login before placing an order so checkout can attach the order to your account.</p>
-            ) : null}
-
-            {currentUser && addressStatus === "loading" ? (
-              <p className="address-empty-note">Loading saved addresses...</p>
-            ) : null}
-
-            {currentUser && addressStatus !== "idle" && addressStatus !== "loading" && addressStatus !== "ready" ? (
-              <p className="checkout-feedback error">{addressStatus}</p>
-            ) : null}
-
-            {currentUser && addresses.length ? (
-              <>
-                <label>
-                  Saved address
-                  <select
-                    disabled={addressStatus === "loading"}
-                    onChange={(event) => setSelectedAddressId(event.target.value)}
-                    value={selectedAddressId}
-                  >
-                    {addresses.map((address) => (
-                      <option key={address.id} value={address.id}>
-                        {address.defaultAddress ? "Default - " : ""}{address.label} - {formatAddress(address)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {selectedAddress ? (
-                  <>
-                    <p className="address-recipient">
-                      {[selectedAddress.recipientName, selectedAddress.phoneNumber].filter(Boolean).join(" - ")}
-                    </p>
-                    <p className="address-line">{formatAddress(selectedAddress)}</p>
-                  </>
-                ) : null}
-              </>
-            ) : null}
-
-            {currentUser && addressStatus === "ready" && !addresses.length ? (
-              <p className="address-empty-note">Save at least one address before placing an order.</p>
-            ) : null}
-          </section>
-
-          <section className="payment-entry-card">
-            <div className="payment-entry-head">
-              <div>
-                <p className="menu-eyebrow">Payment</p>
-                <h3>Choose payment method</h3>
+              <div className="checkout-step-title-area">
+                <h3 className="checkout-step-title">Account</h3>
+                <p className="checkout-step-subtitle">
+                  {currentUser ? `${currentUser.name} | ${currentUser.phoneNumber || currentUser.email || ""}` : "Not logged in"}
+                </p>
               </div>
-              <Link className="secondary-button" to="/account?section=payments">Manage payments</Link>
+              {currentUser && (
+                <Link className="checkout-step-action-link" to="/account">
+                  Change
+                </Link>
+              )}
             </div>
-            <p className="payment-entry-copy">Select your payment option and add any delivery notes before placing the order.</p>
-
-            <div className="checkout-payment-section">
-              {currentUser && paymentStatus === "loading" ? <p className="payment-empty-note">Loading saved payment methods...</p> : null}
-              {currentUser && paymentStatus !== "idle" && paymentStatus !== "loading" && paymentStatus !== "ready" ? <p className="checkout-feedback error">{paymentStatus}</p> : null}
-              {paymentMethods.length ? <section className="payment-section"><h3>Saved payment methods</h3><div className="payment-method-list">{paymentMethods.map((method) => <label className={`checkout-payment-card ${String(method.id) === String(selectedSavedPaymentMethodId) ? "selected" : ""}`} key={method.id}><input checked={String(method.id) === String(selectedSavedPaymentMethodId)} name="paymentMethod" onChange={() => selectSavedPaymentMethod(method)} type="radio" value={`saved:${method.id}`} /><div><strong>{formatSavedPaymentMethodLabel(method)}</strong><p>{formatSavedPaymentMethodSubtitle(method)}</p></div><span className="payment-type-pill">{formatSavedPaymentMethodType(method.methodType)}</span></label>)}</div></section> : null}
-              <div className="checkout-payment-list">
-                {paymentOptions.map((option) => (
-                  <label
-                    className={`checkout-payment-card ${!selectedSavedPaymentMethodId && paymentMethod === option.value ? "selected" : ""}`}
-                    key={option.value}
-                  >
-                    <input
-                      checked={!selectedSavedPaymentMethodId && paymentMethod === option.value}
-                      name="paymentMethod"
-                      onChange={() => selectPaymentOption(option.value)}
-                      type="radio"
-                      value={option.value}
-                    />
-                    <div>
-                      <strong>{option.label}</strong>
-                      <p>{option.description}</p>
-                    </div>
-                    <span className="payment-type-pill">{option.pill}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <label className="payment-notes">
-              Delivery notes
-              <textarea
-                onChange={(event) => setSpecialInstructions(event.target.value)}
-                placeholder="Optional cooking or delivery note"
-                rows="3"
-                value={specialInstructions}
-              />
-            </label>
-          </section>
-        </section>
-
-        <section className="checkout-panel order-summary-panel">
-          <div className="order-summary-head">
-            <p className="menu-eyebrow">Order from</p>
-            <h3>{restaurantName}</h3>
           </div>
 
-          <section className="cart-items-list">
+          {/* Step 2: Delivery Address */}
+          <div className={`checkout-step-card ${currentUser ? "active" : "disabled"}`}>
+            <div className="checkout-step-header">
+              <div className="checkout-step-badge">
+                {selectedAddress ? <CheckIcon /> : "2"}
+              </div>
+              <div className="checkout-step-title-area">
+                <h3 className="checkout-step-title">Delivery Address</h3>
+                <p className="checkout-step-subtitle">
+                  {selectedAddress ? `${selectedAddress.label} - ${formatAddress(selectedAddress)}` : "Select where you want your food delivered"}
+                </p>
+              </div>
+            </div>
+            
+            {currentUser && (
+              <div className="checkout-step-content">
+                {addressStatus === "loading" && (
+                  <p className="address-empty-note">Loading saved addresses...</p>
+                )}
+                {addressStatus !== "idle" && addressStatus !== "loading" && addressStatus !== "ready" && (
+                  <p className="checkout-notice-banner error">{addressStatus}</p>
+                )}
+                
+                <div className="saved-addresses-grid">
+                  {addresses.map((address) => {
+                    const isSelected = String(address.id) === String(selectedAddressId);
+                    const isDefault = address.defaultAddress;
+                    const addressType = address.label?.toLowerCase() || "";
+                    const AddressIcon = addressType.includes("home") ? HomeIcon 
+                                      : addressType.includes("work") ? WorkIcon 
+                                      : PinIcon;
+
+                    return (
+                      <div 
+                        key={address.id} 
+                        className={`address-select-card ${isSelected ? "selected" : ""}`}
+                        onClick={() => setSelectedAddressId(String(address.id))}
+                      >
+                        <div className="address-card-top">
+                          <span className="address-type-badge">
+                            <AddressIcon />
+                            {address.label}
+                          </span>
+                          {isDefault && <span className="address-default-badge">Default</span>}
+                        </div>
+                        <p className="address-recipient-info">
+                          {address.recipientName}
+                        </p>
+                        <p className="address-text">
+                          {formatAddress(address)}
+                        </p>
+                        <div className="address-select-card-footer">
+                          <span className="address-phone-number">{address.phoneNumber}</span>
+                          <div className="select-indicator"></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  
+                  <Link to="/addresses" style={{ textDecoration: 'none' }}>
+                    <div className="add-address-card-dashed">
+                      <span className="plus-icon">+</span>
+                      <strong>Add New Address</strong>
+                      <p>Save a new delivery address</p>
+                    </div>
+                  </Link>
+                </div>
+                
+                {addressStatus === "ready" && !addresses.length && (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <p className="address-empty-note" style={{ marginBottom: '16px' }}>You have no saved addresses yet.</p>
+                    <Link className="checkout-apply-btn" to="/addresses" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                      + Add your first address
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Step 3: Payment */}
+          <div className={`checkout-step-card ${currentUser && selectedAddress ? "active" : "disabled"}`}>
+            <div className="checkout-step-header">
+              <div className="checkout-step-badge">
+                {submitting ? <CheckIcon /> : "3"}
+              </div>
+              <div className="checkout-step-title-area">
+                <h3 className="checkout-step-title">Choose Payment Method</h3>
+                <p className="checkout-step-subtitle">Select your preferred payment option</p>
+              </div>
+            </div>
+            
+            {currentUser && selectedAddress && (
+              <div className="checkout-step-content">
+                {paymentStatus === "loading" && (
+                  <p className="payment-empty-note">Loading saved payment methods...</p>
+                )}
+                {paymentStatus !== "idle" && paymentStatus !== "loading" && paymentStatus !== "ready" && (
+                  <p className="checkout-notice-banner error">{paymentStatus}</p>
+                )}
+
+                <div className="payment-methods-grid">
+                  {/* Saved Payment Methods */}
+                  {paymentMethods.map((method) => {
+                    const isSelected = String(method.id) === String(selectedSavedPaymentMethodId);
+                    const methodType = method.methodType;
+                    const isUPI = methodType === "UPI";
+                    const isWallet = methodType === "WALLET";
+
+                    return (
+                      <div 
+                        key={method.id}
+                        className={`payment-card-item ${isSelected ? "selected" : ""}`}
+                        onClick={() => selectSavedPaymentMethod(method)}
+                      >
+                        <div className="payment-icon-wrapper">
+                          {isUPI ? "⚡" : isWallet ? "👛" : "💳"}
+                        </div>
+                        <div className="payment-card-info">
+                          <div className="payment-card-title">
+                            {formatSavedPaymentMethodLabel(method)}
+                            <span className="payment-card-badge">
+                              {formatSavedPaymentMethodType(methodType)}
+                            </span>
+                          </div>
+                          <p className="payment-card-desc">
+                            {formatSavedPaymentMethodSubtitle(method)}
+                          </p>
+                        </div>
+                        <div className="payment-card-radio-wrapper">
+                          <input 
+                            type="radio" 
+                            name="paymentMethod" 
+                            checked={isSelected}
+                            onChange={() => selectSavedPaymentMethod(method)}
+                            style={{ accentColor: '#ff6b00' }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Standard Payment Options */}
+                  {paymentOptions.map((option) => {
+                    const isSelected = !selectedSavedPaymentMethodId && paymentMethod === option.value;
+                    const optionValue = option.value;
+                    const optIcon = optionValue === "UPI" ? "⚡" 
+                                  : optionValue === "CARD" ? "💳" 
+                                  : optionValue === "WALLET" ? "👛" 
+                                  : "💵";
+
+                    return (
+                      <div 
+                        key={option.value}
+                        className={`payment-card-item ${isSelected ? "selected" : ""}`}
+                        onClick={() => selectPaymentOption(option.value)}
+                      >
+                        <div className="payment-icon-wrapper">
+                          {optIcon}
+                        </div>
+                        <div className="payment-card-info">
+                          <div className="payment-card-title">
+                            {option.label}
+                            <span className="payment-card-badge">{option.pill}</span>
+                          </div>
+                          <p className="payment-card-desc">
+                            {option.description}
+                          </p>
+                        </div>
+                        <div className="payment-card-radio-wrapper">
+                          <input 
+                            type="radio" 
+                            name="paymentMethod" 
+                            checked={isSelected}
+                            onChange={() => selectPaymentOption(option.value)}
+                            style={{ accentColor: '#ff6b00' }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="delivery-instructions-wrapper">
+                  <label className="delivery-instructions-label">
+                    Delivery instructions
+                  </label>
+                  <textarea
+                    className="delivery-instructions-textarea"
+                    rows="3"
+                    value={specialInstructions}
+                    onChange={(event) => setSpecialInstructions(event.target.value)}
+                    placeholder="E.g., Ring the bell, leave at the gate, or contactless delivery request"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        {/* Right Sticky Order Summary Column */}
+        <div className="checkout-sticky-panel">
+          <div className="restaurant-summary-header">
+            <p className="eyebrow" style={{ margin: 0 }}>Order From</p>
+            <h3 className="restaurant-summary-name">{restaurantName}</h3>
+            <div className="restaurant-summary-meta">
+              <span className="summary-eta-badge">
+                ⏱ 25-35 MINS
+              </span>
+              <span>•</span>
+              <span>Safety Assured</span>
+            </div>
+          </div>
+
+          {/* Cart Item Cards with Quantities */}
+          <div className="summary-items-list">
             {items.map((lineItem) => {
               const itemPrice = getItemPrice(lineItem);
+              const isVeg = lineItem.item.vegetarian !== false && lineItem.item.isVeg !== false;
 
               return (
-                <article className="cart-item-card" key={lineItem.key}>
-                  <img
-                    className="cart-item-image"
-                    src={lineItem.item.image}
-                    alt={lineItem.item.name}
-                    loading="lazy"
-                  />
-                  <div className="cart-item-copy">
-                    <h3>{lineItem.item.name}</h3>
-                    <p>{formatPrice(itemPrice)} each</p>
+                <div className="summary-item-row" key={lineItem.key}>
+                  <div className="summary-item-diet">
+                    {isVeg ? <VegIcon /> : <NonVegIcon />}
                   </div>
-                  <div className="cart-item-controls" aria-label={`${lineItem.item.name} quantity controls`}>
-                    <button
+                  <h4 className="summary-item-name" title={lineItem.item.name}>
+                    {lineItem.item.name}
+                  </h4>
+                  <div className="checkout-item-stepper">
+                    <button 
+                      type="button" 
                       onClick={() => onQuantityChange(lineItem.key, lineItem.quantity - 1)}
-                      type="button"
-                      aria-label={`Remove one ${lineItem.item.name}`}
+                      aria-label="Decrease quantity"
                     >
                       -
                     </button>
-                    <span>{lineItem.quantity}</span>
-                    <button
+                    <span className="stepper-value">{lineItem.quantity}</span>
+                    <button 
+                      type="button" 
                       onClick={() => onQuantityChange(lineItem.key, lineItem.quantity + 1)}
-                      type="button"
-                      aria-label={`Add one ${lineItem.item.name}`}
+                      aria-label="Increase quantity"
                     >
                       +
                     </button>
                   </div>
-                  <div className="cart-item-total">{formatPrice(itemPrice * lineItem.quantity)}</div>
-                </article>
+                  <span className="summary-item-total">
+                    {formatPrice(itemPrice * lineItem.quantity)}
+                  </span>
+                </div>
               );
             })}
-          </section>
-
-          <div className="checkout-summary">
-            <div><span>Subtotal</span><strong>{formatPrice(total)}</strong></div>
-            <div><span>Delivery fee</span><strong>FREE</strong></div>
-            <div className="checkout-total"><span>Total</span><strong>{formatPrice(total)}</strong></div>
           </div>
 
-          <section className="coupon-panel">
-            <div className="coupon-panel-head">
-              <div>
-                <p className="menu-eyebrow">Coupons</p>
-                <h3>Apply coupon code</h3>
-              </div>
-            </div>
-            <div className="coupon-input-row">
+          {/* Coupon Entry Card */}
+          <div className="checkout-coupon-panel">
+            <h4 className="coupon-panel-title">Apply Coupon</h4>
+            <div className="coupon-input-wrapper">
               <input
-                onChange={(event) => onCouponCodeChange(event.target.value.toUpperCase())}
-                placeholder="Enter coupon code"
                 type="text"
+                placeholder="Enter coupon code"
                 value={couponCode}
+                onChange={(event) => onCouponCodeChange(event.target.value.toUpperCase())}
               />
               <button
-                className="primary-button"
+                type="button"
+                className="coupon-apply-btn"
                 onClick={() => {
-                  setFeedback(couponCode.trim() ? "Coupon will be checked when you place the order." : "Enter a coupon code first.");
+                  setFeedback(couponCode.trim() ? "Coupon code will be validated when order is placed." : "Enter a code first.");
                   setFeedbackTone(couponCode.trim() ? "success" : "error");
                 }}
-                type="button"
               >
                 Apply
               </button>
             </div>
-          </section>
+          </div>
 
-          {feedback ? (
-            <div className={`checkout-feedback ${feedbackTone === "error" ? "error" : ""} ${feedbackTone === "success" ? "success" : ""}`}>
+          {/* Detailed Bill Breakdown */}
+          <div className="checkout-bill-card">
+            <div className="bill-line-row">
+              <span>Item Total</span>
+              <span className="bill-value">{formatPrice(total)}</span>
+            </div>
+            <div className="bill-line-row free-tier">
+              <span>Delivery Fee</span>
+              <span className="bill-value">FREE</span>
+            </div>
+            <div className="bill-line-row">
+              <span>Platform Fee</span>
+              <span className="bill-value">{formatPrice(platformFee)}</span>
+            </div>
+            <div className="bill-line-row">
+              <span>GST and Restaurant Charges</span>
+              <span className="bill-value">{formatPrice(gstCharges)}</span>
+            </div>
+            
+            {savings > 0 && (
+              <div className="bill-line-row" style={{ color: '#0f8a4f', fontWeight: '700' }}>
+                <span>Item Discount Savings</span>
+                <span>-{formatPrice(savings)}</span>
+              </div>
+            )}
+
+            <div className="bill-line-row grand-total">
+              <span>TO PAY</span>
+              <span className="bill-value">{formatPrice(grandTotal)}</span>
+            </div>
+          </div>
+
+          {/* Status feedback message */}
+          {feedback && (
+            <div className={`checkout-notice-banner ${feedbackTone === "error" ? "error" : "success"}`}>
               {feedback}
             </div>
-          ) : null}
+          )}
 
+          {/* Place Order CTA Button */}
           <button
-            className="primary-button checkout-button"
-            disabled={!canPlaceOrder}
             type="submit"
+            className="checkout-submit-action"
+            disabled={!canPlaceOrder}
           >
-            {submitting ? "Placing order..." : checkoutButtonLabel}
+            {submitting ? "Placing Order..." : checkoutButtonLabel}
           </button>
-        </section>
-      </div>
-    </form>
+        </div>
+
+      </form>
+    </div>
   );
 }
 
 export default CheckoutPage;
+
