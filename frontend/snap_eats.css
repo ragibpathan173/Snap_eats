@@ -2191,7 +2191,7 @@ body {
 .menu-cart-stepper-btn {
     border: none;
     background: transparent;
-    color: #099268;
+    color: #ff6b00;
     font-size: 28px;
     font-weight: 700;
     line-height: 1;
@@ -2203,7 +2203,7 @@ body {
     text-align: center;
     font-size: 24px;
     font-weight: 800;
-    color: #099268;
+    color: #ff6b00;
 }
 
 .menu-cart-note {

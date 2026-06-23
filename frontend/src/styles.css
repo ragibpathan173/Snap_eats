@@ -459,13 +459,20 @@ h2 {
   width: 100%;
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid #b42331;
+  border: 1px solid #ff6b00;
   border-radius: 8px;
-  background: #fff7f5;
-  color: #b42331;
+  background: #fff8f5;
+  color: #ff6b00;
   cursor: pointer;
   font: inherit;
   font-weight: 900;
+  transition: all 0.2s ease;
+}
+
+.add-item-button:hover {
+  background: #ff6b00;
+  color: #ffffff;
+  border-color: #ff6b00;
 }
 
 .cart-panel {
@@ -1248,7 +1255,7 @@ h2 {
   height: 100%;
   border: none;
   background: transparent;
-  color: #b42331;
+  color: #ff6b00;
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
@@ -1262,7 +1269,7 @@ h2 {
 .se-cart-stepper-count {
   font-size: 13px;
   font-weight: 800;
-  color: #b42331;
+  color: #ff6b00;
 }
 
 .se-cart-item-total {
@@ -1321,7 +1328,7 @@ h2 {
 .se-cart-checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  accent-color: #b42331;
+  accent-color: #ff6b00;
   cursor: pointer;
 }
 
@@ -1453,7 +1460,7 @@ h2 {
   align-items: center;
   gap: 12px;
   padding: 12px 24px;
-  background: #b42331;
+  background: #ff6b00;
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -1465,7 +1472,7 @@ h2 {
 }
 
 .se-cart-checkout-btn:hover {
-  background: #9c1b27;
+  background: #e66000;
   transform: translateY(-1px);
 }
 
@@ -1672,7 +1679,7 @@ h2 {
   justify-content: center !important;
   font-weight: 800 !important;
   font-size: 13px !important;
-  color: #b42331 !important;
+  color: #ff6b00 !important;
   cursor: pointer !important;
   box-sizing: border-box !important;
 }
@@ -1689,7 +1696,7 @@ h2 {
 .react-menu-modal .menu-item-card .swiggy-stepper button {
   border: none !important;
   background: transparent !important;
-  color: #b42331 !important;
+  color: #ff6b00 !important;
   font-size: 18px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
@@ -1700,7 +1707,7 @@ h2 {
 }
 
 .react-menu-modal .menu-item-card .swiggy-stepper .stepper-count {
-  color: #b42331 !important;
+  color: #ff6b00 !important;
   font-size: 13px !important;
   font-weight: 800 !important;
 }
@@ -2221,7 +2228,7 @@ h2 {
 .checkout-item-stepper button {
   border: none;
   background: transparent;
-  color: #b42331;
+  color: #ff6b00;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
@@ -2232,7 +2239,7 @@ h2 {
 }
 
 .checkout-item-stepper .stepper-value {
-  color: #b42331;
+  color: #ff6b00;
   font-size: 12px;
   font-weight: 800;
 }
@@ -2471,9 +2478,9 @@ h2 {
 
 /* Header Cart Count Brand Color Override */
 .cart-count {
-  background: #b42331 !important;
+  background: #ff6b00 !important;
   color: #ffffff !important;
-  border-color: #b42331 !important;
+  border-color: #ff6b00 !important;
 }
 
 

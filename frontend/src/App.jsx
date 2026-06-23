@@ -65,6 +65,31 @@ function App() {
     }
   }, [cartItems]);
 
+  // Sync header offset CSS custom property to resolve layout gaps below the sticky header
+  useEffect(() => {
+    function syncHeaderOffset() {
+      const header = document.querySelector(".header");
+      if (header) {
+        const headerHeight = header.getBoundingClientRect().height;
+        const headerOffset = Math.max(72, Math.round(headerHeight));
+        document.documentElement.style.setProperty("--app-header-offset", `${headerOffset}px`);
+      }
+    }
+
+    syncHeaderOffset();
+    window.addEventListener("resize", syncHeaderOffset);
+
+    // Sync on timeouts to catch transition endings or mounting adjustments
+    const timer1 = setTimeout(syncHeaderOffset, 150);
+    const timer2 = setTimeout(syncHeaderOffset, 350);
+
+    return () => {
+      window.removeEventListener("resize", syncHeaderOffset);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [searchOpen]);
+
   const cartSummary = useMemo(() => {
     return cartItems.reduce(
       (summary, lineItem) => {
