@@ -1712,3 +1712,761 @@ h2 {
   text-align: center !important;
 }
 
+/* ==========================================================================
+   PREMIUM SWIGGY-INSPIRED CHECKOUT REDESIGN
+   ========================================================================== */
+
+.checkout-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Steps Progress on Left */
+.checkout-steps-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.checkout-step-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #eef2f5;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  padding: 24px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.checkout-step-card.active {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  border-color: rgba(255, 107, 0, 0.15);
+}
+
+.checkout-step-card.disabled {
+  opacity: 0.65;
+}
+
+.checkout-step-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0;
+  transition: margin 0.3s ease;
+}
+
+.checkout-step-card.active .checkout-step-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f2f5f7;
+  padding-bottom: 16px;
+}
+
+.checkout-step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f2f5f7;
+  color: #55606e;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.checkout-step-card.active .checkout-step-badge {
+  background: #ff6b00;
+  color: #ffffff;
+}
+
+.checkout-step-card.completed .checkout-step-badge {
+  background: #60b246;
+  color: #ffffff;
+}
+
+.checkout-step-title-area {
+  flex-grow: 1;
+}
+
+.checkout-step-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #282c3f;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkout-step-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #7e808c;
+  font-weight: 400;
+}
+
+.checkout-step-action-link {
+  font-size: 13px;
+  color: #ff6b00;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.checkout-step-action-link:hover {
+  text-decoration: underline;
+}
+
+/* Step content styling */
+.checkout-step-content {
+  display: none;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.checkout-step-card.active .checkout-step-content {
+  display: block;
+}
+
+/* Saved Addresses Grid */
+.saved-addresses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.address-select-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.2s ease;
+  position: relative;
+  text-align: left;
+}
+
+.address-select-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.address-select-card.selected {
+  border-color: #ff6b00;
+  background: #fffaf7;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.08);
+}
+
+.address-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.address-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #282c3f;
+}
+
+.address-default-badge {
+  background: #e6f6ec;
+  color: #0f8a4f;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.address-recipient-info {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3d4152;
+}
+
+.address-text {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #7e808c;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.address-select-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.address-select-card.selected .address-select-card-footer {
+  border-top-color: rgba(255, 107, 0, 0.15);
+}
+
+.address-phone-number {
+  font-size: 12px;
+  color: #7e808c;
+  font-weight: 500;
+}
+
+.select-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.address-select-card.selected .select-indicator {
+  border-color: #ff6b00;
+  background: #ff6b00;
+}
+
+.address-select-card.selected .select-indicator::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.add-address-card-dashed {
+  border: 1px dashed #cbd5e1;
+  background: #fcfdfe;
+  border-radius: 12px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 150px;
+}
+
+.add-address-card-dashed:hover {
+  border-color: #ff6b00;
+  background: #fffaf7;
+  color: #ff6b00;
+}
+
+.add-address-card-dashed .plus-icon {
+  font-size: 24px;
+  color: #7e808c;
+  font-weight: 300;
+  transition: color 0.2s ease;
+}
+
+.add-address-card-dashed:hover .plus-icon {
+  color: #ff6b00;
+}
+
+.add-address-card-dashed strong {
+  font-size: 14px;
+  color: #3d4152;
+}
+
+.add-address-card-dashed p {
+  margin: 0;
+  font-size: 12px;
+  color: #7e808c;
+}
+
+/* Payment Methods Grid */
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.payment-card-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: all 0.2s ease;
+  position: relative;
+  text-align: left;
+}
+
+.payment-card-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.payment-card-item.selected {
+  border-color: #ff6b00;
+  background: #fffaf7;
+  box-shadow: 0 4px 15px rgba(255, 107, 0, 0.08);
+}
+
+.payment-card-radio-wrapper {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.payment-card-info {
+  flex-grow: 1;
+}
+
+.payment-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #282c3f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.payment-card-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #7e808c;
+  line-height: 1.4;
+}
+
+.payment-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f2f5f7;
+  color: #ff6b00;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.payment-card-item.selected .payment-icon-wrapper {
+  background: #ffe8d9;
+}
+
+.payment-card-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f2f5f7;
+  color: #7e808c;
+}
+
+.payment-card-item.selected .payment-card-badge {
+  background: #ffe8d9;
+  color: #ff6b00;
+}
+
+/* Delivery Notes Textarea */
+.delivery-instructions-wrapper {
+  margin-top: 20px;
+  border-top: 1px solid #f2f5f7;
+  padding-top: 20px;
+}
+
+.delivery-instructions-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #282c3f;
+  margin-bottom: 8px;
+}
+
+.delivery-instructions-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13px;
+  color: #3d4152;
+  resize: vertical;
+  background: #fbfcfd;
+  transition: all 0.2s ease;
+}
+
+.delivery-instructions-textarea:focus {
+  outline: none;
+  border-color: #ff6b00;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.08);
+}
+
+/* Sticky Right Column - Order Summary */
+.checkout-sticky-panel {
+  position: sticky;
+  top: 100px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #eef2f5;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.restaurant-summary-header {
+  border-bottom: 1px solid #f2f5f7;
+  padding-bottom: 16px;
+}
+
+.restaurant-summary-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #282c3f;
+}
+
+.restaurant-summary-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #7e808c;
+  font-weight: 500;
+}
+
+.summary-eta-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ff6b00;
+  font-weight: 700;
+}
+
+/* Compact summary items list */
+.summary-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.summary-item-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.summary-item-diet {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.summary-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #3d4152;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact Stepper for Summary Card */
+.checkout-item-stepper {
+  width: 80px;
+  height: 28px;
+  border: 1px solid #d4d5d9;
+  border-radius: 6px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+}
+
+.checkout-item-stepper button {
+  border: none;
+  background: transparent;
+  color: #60b246;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkout-item-stepper .stepper-value {
+  color: #60b246;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-item-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: #282c3f;
+  text-align: right;
+  min-width: 60px;
+}
+
+/* Elegant Bill Breakdown */
+.checkout-bill-card {
+  border-top: 1px solid #f2f5f7;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.bill-line-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #686b78;
+}
+
+.bill-line-row.free-tier .bill-value {
+  color: #60b246;
+  font-weight: 700;
+}
+
+.bill-line-row.grand-total {
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 14px;
+  margin-top: 4px;
+  color: #282c3f;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* Coupon Row Improvements */
+.checkout-coupon-panel {
+  border: 1px solid #eef2f5;
+  background: #fbfcfd;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.coupon-panel-title {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #3d4152;
+}
+
+.coupon-input-wrapper {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.coupon-input-wrapper input {
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.coupon-input-wrapper input:focus {
+  outline: none;
+  border-color: #ff6b00;
+}
+
+.coupon-apply-btn {
+  padding: 8px 14px;
+  border: 1px solid #ff6b00;
+  background: #ffffff;
+  color: #ff6b00;
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.coupon-apply-btn:hover {
+  background: #ff6b00;
+  color: #ffffff;
+}
+
+/* Alert notifications on checkout */
+.checkout-notice-banner {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 8px;
+}
+
+.checkout-notice-banner.success {
+  background: #e6f6ec;
+  color: #0f8a4f;
+  border: 1px solid rgba(15, 157, 88, 0.15);
+}
+
+.checkout-notice-banner.error {
+  background: #fdf2f2;
+  color: #d14343;
+  border: 1px solid rgba(209, 67, 67, 0.1);
+}
+
+/* Action button checkout */
+.checkout-submit-action {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #ff6b00;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 107, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.checkout-submit-action:hover:not(:disabled) {
+  background: #e66000;
+  box-shadow: 0 6px 20px rgba(255, 107, 0, 0.28);
+}
+
+.checkout-submit-action:disabled {
+  background: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Placed Order Success Visual Redesign */
+.placed-order-success-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 24px;
+}
+
+.placed-order-success-card {
+  background: #ffffff;
+  border-radius: 24px;
+  border: 1px solid #eef2f5;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.success-check-illustration {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #e6f6ec;
+  color: #60b246;
+  font-size: 40px;
+  margin-bottom: 24px;
+}
+
+.success-restaurant-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #282c3f;
+}
+
+.success-order-msg {
+  margin: 12px 0 24px 0;
+  font-size: 15px;
+  color: #7e808c;
+  line-height: 1.6;
+}
+
+.success-details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.success-detail-box {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid #edf2f7;
+}
+
+.success-detail-box span {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.success-detail-box strong {
+  display: block;
+  font-size: 14px;
+  color: #2d3748;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
