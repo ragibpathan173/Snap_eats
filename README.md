@@ -198,6 +198,19 @@ Important note:
 - If you want real public signups, switch that to `false` and add real email or SMS delivery settings in Render.
 - Render does not allow changing an existing service from `pserv` to `web`. If `snap-eats-backend` already exists as a private service, delete that private service in Render and sync the Blueprint again so Render recreates it as a public web service.
 
+### Keep the Render backend warm with UptimeRobot
+
+After `snap-eats-backend` is deployed as a public Render web service, create an UptimeRobot HTTP(s) monitor:
+
+1. Open UptimeRobot and choose `+ Add New Monitor`.
+2. Set `Monitor Type` to `HTTP(s)`.
+3. Set `Friendly Name` to `SnapEats Render Backend`.
+4. Set `URL` to `https://snap-eats-backend.onrender.com/actuator/health/readiness`.
+5. Set the monitor interval to `5 minutes` on the free UptimeRobot plan, or a shorter interval if your plan supports it.
+6. Enable your preferred alert contact and create the monitor.
+
+This pings the lightweight Spring Boot readiness endpoint often enough to keep a free Render web service from going 15 minutes without inbound traffic. It reduces cold-start delays, but Render free services can still restart for deploys, maintenance, or monthly usage limits. A paid Render instance is the guaranteed no-sleep option.
+
 ## Run Natively
 
 ### Backend
