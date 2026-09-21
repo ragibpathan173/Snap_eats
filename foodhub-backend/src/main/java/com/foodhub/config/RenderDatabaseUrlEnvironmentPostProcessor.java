@@ -57,6 +57,8 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
             String jdbcUrl = buildJdbcUrl(uri);
             overrides.put("spring.datasource.url", jdbcUrl);
 
+            System.out.println("[RenderDatabaseUrlEnvironmentPostProcessor] Resolved JDBC URL: " + jdbcUrl);
+
             if (!hasExplicitSetting(environment,
                     "SPRING_DATASOURCE_DRIVER_CLASS_NAME",
                     "spring.datasource.driver-class-name")) {
@@ -104,11 +106,24 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
 
         jdbcUrl.append(uri.getPath());
 
-        if (StringUtils.hasText(uri.getQuery())) {
-            jdbcUrl.append('?').append(uri.getQuery());
+        String query = uri.getQuery();
+        if (StringUtils.hasText(query)) {
+            jdbcUrl.append('?').append(query);
+            if (!query.contains("sslmode=")) {
+                jdbcUrl.append("&sslmode=").append(resolveDefaultSslMode(uri.getHost()));
+            }
+        } else {
+            jdbcUrl.append("?sslmode=").append(resolveDefaultSslMode(uri.getHost()));
         }
 
         return jdbcUrl.toString();
+    }
+
+    private String resolveDefaultSslMode(String host) {
+        if (host != null && host.startsWith("dpg-")) {
+            return "disable";
+        }
+        return "require";
     }
 
     private String firstNonBlank(String... values) {
