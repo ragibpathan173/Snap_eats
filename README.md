@@ -173,14 +173,14 @@ If you already have an app on `8080` or `8081`, publish to different host ports 
 
 ## Deploy on Render
 
-This repo now includes a root-level `render.yaml` Blueprint for a public frontend, a private backend, and a managed Postgres database.
+This repo includes a root-level `render.yaml` Blueprint for a public frontend, a public backend API, and a managed Postgres database.
 
 What it does:
 
-- creates `snap-eats-frontend` as the only public URL you share
-- creates `snap-eats-backend` as a private internal service
+- creates `snap-eats-frontend` as a public Render-hosted frontend
+- creates `snap-eats-backend` as a public API for the GitHub Pages deployment
 - creates `snap-eats-db` as the Postgres database
-- wires the frontend `/api` proxy to the private backend automatically
+- wires the Render frontend `/api` proxy to the backend over Render's private network
 - converts Render's `postgresql://...` database URL into the JDBC URL Spring Boot needs
 
 Steps:
@@ -190,12 +190,13 @@ Steps:
 3. Connect the GitHub repo that contains this `render.yaml`.
 4. Review the three resources Render detects and click `Apply`.
 5. Wait for the database, backend, and frontend deploys to finish.
-6. Open the public frontend URL that Render shows for `snap-eats-frontend`.
+6. Open either the GitHub Pages URL or the public Render frontend URL. GitHub Pages calls `https://snap-eats-backend.onrender.com/api` directly.
 
 Important note:
 
 - The Blueprint keeps OTP in demo mode with `SECURITY_OTP_DEV_RETURN=true` so the app keeps working without SMTP or SMS credentials.
 - If you want real public signups, switch that to `false` and add real email or SMS delivery settings in Render.
+- Render does not allow changing an existing service from `pserv` to `web`. If `snap-eats-backend` already exists as a private service, delete that private service in Render and sync the Blueprint again so Render recreates it as a public web service.
 
 ## Run Natively
 

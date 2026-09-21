@@ -13,15 +13,16 @@ services:
         value: "10000"
       - key: BACKEND_UPSTREAM
         fromService:
-          type: pserv
+          type: web
           name: snap-eats-backend
           property: hostport
 
-  - type: pserv
+  - type: web
     name: snap-eats-backend
     runtime: docker
     dockerfilePath: ./foodhub-backend/Dockerfile
     dockerContext: ./foodhub-backend
+    healthCheckPath: /actuator/health/readiness
     envVars:
       - key: PORT
         value: "8081"
