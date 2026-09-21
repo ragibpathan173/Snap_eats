@@ -118,10 +118,7 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
     }
 
     private String defaultSslMode(String host) {
-        if (host != null && host.endsWith(".render.com")) {
-            return "require";
-        }
-        return "disable";
+        return "require";
     }
 
     private String firstNonBlank(String... values) {
