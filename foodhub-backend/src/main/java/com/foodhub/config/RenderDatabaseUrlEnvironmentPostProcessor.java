@@ -120,9 +120,6 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
     }
 
     private String resolveDefaultSslMode(String host) {
-        if (host != null && host.startsWith("dpg-")) {
-            return "disable";
-        }
         return "require";
     }
 

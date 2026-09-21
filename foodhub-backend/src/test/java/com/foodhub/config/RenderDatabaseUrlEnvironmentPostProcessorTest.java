@@ -32,7 +32,7 @@ class RenderDatabaseUrlEnvironmentPostProcessorTest {
     }
 
     @Test
-    void convertsInternalRenderPostgresUrlWithDefaultSslDisable() {
+    void convertsRenderPostgresUrlWithDefaultSslRequire() {
         StandardEnvironment environment = environmentWith(Map.of(
                 "DATABASE_URL",
                 "postgres://snap_eats_user:top_secret@dpg-c123456789-a/snap_eats"));
@@ -40,7 +40,7 @@ class RenderDatabaseUrlEnvironmentPostProcessorTest {
         postProcess(environment);
 
         assertThat(environment.getProperty("spring.datasource.url"))
-                .isEqualTo("jdbc:postgresql://dpg-c123456789-a/snap_eats?sslmode=disable");
+                .isEqualTo("jdbc:postgresql://dpg-c123456789-a/snap_eats?sslmode=require");
         assertThat(environment.getProperty("spring.datasource.username")).isEqualTo("snap_eats_user");
         assertThat(environment.getProperty("spring.datasource.password")).isEqualTo("top_secret");
     }
