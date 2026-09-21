@@ -110,17 +110,16 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
         if (StringUtils.hasText(query)) {
             jdbcUrl.append('?').append(query);
             if (!query.contains("sslmode=")) {
-                jdbcUrl.append("&sslmode=").append(resolveDefaultSslMode(uri.getHost()));
+                jdbcUrl.append("&sslmode=require");
+            }
+            if (!query.contains("sslfactory=")) {
+                jdbcUrl.append("&sslfactory=org.postgresql.ssl.NonValidatingFactory");
             }
         } else {
-            jdbcUrl.append("?sslmode=").append(resolveDefaultSslMode(uri.getHost()));
+            jdbcUrl.append("?sslmode=require&sslfactory=org.postgresql.ssl.NonValidatingFactory");
         }
 
         return jdbcUrl.toString();
-    }
-
-    private String resolveDefaultSslMode(String host) {
-        return "require";
     }
 
     private String firstNonBlank(String... values) {
