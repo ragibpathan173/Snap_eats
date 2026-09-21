@@ -38,11 +38,25 @@ function CatalogPage({
   const [searchParams, setSearchParams] = useSearchParams();
   const canManageFavorites = Boolean(session.user?.id && session.token);
 
+  const [catalogLoadState, setCatalogLoadState] = useState("loading"); // "loading" | "retrying" | "ready" | "error"
+  const [catalogRetryCount, setCatalogRetryCount] = useState(0);
+  const [catalogError, setCatalogError] = useState("");
+
   useEffect(() => {
     let ignore = false;
-    onStatusChange("Loading live SnapEats API...");
+    const MAX_RETRIES = 3;
+    const BASE_DELAY_MS = 4000;
 
-    async function loadPreviewData() {
+    async function loadPreviewData(attempt) {
+      if (attempt === 0) {
+        setCatalogLoadState("loading");
+        onStatusChange("Connecting to SnapEats server...");
+      } else {
+        setCatalogLoadState("retrying");
+        setCatalogRetryCount(attempt);
+        onStatusChange(`Server is waking up... retry ${attempt}/${MAX_RETRIES}`);
+      }
+
       try {
         const [categoryData, restaurantData] = await Promise.all([
           fetchCategories(),
@@ -55,15 +69,29 @@ function CatalogPage({
 
         setCategories(categoryData);
         setRestaurants(restaurantData);
+        setCatalogLoadState("ready");
         onStatusChange("Connected to the existing Spring Boot API");
       } catch (error) {
-        if (!ignore) {
+        if (ignore) {
+          return;
+        }
+
+        if (attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+          setTimeout(() => {
+            if (!ignore) {
+              loadPreviewData(attempt + 1);
+            }
+          }, delay);
+        } else {
+          setCatalogLoadState("error");
+          setCatalogError(error.message || "Could not reach the API");
           onStatusChange(error.message || "Could not reach the API");
         }
       }
     }
 
-    loadPreviewData();
+    loadPreviewData(0);
 
     return () => {
       ignore = true;
@@ -215,6 +243,34 @@ function CatalogPage({
         searchTerm={searchTerm}
       />
 
+      {(catalogLoadState === "loading" || catalogLoadState === "retrying") && (
+        <div className="catalog-cold-start-banner">
+          <div className="catalog-cold-start-spinner" />
+          <div className="catalog-cold-start-text">
+            <strong>
+              {catalogLoadState === "retrying"
+                ? `Server is waking up... (attempt ${catalogRetryCount + 1})`
+                : "Connecting to SnapEats server..."}
+            </strong>
+            <span>This may take up to a minute on first load</span>
+          </div>
+        </div>
+      )}
+
+      {catalogLoadState === "error" && (
+        <div className="catalog-cold-start-banner catalog-cold-start-error">
+          <div className="catalog-cold-start-text">
+            <strong>Unable to reach the server</strong>
+            <span>{catalogError}</span>
+          </div>
+          <button
+            className="catalog-cold-start-retry-btn"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      )}
       <section className="categories-section">
         <div className="container">
           <h2 className="section-title">What's on your mind?</h2>

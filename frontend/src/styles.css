@@ -2483,4 +2483,86 @@ h2 {
   border-color: #ff6b00 !important;
 }
 
+/* ================================================
+   Cold-Start Loading Banner (Render free-tier)
+   ================================================ */
 
+.catalog-cold-start-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 720px;
+  margin: 24px auto;
+  padding: 18px 24px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff7f0, #fff0e6);
+  border: 1px solid #ffe0c2;
+  animation: catalogBannerFadeIn 0.35s ease-out;
+}
+
+.catalog-cold-start-banner.catalog-cold-start-error {
+  background: linear-gradient(135deg, #fff5f5, #ffe8e8);
+  border-color: #ffcccc;
+}
+
+.catalog-cold-start-spinner {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 3px solid #ffe0c2;
+  border-top-color: #ff6b00;
+  border-radius: 50%;
+  animation: catalogSpinnerRotate 0.8s linear infinite;
+}
+
+.catalog-cold-start-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.catalog-cold-start-text strong {
+  font-size: 14px;
+  color: #202124;
+}
+
+.catalog-cold-start-text span {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.catalog-cold-start-retry-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #ff6b00;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.catalog-cold-start-retry-btn:hover {
+  background: #e65e00;
+}
+
+@keyframes catalogBannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes catalogSpinnerRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
