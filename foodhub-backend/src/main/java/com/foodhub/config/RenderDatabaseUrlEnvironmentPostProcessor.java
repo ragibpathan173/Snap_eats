@@ -104,21 +104,11 @@ public class RenderDatabaseUrlEnvironmentPostProcessor
 
         jdbcUrl.append(uri.getPath());
 
-        String query = uri.getQuery();
-        if (StringUtils.hasText(query)) {
-            jdbcUrl.append('?').append(query);
-            if (!query.contains("sslmode=")) {
-                jdbcUrl.append("&sslmode=").append(defaultSslMode(uri.getHost()));
-            }
-        } else {
-            jdbcUrl.append("?sslmode=").append(defaultSslMode(uri.getHost()));
+        if (StringUtils.hasText(uri.getQuery())) {
+            jdbcUrl.append('?').append(uri.getQuery());
         }
 
         return jdbcUrl.toString();
-    }
-
-    private String defaultSslMode(String host) {
-        return "require";
     }
 
     private String firstNonBlank(String... values) {
