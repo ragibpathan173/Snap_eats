@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users", indexes = {
-    @Index(name = "idx_email", columnList = "email"),
-    @Index(name = "idx_active", columnList = "active")
+    @Index(name = "idx_user_email", columnList = "email"),
+    @Index(name = "idx_user_active", columnList = "active")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class User {

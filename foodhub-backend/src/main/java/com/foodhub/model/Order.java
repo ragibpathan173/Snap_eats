@@ -9,10 +9,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "orders", indexes = {
-    @Index(name = "idx_order_number", columnList = "orderNumber"),
-    @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_restaurant_id", columnList = "restaurant_id"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_order_order_number", columnList = "orderNumber"),
+    @Index(name = "idx_order_user_id", columnList = "user_id"),
+    @Index(name = "idx_order_restaurant_id", columnList = "restaurant_id"),
+    @Index(name = "idx_order_status", columnList = "status")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class Order {

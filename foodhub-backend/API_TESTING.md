@@ -2,7 +2,7 @@
 
 This guide uses the local backend at `http://localhost:8081`.
 
-If the frontend dev server or Docker frontend is running, the same API is also available through the frontend proxy at `/api`.
+When the frontend dev server is running, the same API is also available through the frontend proxy at `/api`.
 
 ## Health and Catalog Smoke Checks
 

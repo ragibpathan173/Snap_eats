@@ -10,10 +10,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "menu_items", indexes = {
-    @Index(name = "idx_item_id", columnList = "itemId"),
-    @Index(name = "idx_restaurant_id", columnList = "restaurantId"),
-    @Index(name = "idx_category", columnList = "category"),
-    @Index(name = "idx_active", columnList = "active")
+    @Index(name = "idx_menu_item_item_id", columnList = "itemId"),
+    @Index(name = "idx_menu_item_restaurant_id", columnList = "restaurantId"),
+    @Index(name = "idx_menu_item_category", columnList = "category"),
+    @Index(name = "idx_menu_item_active", columnList = "active")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class MenuItem {

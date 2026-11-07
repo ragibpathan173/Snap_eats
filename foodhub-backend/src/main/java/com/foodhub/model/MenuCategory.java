@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "menu_categories", indexes = {
-    @Index(name = "idx_restaurant_id", columnList = "restaurant_id"),
-    @Index(name = "idx_active", columnList = "active")
+    @Index(name = "idx_menu_category_restaurant_id", columnList = "restaurant_id"),
+    @Index(name = "idx_menu_category_active", columnList = "active")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class MenuCategory {

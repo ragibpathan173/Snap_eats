@@ -12,13 +12,13 @@ import java.time.LocalTime;
 
 @Entity
 @Table(name = "restaurants", indexes = {
-        @Index(name = "idx_restaurant_id", columnList = "restaurantId"),
-        @Index(name = "idx_active", columnList = "active"),
-        @Index(name = "idx_verified", columnList = "verified"),
-        @Index(name = "idx_category", columnList = "category"),
-        @Index(name = "idx_rating", columnList = "rating"),
-        @Index(name = "idx_city", columnList = "city"),
-        @Index(name = "idx_locality", columnList = "locality")
+        @Index(name = "idx_restaurant_restaurant_id", columnList = "restaurantId"),
+        @Index(name = "idx_restaurant_active", columnList = "active"),
+        @Index(name = "idx_restaurant_verified", columnList = "verified"),
+        @Index(name = "idx_restaurant_category", columnList = "category"),
+        @Index(name = "idx_restaurant_rating", columnList = "rating"),
+        @Index(name = "idx_restaurant_city", columnList = "city"),
+        @Index(name = "idx_restaurant_locality", columnList = "locality")
 })
 @EntityListeners(AuditingEntityListener.class)
 public class Restaurant {
