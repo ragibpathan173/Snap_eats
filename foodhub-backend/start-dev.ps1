@@ -24,7 +24,7 @@ Write-Host "URLS:"
 Write-Host "  API:      http://localhost:$Port/api/categories/active"
 Write-Host "  Swagger:  http://localhost:$Port/swagger-ui.html"
 Write-Host "  Health:   http://localhost:$Port/actuator/health/readiness"
-Write-Host "  Frontend: Run ../frontend/start-dev.ps1 or use docker compose up --build"
+Write-Host "  Frontend: Run ../frontend/start-dev.ps1 in a second terminal"
 Write-Host ""
 
 Write-Host "Cleaning old build output so stale frontend assets are not served from the backend..."

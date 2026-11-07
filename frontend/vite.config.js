@@ -6,7 +6,7 @@ import react from "@vitejs/plugin-react";
 const projectRoot = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
-  base: "./",
+  base: "/",
   plugins: [react()],
   server: {
     port: 5173,
@@ -15,7 +15,6 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: "react-dist",
     rollupOptions: {
       input: {
         index: resolve(projectRoot, "index.html"),
